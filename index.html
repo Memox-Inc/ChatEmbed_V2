@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+</head>
+<body>
+  <script>
+    // Unified config for chat embed
+    window.SimpleChatEmbedConfig = {
+      apiUrl: "https://builder.memox.io/api/v1/prediction/a2b8ad41-9fb7-40ed-8e5d-d64cbcad8f03", // or your custom endpoint
+      title: "memox Chat",
+      theme: {
+        primary: '#8349ff',
+        headerBg: '#000',
+        userBubble: '#000',
+        botBubble: '#8349ff',
+        userText: '#fff',
+        botText: '#fff',
+        background: '#fff',
+        border: '#4a4e69',
+        text: '#22223b',
+        width: '100%',
+        maxWidth: '400px',
+        minWidth: '200px',
+        borderRadius: '16px',
+        fontFamily: 'Segoe UI, sans-serif',
+        headerText: '#fff',
+        inputBg: '#fff',
+        inputText: '#22223b',
+        sendBtnBg: '#000',
+        sendBtnText: '#fff',
+        sendBtnHover: '#22223b',
+        shadow: '0 4px 16px rgba(34,34,59,0.15)'
+      },
+      welcomeMessage: "Hi there! How can I help you today?" // Example welcome message
+    };
+  </script>
+  <script src="./chat-embed.js"></script>
+</body>
+</html>
