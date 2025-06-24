@@ -3,40 +3,83 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  
-</head>
+ 
 <body>
+  
   <script>
-    // Unified config for chat embed
+    // Chat widget configuration
+    // Choose ONE of the following configuration methods:
+    
+    // OPTION 1: Development Mode (for testing while Django endpoints are in development)
     window.SimpleChatEmbedConfig = {
-      apiUrl: "https://builder.memox.io/api/v1/prediction/a2b8ad41-9fb7-40ed-8e5d-d64cbcad8f03", // or your custom endpoint
-      title: "memox Chat",
-      theme: {
-        primary: '#8349ff',
-        headerBg: '#000',
-        userBubble: '#000',
-        botBubble: '#8349ff',
-        userText: '#fff',
-        botText: '#fff',
-        background: '#fff',
-        border: '#4a4e69',
-        text: '#22223b',
-        width: '100%',
-        maxWidth: '400px',
-        minWidth: '200px',
-        borderRadius: '16px',
-        fontFamily: 'Segoe UI, sans-serif',
-        headerText: '#fff',
-        inputBg: '#fff',
-        inputText: '#22223b',
-        sendBtnBg: '#000',
-        sendBtnText: '#fff',
-        sendBtnHover: '#22223b',
-        shadow: '0 4px 16px rgba(34,34,59,0.15)'
-      },
-      welcomeMessage: "Hi there! How can I help you today?" // Example welcome message
+      devMode: true,  // Enable development mode with hardcoded test values
+      // Optional: Override default dev config
+      devConfig: {
+        chatEndpoint: "https://builder.memox.io/api/v1/prediction/a2b8ad41-9fb7-40ed-8e5d-d64cbcad8f03",
+        title: "Memox Dev Chat",
+        theme: {
+          primary: '#8349ff',
+          headerBg: 'rgba(131, 73, 255, 0.95)',
+          userBubble: '#e8f4fd',
+          botBubble: '#f8f9fa'
+        }
+      }
     };
-  </script>
+    
+    // OPTION 2: New Dynamic Configuration (For production when Django endpoints are ready)
+    // window.SimpleChatEmbedConfig = {
+    //   botId: "your_bot_id_from_django",           // Required: Bot ID from Django backend
+    //   apiBaseUrl: "https://api.memox.io",        // Optional: Custom API base URL
+    //   djangoBackend: {
+    //     baseUrl: "https://backend.memox.io",     // Django backend URL
+    //     endpoints: {
+    //       botConfig: "/api/v1/bots/{botId}/config",
+    //       conversation: "/api/v1/conversations",
+    //       analytics: "/api/v1/analytics/tracking"
+    //     }
+    //   },
+    //   title: "Memox Support",
+    //   theme: { primary: "#8349ff" }
+    // };
+    
+    // OPTION 3: Legacy Configuration (Direct API URL - backwards compatibility)
+    // window.SimpleChatEmbedConfig = {
+    //   apiUrl: "https://builder.memox.io/api/v1/prediction/a2b8ad41-9fb7-40ed-8e5d-d64cbcad8f03",
+    //   title: "Memox Chat",
+    //   theme: {
+    //     primary: '#8349ff',
+    //     headerBg: '#000',
+    //     userBubble: '#000',
+    //     botBubble: '#8349ff',
+    //     userText: '#fff',
+    //     botText: '#fff',
+    //     background: '#fff',
+    //     border: '#4a4e69',
+    //     text: '#22223b',
+    //     width: '100%',
+    //     maxWidth: '400px',
+    //     minWidth: '200px',
+    //     borderRadius: '16px',
+    //     fontFamily: 'Segoe UI, sans-serif',
+    //     headerText: '#fff',
+    //     inputBg: '#fff',
+    //     inputText: '#22223b',
+    //     sendBtnBg: '#000',
+    //     sendBtnText: '#fff',
+    //     sendBtnHover: '#22223b',
+    //     shadow: '0 4px 16px rgba(34,34,59,0.15)'
+    //   },
+    //   welcomeMessage: "Hi there! How can I help you today?",
+    //   
+    //   // Navigation tracking (works with all configurations)
+    //   navigation: {
+    //     enabled: true,
+    //     trackScrollDepth: true,
+    //     trackTimeSpent: true,
+    //     trackInteractions: true,
+    //     maxHistoryPages: 20
+    //   }
+    // };  </script>
   <script src="./chat-embed.js"></script>
 </body>
 </html>

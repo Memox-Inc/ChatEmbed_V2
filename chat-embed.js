@@ -24,14 +24,41 @@
   // ============================================================================
   // CONFIGURATION & SETUP
   // ============================================================================
-  
-  /**
+    /**
    * Default configuration object for the chat widget
    * All these values can be overridden via window.SimpleChatEmbedConfig
    */
   var defaultConfig = {
-    // API endpoint for chat functionality
-    apiUrl: "https://builder.memox.io/api/v1/prediction/832807e0-6eb1-45ae-ab90-1bc0a18e8487",
+    // Development/Testing Mode - Set to true to use hardcoded values
+    devMode: false,               // Enable development mode for testing
+    
+    // Development hardcoded values (used when devMode: true)
+    devConfig: {
+      botId: "test-bot-123",
+      chatEndpoint: "https://flowise-api-example.com/api/v1/prediction/your-chatflow-id",
+      title: "Test Support Chat",
+      theme: {
+        primary: "#007cba",
+        headerBg: "rgba(0, 123, 186, 0.95)"
+      }
+    },
+    
+    // API Configuration - NEW: Dynamic bot configuration
+    botId: null,                  // Bot ID from Django backend (REQUIRED)
+    apiBaseUrl: "https://api.memox.io", // Base URL for Memox API endpoints
+    
+    // Legacy support - will be deprecated
+    apiUrl: null,                 // Direct Flowise URL (for backwards compatibility)
+    
+    // Django backend configuration
+    djangoBackend: {
+      baseUrl: "https://backend.memox.io", // Django backend base URL
+      endpoints: {
+        botConfig: "/api/v1/bots/{botId}/config",     // Get bot configuration
+        conversation: "/api/v1/conversations",         // Conversation management
+        analytics: "/api/v1/analytics/tracking"       // Analytics tracking
+      }
+    },
     
     // Chat window title displayed in header
     title: 'Chat',
@@ -82,12 +109,209 @@
     theme: { ...defaultConfig.theme, ...(window.SimpleChatEmbedConfig.theme || {}) },
     navigation: { ...defaultConfig.navigation, ...(window.SimpleChatEmbedConfig.navigation || {}) }
   } : defaultConfig;
-  
-  // Extract configuration values for easier access throughout the code
+    // Extract configuration values for easier access throughout the code
   var theme = config.theme;
-  var apiUrl = config.apiUrl;
   var welcomeMessage = config.welcomeMessage || null;
   var navigationConfig = config.navigation;
+
+  // ============================================================================
+  // DYNAMIC API MANAGEMENT SYSTEM
+  // ============================================================================
+  
+  /**
+   * API Manager for handling dynamic bot configuration and multi-endpoint communication
+   * Manages communication with Django backend and bot platforms
+   */
+  var apiManager = {
+    botConfig: null,              // Cached bot configuration from Django
+    endpoints: {
+      chat: null,                 // Dynamic chat endpoint (resolved from bot config)
+      django: config.djangoBackend.baseUrl, // Django backend base URL
+      analytics: null             // Analytics endpoint
+    },
+    conversationId: null,         // Current conversation ID for tracking
+    isInitialized: false         // Flag to track initialization status
+  };
+  /**
+   * Initialize API configuration by fetching bot details from Django backend
+   * @param {string} botId - The bot ID to configure
+   * @returns {Promise} Resolves when API is configured
+   */
+  async function initializeAPI(botId) {
+    // Development mode: use hardcoded values for testing
+    if (config.devMode) {
+      console.log('🔧 Development mode enabled - using hardcoded configuration');
+      apiManager.endpoints.chat = config.devConfig.chatEndpoint;
+      apiManager.endpoints.analytics = null; // Disable analytics in dev mode
+      
+      // Apply dev theme and title
+      if (config.devConfig.title) {
+        config.title = config.devConfig.title;
+      }
+      if (config.devConfig.theme) {
+        config.theme = { ...config.theme, ...config.devConfig.theme };
+        theme = config.theme;
+      }
+      
+      // Mock bot configuration
+      apiManager.botConfig = {
+        id: config.devConfig.botId,
+        title: config.devConfig.title,
+        chatEndpoint: config.devConfig.chatEndpoint
+      };
+      
+      apiManager.isInitialized = true;
+      console.log('🔧 Dev mode API initialized:', apiManager.endpoints.chat);
+      return;
+    }
+    
+    if (!botId && !config.apiUrl) {
+      throw new Error('Either botId or legacy apiUrl must be provided');
+    }
+    
+    // Legacy support: use direct apiUrl if provided
+    if (config.apiUrl && !botId) {
+      console.warn('Using legacy apiUrl. Consider migrating to botId configuration.');
+      apiManager.endpoints.chat = config.apiUrl;
+      apiManager.isInitialized = true;
+      return;
+    }
+    
+    try {
+      // Fetch bot configuration from Django backend
+      const configUrl = config.djangoBackend.baseUrl + 
+                       config.djangoBackend.endpoints.botConfig.replace('{botId}', botId);
+      
+      console.log('Fetching bot configuration from:', configUrl);
+      
+      const response = await fetch(configUrl, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Widget-Origin': window.location.origin
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch bot config: ${response.status} ${response.statusText}`);
+      }
+      
+      const botConfig = await response.json();
+      
+      // Cache bot configuration
+      apiManager.botConfig = botConfig;
+      
+      // Set up dynamic endpoints based on bot configuration
+      apiManager.endpoints.chat = botConfig.chatEndpoint || botConfig.flowiseUrl;
+      apiManager.endpoints.analytics = config.djangoBackend.baseUrl + 
+                                     config.djangoBackend.endpoints.analytics;
+      
+      // Update widget title and theme if provided by bot config
+      if (botConfig.title) {
+        config.title = botConfig.title;
+      }
+      if (botConfig.theme) {
+        config.theme = { ...config.theme, ...botConfig.theme };
+        theme = config.theme; // Update theme reference
+      }
+      
+      apiManager.isInitialized = true;
+      
+      console.log('API initialized successfully:', {
+        botId: botId,
+        chatEndpoint: apiManager.endpoints.chat,
+        title: config.title
+      });
+      
+    } catch (error) {
+      console.error('Failed to initialize API:', error);
+      
+      // Fallback to default configuration
+      if (config.apiUrl) {
+        console.warn('Falling back to legacy apiUrl configuration');
+        apiManager.endpoints.chat = config.apiUrl;
+        apiManager.isInitialized = true;
+      } else {
+        throw error;
+      }
+    }
+  }
+  /**
+   * Create a new conversation session with Django backend
+   * @returns {Promise<string>} Conversation ID
+   */
+  async function createConversation() {
+    if (!apiManager.isInitialized) {
+      throw new Error('API not initialized. Call initializeAPI() first.');
+    }
+    
+    // Development mode: generate mock conversation ID
+    if (config.devMode) {
+      apiManager.conversationId = 'dev_conv_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+      console.log('🔧 Dev mode conversation ID:', apiManager.conversationId);
+      return apiManager.conversationId;
+    }
+    
+    try {
+      const response = await fetch(apiManager.endpoints.django + config.djangoBackend.endpoints.conversation, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          botId: config.botId,
+          sessionId: navigationData.sessionId,
+          navigationContext: getNavigationContext(),
+          timestamp: new Date().toISOString()
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to create conversation: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      apiManager.conversationId = result.conversationId || result.id;
+      
+      return apiManager.conversationId;
+    } catch (error) {
+      console.error('Failed to create conversation:', error);
+      // Generate fallback conversation ID
+      apiManager.conversationId = 'conv_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+      return apiManager.conversationId;
+    }
+  }
+  /**
+   * Send analytics data to Django backend
+   * @param {Object} data - Analytics data to send
+   */
+  async function sendAnalytics(data) {
+    // Development mode: just log analytics data
+    if (config.devMode) {
+      console.log('🔧 Dev mode analytics:', data);
+      return;
+    }
+    
+    if (!apiManager.endpoints.analytics) return;
+    
+    try {
+      await fetch(apiManager.endpoints.analytics, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          botId: config.botId,
+          conversationId: apiManager.conversationId,
+          sessionId: navigationData.sessionId,
+          timestamp: new Date().toISOString(),
+          ...data
+        })
+      });
+    } catch (error) {
+      console.warn('Failed to send analytics:', error);
+    }
+  }
 
   // ============================================================================
   // NAVIGATION TRACKING SYSTEM
@@ -323,24 +547,40 @@
       window.addEventListener('scroll', trackScrollDepth, { passive: true });
       // Initial scroll check
       trackScrollDepth();
-    }
-    
-    // Set up interaction tracking
+    }    // Set up interaction tracking
     if (navigationConfig.trackInteractions) {
       // Track clicks on the page
       document.addEventListener('click', function(e) {
-        var element = e.target.tagName + (e.target.id ? '#' + e.target.id : '') + 
-                     (e.target.className ? '.' + e.target.className.split(' ').join('.') : '');
-        trackInteraction('click', element, {
-          x: e.clientX,
-          y: e.clientY
-        });
+        try {
+          var className = '';
+          if (e.target && e.target.className) {
+            // Handle both string and DOMTokenList cases
+            className = typeof e.target.className === 'string' 
+              ? e.target.className 
+              : e.target.className.toString();
+            className = className ? '.' + className.split(' ').join('.') : '';
+          }
+          
+          var tagName = e.target && e.target.tagName ? e.target.tagName : 'UNKNOWN';
+          var elementId = e.target && e.target.id ? '#' + e.target.id : '';
+          var element = tagName + elementId + className;
+          
+          trackInteraction('click', element, {
+            x: e.clientX || 0,
+            y: e.clientY || 0
+          });
+        } catch (error) {
+          console.warn('Navigation tracking click error:', error);
+        }
       }, { passive: true });
-      
-      // Track form submissions
+        // Track form submissions
       document.addEventListener('submit', function(e) {
-        var formId = e.target.id || 'unnamed-form';
-        trackInteraction('form_submit', 'form#' + formId);
+        try {
+          var formId = (e.target && e.target.id) ? e.target.id : 'unnamed-form';
+          trackInteraction('form_submit', 'form#' + formId);
+        } catch (error) {
+          console.warn('Navigation tracking form error:', error);
+        }
       }, { passive: true });
     }
     
@@ -983,16 +1223,22 @@
       humanSocket.send(val);
       return;
     }
-    
-    // Show loading indicator for AI response
+      // Show loading indicator for AI response
     saveMessage('', 'bot');
     loadMessages();
     
-    // Send to AI endpoint with navigation context
+    // Send to chat endpoint with navigation context and conversation tracking
     try {
-      // Prepare request data with navigation context
+      // Ensure we have a conversation ID
+      if (!apiManager.conversationId) {
+        await createConversation();
+      }
+      
+      // Prepare request data with enhanced context
       var requestData = { 
-        question: val 
+        question: val,
+        conversationId: apiManager.conversationId,
+        sessionId: navigationData.sessionId
       };
       
       // Include navigation context if tracking is enabled
@@ -1000,12 +1246,20 @@
       if (navContext) {
         requestData.context = {
           navigation: navContext,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          botId: config.botId
         };
       }
       
+      // Send analytics data for message tracking
+      sendAnalytics({
+        eventType: 'message_sent',
+        messageLength: val.length,
+        navigationContext: navContext
+      });
+      
       const response = await fetch(
-        apiUrl,
+        apiManager.endpoints.chat,
         {
           method: "POST",
           headers: {
@@ -1373,26 +1627,63 @@
     sendBtn.style.justifyContent = 'center';
     sendBtn.style.alignItems = 'center';
   }
-
   // ============================================================================
   // WIDGET INITIALIZATION
   // ============================================================================
+  
   /**
    * Initialize the chat widget
-   * Sets up the interface, navigation tracking, and shows appropriate view based on user state
-   */
-  function initializeWidget() {
-    // Initialize navigation tracking system first
-    initNavigationTracking();
-    
-    // Track widget initialization as an interaction
-    trackInteraction('chat_widget_initialized', 'widget');
-    
-    // Load existing messages from storage
-    loadMessages();
-    
-    // Show lead capture or normal chat interface
-    maybeShowLeadCapture();
+   * Sets up the interface, navigation tracking, API configuration, and shows appropriate view
+   */  async function initializeWidget() {
+    try {
+      // Initialize navigation tracking system first
+      initNavigationTracking();
+      
+      // Initialize API configuration
+      if (config.devMode) {
+        // Development mode initialization
+        console.log('🔧 Initializing chat widget in development mode');
+        await initializeAPI(null);
+        await createConversation();
+        sendAnalytics({
+          eventType: 'widget_initialized',
+          navigationContext: getNavigationContext()
+        });
+      } else if (config.botId) {
+        // Production mode with bot ID
+        console.log('Initializing chat widget with bot ID:', config.botId);
+        await initializeAPI(config.botId);
+        await createConversation();
+        sendAnalytics({
+          eventType: 'widget_initialized',
+          navigationContext: getNavigationContext()
+        });
+      } else if (config.apiUrl) {
+        // Legacy initialization for direct API URL
+        console.log('Initializing chat widget with legacy API URL');
+        await initializeAPI(null);
+      } else {
+        console.error('Chat widget requires either devMode: true, botId, or apiUrl configuration');
+        return;
+      }
+      
+      // Track widget initialization as an interaction
+      trackInteraction('chat_widget_initialized', 'widget');
+      
+      // Load existing messages from storage
+      loadMessages();
+      
+      // Show lead capture or normal chat interface
+      maybeShowLeadCapture();
+      
+      console.log('Chat widget initialized successfully');
+    } catch (error) {
+      console.error('Failed to initialize chat widget:', error);
+      
+      // Show error message in chat or fallback to basic mode
+      saveMessage('Sorry, the chat service is temporarily unavailable. Please try again later.', 'bot');
+      loadMessages();
+    }
   }
 
   // Start the widget when DOM is ready
