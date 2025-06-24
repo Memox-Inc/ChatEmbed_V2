@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Widget with Navigation Tracking - Test Page</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .navigation-debug {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            min-width: 280px;
+            font-size: 12px;
+            z-index: 1000;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .navigation-debug h4 {
+            margin: 0 0 10px 0;
+            color: #333;
+            font-size: 14px;
+        }
+        .debug-item {
+            margin: 5px 0;
+            padding: 3px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .debug-item:last-child {
+            border-bottom: none;
+        }
+        .test-links {
+            margin: 20px 0;
+        }
+        .test-links a {
+            display: inline-block;
+            margin: 5px 10px 5px 0;
+            padding: 8px 15px;
+            background: #007cba;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+        }
+        .test-links a:hover {
+            background: #005a87;
+        }
+        .content-section {
+            margin: 30px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        .tracking-info {
+            background: #e8f4fd;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .scroll-content {
+            height: 200px;
+            background: linear-gradient(to bottom, #e3f2fd, #bbdefb);
+            margin: 20px 0;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation Debug Panel -->
+    <div class="navigation-debug">
+        <h4>🔍 Navigation Tracking Debug</h4>
+        <div id="debug-content">
+            <div class="debug-item"><strong>Session ID:</strong> <span id="session-id">Loading...</span></div>
+            <div class="debug-item"><strong>Time on Site:</strong> <span id="time-on-site">0s</span></div>
+            <div class="debug-item"><strong>Pages Visited:</strong> <span id="pages-count">0</span></div>
+            <div class="debug-item"><strong>Scroll Depth:</strong> <span id="scroll-depth">0%</span></div>
+            <div class="debug-item"><strong>Interactions:</strong> <span id="interactions-count">0</span></div>
+            <div class="debug-item"><strong>Current Page:</strong> <span id="current-page">-</span></div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h1>Chat Widget with Navigation Tracking</h1>
+        
+        <div class="tracking-info">
+            <h3>📊 Navigation Tracking Features</h3>
+            <p>This page demonstrates the chat widget with integrated navigation tracking:</p>
+            <ul>
+                <li><strong>Page Views:</strong> Tracks every page visit with timestamps</li>
+                <li><strong>Time Tracking:</strong> Monitors time spent on each page</li>
+                <li><strong>Scroll Depth:</strong> Records how far users scroll (0-100%)</li>
+                <li><strong>User Interactions:</strong> Tracks clicks, form submissions, and widget usage</li>
+                <li><strong>Session Management:</strong> Maintains user session with unique ID</li>
+                <li><strong>Context-Aware Chat:</strong> AI responses include navigation context</li>
+            </ul>
+        </div>
+
+        <h2>Test Navigation Tracking</h2>
+        <p>Use these features to test the navigation tracking system:</p>
+        
+        <div class="test-links">
+            <a href="#section1" onclick="trackTestClick('Section 1')">Go to Section 1</a>
+            <a href="#section2" onclick="trackTestClick('Section 2')">Go to Section 2</a>
+            <a href="#section3" onclick="trackTestClick('Section 3')">Go to Section 3</a>
+            <a href="javascript:location.reload()" onclick="trackTestClick('Reload')">Reload Page</a>
+            <a href="javascript:history.back()" onclick="trackTestClick('Back')">Go Back</a>
+        </div>
+
+        <div class="content-section" id="section1">
+            <h2>Section 1: Product Information</h2>
+            <p>This is a test section about products. The navigation tracking system is monitoring:</p>
+            <ul>
+                <li>How long you spend reading this section</li>
+                <li>How far you scroll through the content</li>
+                <li>Which links and buttons you click</li>
+                <li>When you switch browser tabs</li>
+            </ul>
+            <p>Try opening the chat widget and asking: <em>"What page am I on?"</em> or <em>"How long have I been browsing?"</em></p>
+            
+            <button onclick="testInteraction('product_button')" style="padding: 10px 20px; margin: 10px 0; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                Test Product Button
+            </button>
+        </div>
+
+        <div class="content-section" id="section2">
+            <h2>Section 2: Services</h2>
+            <p>This section demonstrates form interaction tracking:</p>
+            
+            <form onsubmit="return testFormSubmit(event)" style="margin: 15px 0;">
+                <input type="text" placeholder="Test input field" style="padding: 8px; margin: 5px; border: 1px solid #ddd; border-radius: 4px;">
+                <input type="email" placeholder="Email address" style="padding: 8px; margin: 5px; border: 1px solid #ddd; border-radius: 4px;">
+                <button type="submit" style="padding: 8px 15px; margin: 5px; background: #007cba; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                    Submit Test Form
+                </button>
+            </form>
+
+            <div class="scroll-content">
+                <h4>Scrollable Content Area</h4>
+                <p>This area is designed to test scroll depth tracking. Scroll within this area to see how the system tracks your engagement.</p>
+                <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>
+                <p>Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.</p>
+                <p>Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.</p>
+                <p>Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>
+            </div>
+        </div>
+
+        <div class="content-section" id="section3">
+            <h2>Section 3: Testing Area</h2>
+            <p>Use this section to test various interactions and see how they're tracked:</p>
+            
+            <div style="margin: 20px 0;">
+                <button onclick="testInteraction('test_button_1')" style="padding: 10px; margin: 5px; background: #6f42c1; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                    Test Button 1
+                </button>
+                <button onclick="testInteraction('test_button_2')" style="padding: 10px; margin: 5px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                    Test Button 2
+                </button>
+                <button onclick="showNavigationData()" style="padding: 10px; margin: 5px; background: #fd7e14; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                    Show Navigation Data
+                </button>
+            </div>
+
+            <h3>How to Test Chat Context</h3>
+            <ol>
+                <li><strong>Browse around:</strong> Click the navigation links above and scroll through sections</li>
+                <li><strong>Interact:</strong> Click buttons, fill forms, and test various UI elements</li>
+                <li><strong>Open Chat:</strong> Click the chat widget in the bottom right</li>
+                <li><strong>Ask Context Questions:</strong> Try questions like:
+                    <ul>
+                        <li>"What page am I currently on?"</li>
+                        <li>"How long have I been browsing?"</li>
+                        <li>"What sections have I visited?"</li>
+                        <li>"How much have I scrolled?"</li>
+                    </ul>
+                </li>
+            </ol>
+        </div>
+
+        <!-- Extra content for scroll testing -->
+        <div style="height: 300px; background: linear-gradient(to bottom, #f8f9fa, #e9ecef); margin: 20px 0; padding: 20px; border-radius: 8px;">
+            <h3>Extended Content Area</h3>
+            <p>This area provides additional content to test scroll depth tracking. Keep scrolling to increase your scroll percentage.</p>
+            <p>The navigation tracking system will record your maximum scroll depth and include this information in chat context.</p>
+        </div>
+    </div>
+
+    <!-- Chat Widget Configuration -->
+    <script>
+        window.SimpleChatEmbedConfig = {
+            apiUrl: "https://builder.memox.io/api/v1/prediction/832807e0-6eb1-45ae-ab90-1bc0a18e8487",
+            title: "Smart Chat",
+            navigation: {
+                enabled: true,
+                trackScrollDepth: true,
+                trackTimeSpent: true,
+                trackInteractions: true,
+                maxHistoryPages: 20
+            },
+            theme: {
+                primary: "#007cba",
+                headerBg: "#000",
+                userBubble: "#007cba",
+                botBubble: "#f1f1f1",
+                userText: "#fff",
+                botText: "#333"
+            }
+        };
+
+        // Test interaction functions
+        function trackTestClick(section) {
+            console.log('Test click tracked:', section);
+        }
+
+        function testInteraction(buttonId) {
+            console.log('Test interaction:', buttonId);
+            alert('Button clicked: ' + buttonId + '\nThis interaction has been tracked!');
+        }
+
+        function testFormSubmit(event) {
+            event.preventDefault();
+            alert('Form submission tracked!');
+            return false;
+        }
+
+        function showNavigationData() {
+            if (window.SimpleChatEmbed) {
+                const navData = window.SimpleChatEmbed.getNavigationData();
+                const navContext = window.SimpleChatEmbed.getNavigationContext();
+                console.log('Full Navigation Data:', navData);
+                console.log('Navigation Context for API:', navContext);
+                
+                alert('Navigation data logged to console!\n\n' + 
+                      'Session ID: ' + navData.sessionId + '\n' +
+                      'Pages Visited: ' + navData.pages.length + '\n' +
+                      'Total Time: ' + navData.totalTimeOnSite + 's\n' +
+                      'Interactions: ' + navData.interactions.length + '\n' +
+                      'Scroll Depth: ' + navData.scrollDepth + '%');
+            }
+        }
+
+        // Update debug panel
+        function updateDebugPanel() {
+            if (window.SimpleChatEmbed && window.SimpleChatEmbed.getNavigationData) {
+                const navData = window.SimpleChatEmbed.getNavigationData();
+                
+                document.getElementById('session-id').textContent = navData.sessionId ? navData.sessionId.substring(0, 15) + '...' : 'Not set';
+                document.getElementById('time-on-site').textContent = navData.totalTimeOnSite + 's';
+                document.getElementById('pages-count').textContent = navData.pages.length;
+                document.getElementById('scroll-depth').textContent = navData.scrollDepth + '%';
+                document.getElementById('interactions-count').textContent = navData.interactions.length;
+                document.getElementById('current-page').textContent = navData.currentPage ? navData.currentPage.title : 'None';
+            }
+        }
+
+        // Update debug panel every 2 seconds
+        setInterval(updateDebugPanel, 2000);
+        
+        // Initial update after widget loads
+        setTimeout(updateDebugPanel, 1000);
+    </script>
+
+    <!-- Load Chat Widget -->
+    <script src="chat-embed.js"></script>
+</body>
+</html>

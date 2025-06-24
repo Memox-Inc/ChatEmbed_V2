@@ -1,48 +1,379 @@
-// Simple Chat Embed Widget
+/**
+ * Simple Chat Embed Widget
+ * 
+ * A lightweight, embeddable chat widget that provides real-time messaging
+ * capabilities with AI/human agents. Features include file uploads, message
+ * persistence, responsive design, and full theme customization.
+ * 
+ * Usage:
+ * Include this script in your HTML and optionally configure it by setting
+ * window.SimpleChatEmbedConfig before loading the script.
+ * 
+ * Example configuration:
+ * window.SimpleChatEmbedConfig = {
+ *   apiUrl: "your-api-endpoint",
+ *   title: "Support Chat",
+ *   theme: { primary: "#007cba" }
+ * };
+ * 
+ * @author Memox Inc
+ * @version 1.0
+ */
 (function () {
-  // Unified config object
+  
+  // ============================================================================
+  // CONFIGURATION & SETUP
+  // ============================================================================
+  
+  /**
+   * Default configuration object for the chat widget
+   * All these values can be overridden via window.SimpleChatEmbedConfig
+   */
   var defaultConfig = {
+    // API endpoint for chat functionality
     apiUrl: "https://builder.memox.io/api/v1/prediction/832807e0-6eb1-45ae-ab90-1bc0a18e8487",
+    
+    // Chat window title displayed in header
     title: 'Chat',
+    
+    // Theme configuration for visual styling
     theme: {
-      primary: '#0078d4',
-      userBubble: '#e6f0fa',
-      botBubble: '#f1f1f1',
-      userText: '#22223b',
-      botText: '#4a4e69',
-      background: '#fff',
-      border: '#ccc',
-      text: '#222',
-      width: '100%',
-      maxWidth: '350px',
-      minWidth: '220px',
-      borderRadius: '8px',
-      fontFamily: 'sans-serif',
-      zIndex: 9999,
-      headerText: '#fff',
-      headerBg: 'rgba(34, 34, 59, 0.95)',
-      inputBg: '#fff',
-      inputText: '#222',
-      sendBtnBg: '#0078d4',
-      sendBtnText: '#fff',
-      sendBtnHover: '#005fa3',
-      shadow: '0 2px 8px rgba(0,0,0,0.15)'
+      primary: '#0078d4',           // Primary brand color
+      userBubble: '#e6f0fa',       // User message bubble background
+      botBubble: '#f1f1f1',        // Bot message bubble background
+      userText: '#22223b',         // User message text color
+      botText: '#4a4e69',          // Bot message text color
+      background: '#fff',          // Widget background color
+      border: '#ccc',              // Border colors
+      text: '#222',                // Default text color
+      width: '100%',               // Widget width
+      maxWidth: '350px',           // Maximum width constraint
+      minWidth: '220px',           // Minimum width constraint
+      borderRadius: '8px',         // Border radius for rounded corners
+      fontFamily: 'sans-serif',    // Font family
+      zIndex: 9999,                // Z-index for layering above other content
+      headerText: '#fff',          // Header text color
+      headerBg: 'rgba(34, 34, 59, 0.95)', // Header background color
+      inputBg: '#fff',             // Input field background
+      inputText: '#222',           // Input field text color
+      sendBtnBg: '#0078d4',        // Send button background
+      sendBtnText: '#fff',         // Send button text color      sendBtnHover: '#005fa3',     // Send button hover color
+      shadow: '0 2px 8px rgba(0,0,0,0.15)' // Box shadow for depth
+    },
+    
+    // Navigation tracking configuration
+    navigation: {
+      enabled: true,               // Enable navigation tracking
+      trackScrollDepth: true,      // Track how far users scroll on pages
+      trackTimeSpent: true,        // Track time spent on each page
+      trackInteractions: true,     // Track clicks and user interactions
+      maxHistoryPages: 20          // Maximum number of pages to store in history
     }
   };
-  // Allow global override
+  
+  /**
+   * Merge user configuration with defaults
+   * This allows users to override specific properties while keeping defaults for others
+   * Uses object spread operator for shallow merging with deep merge for theme and navigation objects
+   */
   var config = window.SimpleChatEmbedConfig ? {
     ...defaultConfig,
     ...window.SimpleChatEmbedConfig,
-    theme: { ...defaultConfig.theme, ...(window.SimpleChatEmbedConfig.theme || {}) }
+    theme: { ...defaultConfig.theme, ...(window.SimpleChatEmbedConfig.theme || {}) },
+    navigation: { ...defaultConfig.navigation, ...(window.SimpleChatEmbedConfig.navigation || {}) }
   } : defaultConfig;
-
+  
+  // Extract configuration values for easier access throughout the code
   var theme = config.theme;
   var apiUrl = config.apiUrl;
   var welcomeMessage = config.welcomeMessage || null;
+  var navigationConfig = config.navigation;
 
-  // Create chat container
+  // ============================================================================
+  // NAVIGATION TRACKING SYSTEM
+  // ============================================================================
+  
+  /**
+   * Navigation tracking data structure
+   * Stores user browsing behavior and session information
+   */
+  var navigationData = {
+    sessionId: null,              // Unique session identifier
+    startTime: null,              // Session start timestamp
+    pages: [],                    // Array of visited pages with details
+    currentPage: null,            // Current page tracking object
+    totalTimeOnSite: 0,           // Total time spent across all pages (seconds)
+    scrollDepth: 0,               // Maximum scroll depth on current page (percentage)
+    interactions: []              // Array of user interaction events
+  };
+
+  /**
+   * Generate a unique session ID for tracking purposes
+   * Uses crypto API for secure random generation, falls back to timestamp method
+   * @returns {string} Unique session identifier
+   */
+  function generateSessionId() {
+    try {
+      // Use crypto API for secure random ID generation
+      return 'session_' + ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
+        (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+      );
+    } catch (e) {
+      // Fallback to timestamp-based ID if crypto is unavailable
+      return 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    }
+  }
+
+  /**
+   * Track a page view with detailed information
+   * Records page URL, title, timestamp, and user context
+   * @param {string} url - Page URL to track
+   * @param {string} title - Page title
+   */
+  function trackPageView(url, title) {
+    if (!navigationConfig.enabled) return;
+    
+    var now = new Date();
+    var pageData = {
+      url: url,
+      title: title || document.title,
+      timestamp: now.toISOString(),
+      timeSpent: 0,                // Will be updated when user leaves page
+      scrollDepth: 0,              // Will be updated as user scrolls
+      referrer: document.referrer,  // Previous page
+      userAgent: navigator.userAgent.substring(0, 200), // Truncated user agent
+      viewport: {
+        width: window.innerWidth,
+        height: window.innerHeight
+      }
+    };
+    
+    // Update time spent on previous page if exists
+    if (navigationData.currentPage) {
+      var timeSpent = Math.round((now - new Date(navigationData.currentPage.timestamp)) / 1000);
+      navigationData.currentPage.timeSpent = timeSpent;
+      navigationData.totalTimeOnSite += timeSpent;
+    }
+    
+    // Set new current page and add to history
+    navigationData.currentPage = pageData;
+    navigationData.pages.push(pageData);
+    
+    // Limit stored pages to prevent excessive memory usage
+    if (navigationData.pages.length > navigationConfig.maxHistoryPages) {
+      navigationData.pages = navigationData.pages.slice(-navigationConfig.maxHistoryPages);
+    }
+    
+    // Reset scroll depth for new page
+    navigationData.scrollDepth = 0;
+    
+    // Save updated navigation data
+    saveNavigationData();
+  }
+
+  /**
+   * Track scroll depth on current page
+   * Calculates and stores maximum scroll percentage reached
+   */
+  function trackScrollDepth() {
+    if (!navigationConfig.trackScrollDepth || !navigationData.currentPage) return;
+    
+    var scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+    var docHeight = Math.max(
+      document.body.scrollHeight,
+      document.body.offsetHeight,
+      document.documentElement.clientHeight,
+      document.documentElement.scrollHeight,
+      document.documentElement.offsetHeight
+    );
+    var winHeight = window.innerHeight;
+    var scrollPercent = Math.round((scrollTop / (docHeight - winHeight)) * 100);
+    
+    // Ensure scroll percentage is within valid range
+    scrollPercent = Math.max(0, Math.min(100, scrollPercent));
+    
+    // Update maximum scroll depth reached
+    if (scrollPercent > navigationData.scrollDepth) {
+      navigationData.scrollDepth = scrollPercent;
+      navigationData.currentPage.scrollDepth = scrollPercent;
+      saveNavigationData();
+    }
+  }
+
+  /**
+   * Track user interactions (clicks, form submissions, etc.)
+   * @param {string} type - Type of interaction (click, form, etc.)
+   * @param {string} element - Element that was interacted with
+   * @param {Object} details - Additional interaction details
+   */
+  function trackInteraction(type, element, details) {
+    if (!navigationConfig.trackInteractions) return;
+    
+    var interaction = {
+      type: type,
+      element: element,
+      timestamp: new Date().toISOString(),
+      page: navigationData.currentPage ? navigationData.currentPage.url : window.location.href,
+      details: details || {}
+    };
+    
+    navigationData.interactions.push(interaction);
+    
+    // Limit stored interactions to prevent excessive memory usage
+    if (navigationData.interactions.length > 100) {
+      navigationData.interactions = navigationData.interactions.slice(-100);
+    }
+    
+    saveNavigationData();
+  }
+
+  /**
+   * Handle page leave event
+   * Updates time spent on current page before navigation
+   */
+  function trackPageLeave() {
+    if (!navigationData.currentPage) return;
+    
+    var timeSpent = Math.round((new Date() - new Date(navigationData.currentPage.timestamp)) / 1000);
+    navigationData.currentPage.timeSpent = timeSpent;
+    navigationData.totalTimeOnSite += timeSpent;
+    saveNavigationData();
+  }
+
+  /**
+   * Save navigation data to localStorage for persistence
+   * Handles errors gracefully if localStorage is unavailable
+   */
+  function saveNavigationData() {
+    try {
+      localStorage.setItem('chatEmbed_navigation', JSON.stringify(navigationData));
+    } catch (e) {
+      console.warn('Could not save navigation data:', e);
+    }
+  }
+
+  /**
+   * Load navigation data from localStorage
+   * Only loads recent session data (within 24 hours)
+   */
+  function loadNavigationData() {
+    try {
+      var saved = localStorage.getItem('chatEmbed_navigation');
+      if (saved) {
+        var data = JSON.parse(saved);
+        // Only load if session is recent (within 24 hours)
+        if (data.startTime && (new Date() - new Date(data.startTime)) < 24 * 60 * 60 * 1000) {
+          navigationData = { ...navigationData, ...data };
+        }
+      }
+    } catch (e) {
+      console.warn('Could not load navigation data:', e);
+    }
+  }
+
+  /**
+   * Get navigation context for chat API
+   * Returns relevant navigation data to provide context to chat responses
+   * @returns {Object|null} Navigation context object or null if disabled
+   */
+  function getNavigationContext() {
+    if (!navigationConfig.enabled) return null;
+    
+    return {
+      sessionId: navigationData.sessionId,
+      totalTimeOnSite: navigationData.totalTimeOnSite,
+      pagesVisited: navigationData.pages.length,
+      currentPage: navigationData.currentPage ? {
+        url: navigationData.currentPage.url,
+        title: navigationData.currentPage.title,
+        timeSpent: navigationData.currentPage.timeSpent,
+        scrollDepth: navigationData.currentPage.scrollDepth
+      } : null,
+      recentPages: navigationData.pages.slice(-5).map(page => ({
+        url: page.url,
+        title: page.title,
+        timeSpent: page.timeSpent,
+        scrollDepth: page.scrollDepth
+      })),
+      totalInteractions: navigationData.interactions.length,
+      lastInteraction: navigationData.interactions.length > 0 ? 
+        navigationData.interactions[navigationData.interactions.length - 1] : null
+    };
+  }
+
+  /**
+   * Initialize navigation tracking system
+   * Sets up event listeners and starts tracking current page
+   */
+  function initNavigationTracking() {
+    if (!navigationConfig.enabled) return;
+    
+    // Generate session ID and set start time
+    navigationData.sessionId = generateSessionId();
+    navigationData.startTime = new Date().toISOString();
+    
+    // Load existing navigation data from previous session
+    loadNavigationData();
+    
+    // Track initial page view
+    trackPageView(window.location.href, document.title);
+    
+    // Set up scroll depth tracking
+    if (navigationConfig.trackScrollDepth) {
+      window.addEventListener('scroll', trackScrollDepth, { passive: true });
+      // Initial scroll check
+      trackScrollDepth();
+    }
+    
+    // Set up interaction tracking
+    if (navigationConfig.trackInteractions) {
+      // Track clicks on the page
+      document.addEventListener('click', function(e) {
+        var element = e.target.tagName + (e.target.id ? '#' + e.target.id : '') + 
+                     (e.target.className ? '.' + e.target.className.split(' ').join('.') : '');
+        trackInteraction('click', element, {
+          x: e.clientX,
+          y: e.clientY
+        });
+      }, { passive: true });
+      
+      // Track form submissions
+      document.addEventListener('submit', function(e) {
+        var formId = e.target.id || 'unnamed-form';
+        trackInteraction('form_submit', 'form#' + formId);
+      }, { passive: true });
+    }
+    
+    // Track page unload (user leaving page)
+    window.addEventListener('beforeunload', function() {
+      trackPageLeave();
+    });
+    
+    // Track page visibility changes (tab switching)
+    document.addEventListener('visibilitychange', function() {
+      if (document.hidden) {
+        trackInteraction('page_hidden', 'document');
+      } else {
+        trackInteraction('page_visible', 'document');
+      }
+    });
+    
+    // Save navigation data periodically (every 30 seconds)
+    setInterval(saveNavigationData, 30000);
+  }
+
+  // ============================================================================
+  // MAIN CHAT CONTAINER SETUP
+  // ============================================================================
+  
+  /**
+   * Create the main chat container element
+   * This is the primary wrapper that contains all chat UI elements
+   */
   var chatContainer = document.createElement('div');
   chatContainer.id = 'simple-chat-embed';
+  
+  // Apply base positioning and layout styles
   chatContainer.style.position = 'fixed';
   chatContainer.style.bottom = '24px';
   chatContainer.style.right = '24px';
@@ -63,9 +394,13 @@
   chatContainer.style.maxHeight = '80vh';
   chatContainer.style.overflow = 'hidden';
 
-  // Responsive
+  /**
+   * Handle responsive design for mobile devices
+   * Adjusts chat container size and position based on screen width
+   */
   function setResponsive() {
     if (window.innerWidth < 500) {
+      // Mobile layout: full width at bottom
       chatContainer.style.width = '98vw';
       chatContainer.style.right = '1vw';
       chatContainer.style.left = '1vw';
@@ -73,6 +408,7 @@
       chatContainer.style.borderRadius = '8px 8px 0 0';
       chatContainer.style.minWidth = '0';
     } else {
+      // Desktop layout: floating widget in corner
       chatContainer.style.width = theme.width;
       chatContainer.style.right = '20px';
       chatContainer.style.left = '';
@@ -81,10 +417,19 @@
       chatContainer.style.minWidth = theme.minWidth;
     }
   }
+  
+  // Apply initial responsive settings and listen for window resizes
   setResponsive();
   window.addEventListener('resize', setResponsive);
 
-  // Chat header
+  // ============================================================================
+  // HEADER SECTION
+  // ============================================================================
+  
+  /**
+   * Create the chat header with title and controls
+   * Contains the chat title and refresh button for clearing conversation
+   */
   var header = document.createElement('div');
   header.style.display = 'flex';
   header.style.justifyContent = 'space-between';
@@ -99,10 +444,15 @@
   header.style.fontSize = '1.1rem';
   header.style.boxShadow = '0 1px 0 0 #ececec';
 
+  // Header title element
   var headerTitle = document.createElement('span');
   headerTitle.innerText = config.title;
   header.appendChild(headerTitle);
 
+  /**
+   * Create refresh/clear button
+   * Allows users to clear their conversation history
+   */
   var refreshBtn = document.createElement('button');
   refreshBtn.innerText = '⟳';
   refreshBtn.title = 'Clear chat';
@@ -113,16 +463,28 @@
   refreshBtn.style.cursor = 'pointer';
   refreshBtn.style.marginLeft = '10px';
   refreshBtn.style.transition = 'color 0.15s';
+  
+  // Add hover effects for better UX
   refreshBtn.onmouseover = function() { refreshBtn.style.color = '#a3a3a3'; };
   refreshBtn.onmouseout = function() { refreshBtn.style.color = theme.headerText; };
+  
+  // Clear conversation when clicked
   refreshBtn.onclick = function() {
     localStorage.removeItem('simple-chat-messages');
     loadMessages();
   };
+  
   header.appendChild(refreshBtn);
   chatContainer.appendChild(header);
 
-  // Chat messages area
+  // ============================================================================
+  // MESSAGES AREA
+  // ============================================================================
+  
+  /**
+   * Create the scrollable messages container
+   * This area displays all chat messages between user and bot
+   */
   var messages = document.createElement('div');
   messages.style.flex = '1';
   messages.style.overflowY = 'auto';
@@ -134,7 +496,14 @@
   messages.style.gap = '0.5rem';
   chatContainer.appendChild(messages);
 
-  // Chat input area
+  // ============================================================================
+  // INPUT AREA
+  // ============================================================================
+  
+  /**
+   * Create the input container for user messages and file uploads
+   * Contains text input, file upload button, and send button
+   */
   var inputContainer = document.createElement('div');
   inputContainer.style.display     = 'flex';
   inputContainer.style.flexDirection = 'row';
@@ -261,22 +630,30 @@
       loadMessages();
       return;
     }
-    var reader = new FileReader();
-    reader.onload = function(evt) {
+    var reader = new FileReader();    reader.onload = function(evt) {
       var dataUrl = evt.target.result;
-      // Save image as a user message (base64 data URL)
+      
+      // Save image as a user message for display purposes
       saveMessage('[Image]', 'user');
       loadMessages();
-      // Send to AI or human agent
+      
+      // Send image to appropriate endpoint (AI or human agent)
       if (isHumanAgentActive && humanSocket && humanSocket.readyState === 1) {
-        // Send as base64 or as a special message type (your backend should handle this securely)
-        humanSocket.send(JSON.stringify({type: 'image', data: dataUrl, filename: file.name}));
+        // Send to human agent via WebSocket
+        humanSocket.send(JSON.stringify({
+          type: 'image', 
+          data: dataUrl, 
+          filename: file.name
+        }));
       } else {
-        // For AI, send as base64 or as a special message type if your API supports it
+        // Send to AI endpoint via API
         fetch(apiUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ image: dataUrl, filename: file.name })
+          body: JSON.stringify({ 
+            image: dataUrl, 
+            filename: file.name 
+          })
         })
         .then(res => res.json())
         .then(result => {
@@ -291,15 +668,22 @@
       }
     };
     reader.readAsDataURL(file);
-    imageInput.value = '';
+    imageInput.value = ''; // Clear input after processing
   });
 
-  // Chat input area (continued)
+  // ============================================================================
+  // FINALIZE INPUT CONTAINER
+  // ============================================================================
+  
+  // Add input elements to container
   inputContainer.appendChild(input);
   inputContainer.appendChild(sendBtn);
   chatContainer.appendChild(inputContainer);
 
-  // Powered by memox footer
+  /**
+   * Create footer with branding
+   * Shows "Powered by memox" attribution
+   */
   var footer = document.createElement('div');
   footer.style.textAlign = 'center';
   footer.style.fontSize = '0.85rem';
@@ -308,11 +692,19 @@
   footer.innerHTML = 'Powered by <a href="https://memox.com" target="_blank" style="color:#4a4e69;text-decoration:none;font-weight:600;">memox</a>';
   chatContainer.appendChild(footer);
 
-  // Add chat to body
+  // Add the complete chat container to the page
   document.body.appendChild(chatContainer);
 
+  // ============================================================================
+  // API COMMUNICATION & STREAMING
+  // ============================================================================
 
-  // Make request to Flowise API with streaming support
+  /**
+   * Make streaming API request to chat endpoint
+   * Supports both streaming and non-streaming responses
+   * @param {Object} data - Request payload to send to API
+   * @param {Function} onChunk - Callback function for streaming text chunks
+   */
   async function queryStream(data, onChunk) {
     const response = await fetch(
       apiUrl,
@@ -324,23 +716,30 @@
         body: JSON.stringify(data)
       }
     );
+    
+    // Fallback for non-streaming or unsupported browsers
     if (!response.body || !window.ReadableStream) {
       const result = await response.json();
       onChunk(result.text || result.answer || JSON.stringify(result), true);
       return;
     }
+    
+    // Handle streaming response
     const reader = response.body.getReader();
     let decoder = new TextDecoder();
     let done = false;
     let fullText = '';
     let lastText = '';
+    
     while (!done) {
       const { value, done: doneReading } = await reader.read();
       done = doneReading;
+      
       if (value) {
         const chunk = decoder.decode(value, { stream: !done });
         fullText += chunk;
-        // Try to parse JSON and extract .text if possible
+        
+        // Try to parse JSON response and extract text
         let displayText = fullText;
         try {
           const parsed = JSON.parse(fullText);
@@ -348,9 +747,10 @@
             displayText = parsed.text;
           }
         } catch (e) {
-          // Not JSON, use as is
+          // Not JSON format, use raw text
         }
-        // Only stream new words
+        
+        // Only stream new content to avoid repetition
         if (displayText !== lastText) {
           onChunk(displayText, false);
           lastText = displayText;
@@ -360,6 +760,10 @@
     onChunk(lastText, true);
   }
 
+  /**
+   * Create animated loading dots for bot typing indicator
+   * @returns {HTMLElement} Animated dots element
+   */
   function createBouncingDots() {
     var loader = document.createElement('span');
     loader.style.display = 'inline-flex';
@@ -371,7 +775,8 @@
       <span style="display:inline-block;width:8px;height:8px;margin:0 2px;background:${dotColor};border-radius:50%;animation:bounce 1s 0.2s infinite alternate;"></span>
       <span style="display:inline-block;width:8px;height:8px;margin:0 2px;background:${dotColor};border-radius:50%;animation:bounce 1s 0.4s infinite alternate;"></span>
     `;
-    // Add keyframes if not already present
+    
+    // Add CSS animation if not already present
     if (!document.getElementById('simple-chat-bounce-style')) {
       var style = document.createElement('style');
       style.id = 'simple-chat-bounce-style';
@@ -381,18 +786,30 @@
     return loader;
   }
 
-  // Helper: linkify and style links in bot messages
+  /**
+   * Convert markdown links to HTML links with styling
+   * @param {string} text - Text potentially containing markdown links
+   * @returns {string} HTML with styled links
+   */
   function linkifyAndStyle(text) {
-    // Replace markdown links [text](url) with styled <a>
+    // Replace markdown links [text](url) with styled <a> tags
     return text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, function(_, label, url) {
       return '<a href="' + url + '" target="_blank" style="font-weight:bold;color:' + (theme.botText || '#4a4e69') + ';text-decoration:underline;cursor:pointer;">' + label + '</a>';
     });
   }
 
-  // Load messages from localStorage
+  // ============================================================================
+  // MESSAGE MANAGEMENT
+  // ============================================================================
+
+  /**
+   * Load and display messages from localStorage
+   * Called on widget initialization and after clearing chat
+   */
   function loadMessages() {
     var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
     messages.innerHTML = '';
+    
     for (var i = 0; i < msgs.length; i++) {
       var msg = msgs[i];
       var msgDiv = document.createElement('div');
@@ -409,19 +826,23 @@
       msgDiv.style.boxShadow = '0 1px 2px 0 #ececec';
       var wrapper = document.createElement('div');
       wrapper.style.display = 'flex';
-      wrapper.style.width = '100%';
-      if (msg.sender === 'user') {
+      wrapper.style.width = '100%';      if (msg.sender === 'user') {
+        // Style user messages (right-aligned, user theme colors)
         msgDiv.style.background = theme.userBubble;
         msgDiv.style.color = theme.userText || '#22223b';
         wrapper.style.justifyContent = 'flex-end';
         msgDiv.innerText = msg.text;
       } else {
+        // Style bot messages (left-aligned, bot theme colors)
         msgDiv.style.background = theme.botBubble;
         msgDiv.style.color = theme.botText || '#4a4e69';
         wrapper.style.justifyContent = 'flex-start';
+        
         if (msg.text === '' && i === msgs.length - 1) {
+          // Show typing indicator for empty message (bot is typing)
           msgDiv.appendChild(createBouncingDots());
         } else if (msg.text === '[Image]' && i > 0 && isImageDataUrl(msgs[i-1].text)) {
+          // Display uploaded image
           var img = document.createElement('img');
           img.src = msgs[i-1].text;
           img.style.maxWidth = '180px';
@@ -431,31 +852,45 @@
           img.style.margin = '0.25rem 0';
           msgDiv.appendChild(img);
         } else {
+          // Regular bot message with link formatting
           msgDiv.innerHTML = linkifyAndStyle(msg.text);
         }
       }
       wrapper.appendChild(msgDiv);
       messages.appendChild(wrapper);
     }
+    
+    // Auto-scroll to bottom to show latest messages
     messages.scrollTop = messages.scrollHeight;
   }
 
-  // Save message to localStorage
+  /**
+   * Save a message to localStorage for persistence
+   * @param {string} msg - Message text to save
+   * @param {string} sender - Either 'user' or 'bot'
+   */
   function saveMessage(msg, sender) {
     var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
     msgs.push({ text: msg, sender: sender });
     localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
   }
 
-  // Animate text streaming in word by word
+  /**
+   * Animate streaming text by updating word by word
+   * Creates a typewriter effect for bot responses
+   * @param {number} msgIdx - Index of message to animate
+   * @param {string} fullText - Complete text to animate
+   */
   function animateTextStream(msgIdx, fullText) {
-    var words = fullText.split(/(\s+)/g); // keep spaces
+    var words = fullText.split(/(\s+)/g); // Split while keeping spaces
     var current = '';
     var i = 0;
+    
     function step() {
       if (i <= words.length) {
         current = words.slice(0, i).join('');
-        // Update last bot message in localStorage
+        
+        // Update the message in localStorage
         var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
         if (msgs[msgIdx] && msgs[msgIdx].sender === 'bot') {
           msgs[msgIdx].text = current;
@@ -463,7 +898,7 @@
           loadMessages();
         }
         i++;
-        setTimeout(step, 60); // adjust speed here
+        setTimeout(step, 60); // Adjust typing speed here (60ms between words)
       }
     }
     step();
@@ -526,25 +961,49 @@
       loadMessages();
     };
   }
-
-  // --- Message sending logic update ---
-  // This function now routes messages to either the AI or the human agent
+  /**
+   * Main message sending function
+   * Routes messages to either AI or human agent based on current state
+   * Includes navigation context in API requests for better responses
+   */
   async function sendMessage() {
     var val = input.value.trim();
     if (!val) return;
+    
+    // Track message sending as user interaction
+    trackInteraction('chat_message_sent', 'input', { messageLength: val.length });
+    
+    // Save user message and clear input
     saveMessage(val, 'user');
     input.value = '';
     loadMessages();
+    
+    // Route to human agent if active
     if (isHumanAgentActive && humanSocket && humanSocket.readyState === 1) {
-      // Send message to human agent via WebSocket
       humanSocket.send(val);
       return;
     }
-    // Show loading message
+    
+    // Show loading indicator for AI response
     saveMessage('', 'bot');
     loadMessages();
-    // Query Flowise
+    
+    // Send to AI endpoint with navigation context
     try {
+      // Prepare request data with navigation context
+      var requestData = { 
+        question: val 
+      };
+      
+      // Include navigation context if tracking is enabled
+      var navContext = getNavigationContext();
+      if (navContext) {
+        requestData.context = {
+          navigation: navContext,
+          timestamp: new Date().toISOString()
+        };
+      }
+      
       const response = await fetch(
         apiUrl,
         {
@@ -552,17 +1011,18 @@
           headers: {
             "Content-Type": "application/json"
           },
-          body: JSON.stringify({ question: val })
+          body: JSON.stringify(requestData)
         }
       );
       const result = await response.json();
       let botMsg = result.text || result.answer || JSON.stringify(result);
-      // Animate the bot message in
+      
+      // Animate the bot response with typewriter effect
       var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
       var botIdx = msgs.length - 1;
       animateTextStream(botIdx, botMsg);
     } catch (e) {
-      // Remove loading message and show error
+      // Handle API errors gracefully
       var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
       if (msgs.length && msgs[msgs.length - 1].sender === 'bot') {
         msgs[msgs.length - 1].text = 'Error contacting bot.';
@@ -572,19 +1032,38 @@
     }
   }
 
-  // --- Example usage ---
-  // To trigger human takeover from outside (e.g. by a button or backend event), call:
-  // switchToHumanAgent('wss://yourdomain.com/ws/support/room_id/', 'secure-auth-token');
-  //
-  // You can expose this function globally if needed:
+  /**
+   * Switch to human agent support
+   * @param {string} wsUrl - WebSocket URL for human agent
+   * @param {string} authToken - Optional authentication token
+   */
+  function switchToHumanAgent(wsUrl, authToken) {
+    connectToHumanAgent(wsUrl, authToken);
+  }
+
+  // Expose human agent function globally for external access
+  // Example: window.SimpleChatEmbedSwitchToHuman('wss://yourdomain.com/ws/support/room_id/', 'token');
   window.SimpleChatEmbedSwitchToHuman = switchToHumanAgent;
 
+  // ============================================================================
+  // EVENT LISTENERS
+  // ============================================================================
+
+  // Set up send button and Enter key functionality
   sendBtn.onclick = sendMessage;
   input.addEventListener('keydown', function (e) {
     if (e.key === 'Enter') sendMessage();
   });
 
-  // Lead capture inside chat window
+  // ============================================================================
+  // LEAD CAPTURE FUNCTIONALITY
+  // ============================================================================
+
+  /**
+   * Show lead capture form inside chat window
+   * Collects user name and email before starting chat
+   * @param {Function} onComplete - Callback when form is completed
+   */
   function showLeadCaptureInChat(onComplete) {
     messages.innerHTML = '';
     var wrapper = document.createElement('div');
@@ -596,6 +1075,7 @@
     wrapper.style.width = '100%';
     wrapper.style.gap = '1.2rem';
 
+    // Form title
     var title = document.createElement('div');
     title.innerText = 'Enter to Chat';
     title.style.fontWeight = '600';
@@ -603,6 +1083,7 @@
     title.style.marginBottom = '0.5rem';
     wrapper.appendChild(title);
 
+    // Name input field
     var nameInput = document.createElement('input');
     nameInput.type = 'text';
     nameInput.placeholder = 'Your name';
@@ -614,6 +1095,7 @@
     nameInput.style.maxWidth = '260px';
     wrapper.appendChild(nameInput);
 
+    // Email input field
     var emailInput = document.createElement('input');
     emailInput.type = 'email';
     emailInput.placeholder = 'Email address';
@@ -625,6 +1107,7 @@
     emailInput.style.maxWidth = '260px';
     wrapper.appendChild(emailInput);
 
+    // Email validation error message
     var emailError = document.createElement('div');
     emailError.style.display = 'none';
     emailError.style.color = '#e57373';
@@ -635,6 +1118,7 @@
     emailError.innerText = 'please enter a valid email address';
     wrapper.appendChild(emailError);
 
+    // Button container
     var btnRow = document.createElement('div');
     btnRow.style.display = 'flex';
     btnRow.style.gap = '0.5rem';
@@ -642,6 +1126,9 @@
     btnRow.style.justifyContent = 'space-between';
     btnRow.style.maxWidth = '260px';
 
+    /**
+     * Create confirm button for submitting lead information
+     */
     var confirmBtn = document.createElement('button');
     confirmBtn.innerText = 'Enter Chat';
     confirmBtn.style.background = theme.primary;
@@ -653,33 +1140,46 @@
     confirmBtn.style.fontWeight = '600';
     confirmBtn.style.fontSize = '1rem';
     confirmBtn.style.transition = 'background 0.15s, color 0.15s';
-    confirmBtn.onmouseover = function() { confirmBtn.style.background = theme.sendBtnHover; };
-    confirmBtn.onmouseout = function() { confirmBtn.style.background = theme.primary; };
+    confirmBtn.style.flex = '1';
+    
+    // Hover effects for confirm button
+    confirmBtn.onmouseover = function() { 
+      confirmBtn.style.background = theme.sendBtnHover; 
+    };
+    confirmBtn.onmouseout = function() { 
+      confirmBtn.style.background = theme.primary; 
+    };
+
+    /**
+     * Handle lead capture form submission
+     * Validates email and collects user information
+     */
     confirmBtn.onclick = function() {
-      var emailVal = emailInput.value.trim();
-      if (emailVal && !/^\S+@\S+\.\S+$/.test(emailVal)) {
-        emailInput.style.border = '1.5px solid #e57373';
+      var name = nameInput.value.trim();
+      var email = emailInput.value.trim();
+      
+      // Validate email format
+      if (!email || !/\S+@\S+\.\S+/.test(email)) {
         emailError.style.display = 'block';
-        emailInput.focus();
         return;
-      } else {
-        emailInput.style.border = '1px solid #ececec';
-        emailError.style.display = 'none';
       }
-      messages.innerHTML = '';
-      // Collect environment info
+      emailError.style.display = 'none';
+
+      // Collect additional user data for analytics
       var userAgent = navigator.userAgent;
       var platform = navigator.platform;
       var url = window.location.href;
       var timestamp = new Date().toISOString();
       var language = navigator.language;
       var referrer = document.referrer;
-      // Fetch public IP address
+      
+      // Fetch public IP address for geolocation
       fetch('https://api.ipify.org?format=json')
         .then(function(res) { return res.json(); })
         .then(function(ipData) {
           var ip = ipData.ip || '';
-          // Generate a GUID for the user (if not already present)
+          
+          // Generate unique user GUID if not exists
           var guid = localStorage.getItem('simple-chat-user-guid');
           if (!guid) {
             guid = ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
@@ -687,6 +1187,7 @@
             );
             localStorage.setItem('simple-chat-user-guid', guid);
           }
+          
           var leadData = {
             name: sanitize(nameInput.value),
             email: sanitize(emailInput.value),
@@ -699,24 +1200,30 @@
             guid,
             ip
           };
-          // Store lead in localStorage array for later sending
+          
+          // Store lead data locally for later processing
           var leads = JSON.parse(localStorage.getItem('simple-chat-leads') || '[]');
           leads.push(leadData);
           localStorage.setItem('simple-chat-leads', JSON.stringify(leads));
-          // Log to console for now
+          
           console.log('Lead captured:', leadData);
           onComplete(leadData);
         });
     };
-    // Allow pressing Enter to submit the form
+    
+    // Allow Enter key to submit form
     nameInput.addEventListener('keydown', function(e) {
       if (e.key === 'Enter') confirmBtn.click();
     });
     emailInput.addEventListener('keydown', function(e) {
       if (e.key === 'Enter') confirmBtn.click();
     });
+    
     btnRow.appendChild(confirmBtn);
 
+    /**
+     * Create skip button for users who want to chat without providing info
+     */
     var skipBtn = document.createElement('button');
     skipBtn.innerText = 'Skip';
     skipBtn.style.background = '#222';
@@ -728,25 +1235,35 @@
     skipBtn.style.fontWeight = '600';
     skipBtn.style.fontSize = '1rem';
     skipBtn.style.transition = 'background 0.15s, color 0.15s';
+    
+    // Skip button hover effects
     skipBtn.onmouseover = function() { skipBtn.style.background = '#444'; };
     skipBtn.onmouseout = function() { skipBtn.style.background = '#222'; };
+    
     skipBtn.onclick = function() {
       messages.innerHTML = '';
-      // Optionally log skipped lead
-      var leadData = { name: '', email: '', skipped: true, timestamp: new Date().toISOString() };
+      
+      // Log skipped lead for analytics
+      var leadData = { 
+        name: '', 
+        email: '', 
+        skipped: true, 
+        timestamp: new Date().toISOString() 
+      };
       var leads = JSON.parse(localStorage.getItem('simple-chat-leads') || '[]');
       leads.push(leadData);
       localStorage.setItem('simple-chat-leads', JSON.stringify(leads));
+      
       console.log('Lead skipped:', leadData);
       onComplete(null);
     };
+    
     btnRow.appendChild(skipBtn);
-
     wrapper.appendChild(btnRow);
     messages.appendChild(wrapper);
     nameInput.focus();
 
-    // Add privacy notice
+    // Add privacy policy notice
     var privacy = document.createElement('div');
     privacy.style.fontSize = '0.85rem';
     privacy.style.color = '#888';
@@ -757,61 +1274,42 @@
     wrapper.appendChild(privacy);
   }
 
-  // On load, show lead capture inside chat window
+  /**
+   * Simple text sanitization function
+   * Prevents XSS by encoding HTML entities
+   * @param {string} str - String to sanitize
+   * @returns {string} Sanitized string
+   */
+  function sanitize(str) {
+    var div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  // ============================================================================
+  // INITIALIZATION & LEAD CAPTURE FLOW
+  // ============================================================================
+
+  /**
+   * Check if lead capture should be shown
+   * Shows lead form on first visit, regular chat afterwards
+   */
   function maybeShowLeadCapture() {
     if (!window.__simpleChatEmbedLeadCaptured) {
+      // First time visitor - show lead capture form
       inputContainer.style.display = 'none';
       footer.style.display = 'none';
+      
       showLeadCaptureInChat(function(lead) {
         window.__simpleChatEmbedLeadCaptured = true;
         if (lead) {
           window.SimpleChatEmbedLead = lead;
         }
-        // Restore chat input flex layout after lead form
-        inputContainer.style.display = 'flex';
-        inputContainer.style.flexDirection = 'row';
-        inputContainer.style.width = '100%';
-        inputContainer.style.boxSizing = 'border-box';
-        inputContainer.style.padding = '0.5rem';
-        inputContainer.style.gap = '0';
-        inputContainer.style.alignItems = 'stretch';
-        inputContainer.style.flex = '0 0 auto';
-        inputContainer.style.borderTop = '1px solid #ececec';
-        inputContainer.style.background = '#ffffff';
-        input.style.flex = '1 1 0%';
-        input.style.minWidth = '0';
-        input.style.width = 'auto';
-        input.style.margin = '0';
-        input.style.height = '2.5rem';
-        input.style.padding = '0 1rem';
-        input.style.border = '1px solid #ececec';
-        input.style.borderRight = 'none';
-        input.style.borderRadius = '0.75rem 0 0 0.75rem';
-        input.style.background = theme.inputBg;
-        input.style.color = theme.inputText;
-        input.style.fontSize = '1rem';
-        input.style.boxSizing = 'border-box';
-        input.style.outline = 'none';
-        input.style.transition = 'border 0.15s ease-in-out';
-        sendBtn.style.flex = '0 0 auto';
-        sendBtn.style.margin = '0';
-        sendBtn.style.height = '2.5rem';
-        sendBtn.style.padding = '0 1.25rem';
-        sendBtn.style.background = theme.sendBtnBg;
-        sendBtn.style.color = theme.sendBtnText;
-        sendBtn.style.border = '1px solid #ececec';
-        sendBtn.style.borderLeft = 'none';
-        sendBtn.style.borderRadius = '0 0.75rem 0.75rem 0';
-        sendBtn.style.cursor = 'pointer';
-        sendBtn.style.fontWeight = '600';
-        sendBtn.style.fontSize = '1rem';
-        sendBtn.style.transition = 'background 0.15s ease-in-out, color 0.15s ease-in-out';
-        sendBtn.style.boxSizing = 'border-box';
-        sendBtn.style.display = 'flex';
-        sendBtn.style.justifyContent = 'center';
-        sendBtn.style.alignItems = 'center';
-        footer.style.display = '';
-        // Show welcome message if set and no previous messages
+        
+        // Restore normal chat interface after lead capture
+        restoreChatInterface();
+        
+        // Show welcome message if configured and no previous messages
         var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
         if (welcomeMessage && msgs.length === 0) {
           saveMessage(welcomeMessage, 'bot');
@@ -819,60 +1317,160 @@
         loadMessages();
       });
     } else {
-      // Already captured, show chat input
-      inputContainer.style.display = 'flex';
-      inputContainer.style.flexDirection = 'row';
-      inputContainer.style.width = '100%';
-      inputContainer.style.boxSizing = 'border-box';
-      inputContainer.style.padding = '0.5rem';
-      inputContainer.style.gap = '0';
-      inputContainer.style.alignItems = 'stretch';
-      inputContainer.style.flex = '0 0 auto';
-      inputContainer.style.borderTop = '1px solid #ececec';
-      inputContainer.style.background = '#ffffff';
-      input.style.flex = '1 1 0%';
-      input.style.minWidth = '0';
-      input.style.width = 'auto';
-      input.style.margin = '0';
-      input.style.height = '2.5rem';
-      input.style.padding = '0 1rem';
-      input.style.border = '1px solid #ececec';
-      input.style.borderRight = 'none';
-      input.style.borderRadius = '0.75rem 0 0 0.75rem';
-      input.style.background = theme.inputBg;
-      input.style.color = theme.inputText;
-      input.style.fontSize = '1rem';
-      input.style.boxSizing = 'border-box';
-      input.style.outline = 'none';
-      input.style.transition = 'border 0.15s ease-in-out';
-      sendBtn.style.flex = '0 0 auto';
-      sendBtn.style.margin = '0';
-      sendBtn.style.height = '2.5rem';
-      sendBtn.style.padding = '0 1.25rem';
-      sendBtn.style.background = theme.sendBtnBg;
-      sendBtn.style.color = theme.sendBtnText;
-      sendBtn.style.border = '1px solid #ececec';
-      sendBtn.style.borderLeft = 'none';
-      sendBtn.style.borderRadius = '0 0.75rem 0.75rem 0';
-      sendBtn.style.cursor = 'pointer';
-      sendBtn.style.fontWeight = '600';
-      sendBtn.style.fontSize = '1rem';
-      sendBtn.style.transition = 'background 0.15s ease-in-out, color 0.15s ease-in-out';
-      sendBtn.style.boxSizing = 'border-box';
-      sendBtn.style.display = 'flex';
-      sendBtn.style.justifyContent = 'center';
-      sendBtn.style.alignItems = 'center';
-      footer.style.display = '';
+      // Returning visitor - show normal chat interface
+      restoreChatInterface();
       loadMessages();
     }
   }
 
-  // Sanitize input to prevent XSS
-  function sanitize(str) {
-    return String(str).replace(/[&<>"']/g, function (c) {
-      return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]);
-    });
+  /**
+   * Restore the chat interface to its normal state
+   * Called after lead capture is complete or skipped
+   */
+  function restoreChatInterface() {
+    inputContainer.style.display = 'flex';
+    inputContainer.style.flexDirection = 'row';
+    inputContainer.style.width = '100%';
+    inputContainer.style.boxSizing = 'border-box';
+    inputContainer.style.padding = '0.5rem';
+    inputContainer.style.gap = '0';
+    inputContainer.style.alignItems = 'stretch';
+    inputContainer.style.flex = '0 0 auto';
+    inputContainer.style.borderTop = '1px solid #ececec';
+    inputContainer.style.background = '#ffffff';
+    
+    input.style.flex = '1 1 0%';
+    input.style.minWidth = '0';
+    input.style.width = 'auto';
+    input.style.margin = '0';
+    input.style.height = '2.5rem';
+    input.style.padding = '0 1rem';
+    input.style.border = '1px solid #ececec';
+    input.style.borderRight = 'none';
+    input.style.borderRadius = '0.75rem 0 0 0.75rem';
+    input.style.background = theme.inputBg;
+    input.style.color = theme.inputText;
+    input.style.fontSize = '1rem';
+    input.style.boxSizing = 'border-box';
+    input.style.outline = 'none';
+    input.style.transition = 'border 0.15s ease-in-out';
+    
+    sendBtn.style.flex = '0 0 auto';
+    sendBtn.style.margin = '0';
+    sendBtn.style.height = '2.5rem';
+    sendBtn.style.padding = '0 1.25rem';
+    sendBtn.style.background = theme.sendBtnBg;
+    sendBtn.style.color = theme.sendBtnText;
+    sendBtn.style.border = '1px solid #ececec';
+    sendBtn.style.borderLeft = 'none';
+    sendBtn.style.borderRadius = '0 0.75rem 0.75rem 0';
+    sendBtn.style.cursor = 'pointer';
+    sendBtn.style.fontWeight = '600';
+    sendBtn.style.fontSize = '1rem';
+    sendBtn.style.transition = 'background 0.15s ease-in-out, color 0.15s ease-in-out';
+    sendBtn.style.boxSizing = 'border-box';
+    sendBtn.style.display = 'flex';
+    sendBtn.style.justifyContent = 'center';
+    sendBtn.style.alignItems = 'center';
   }
-  // Initial load
-  maybeShowLeadCapture();
+
+  // ============================================================================
+  // WIDGET INITIALIZATION
+  // ============================================================================
+  /**
+   * Initialize the chat widget
+   * Sets up the interface, navigation tracking, and shows appropriate view based on user state
+   */
+  function initializeWidget() {
+    // Initialize navigation tracking system first
+    initNavigationTracking();
+    
+    // Track widget initialization as an interaction
+    trackInteraction('chat_widget_initialized', 'widget');
+    
+    // Load existing messages from storage
+    loadMessages();
+    
+    // Show lead capture or normal chat interface
+    maybeShowLeadCapture();
+  }
+
+  // Start the widget when DOM is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeWidget);
+  } else {
+    initializeWidget();
+  }
+
+  // ============================================================================
+  // GLOBAL API EXPOSURE
+  // ============================================================================
+  /**
+   * Expose widget functions globally for external integration
+   * Allows parent websites to interact with the chat widget programmatically
+   */
+  window.SimpleChatEmbed = {
+    // Send a message programmatically
+    sendMessage: function(text) {
+      if (text) {
+        input.value = text;
+        sendMessage();
+      }
+    },
+    
+    // Clear chat history
+    clearMessages: function() {
+      localStorage.removeItem('simple-chat-messages');
+      loadMessages();
+    },
+    
+    // Get current lead data
+    getLead: function() {
+      return window.SimpleChatEmbedLead || null;
+    },
+    
+    // Get all captured leads
+    getLeads: function() {
+      return JSON.parse(localStorage.getItem('simple-chat-leads') || '[]');
+    },
+    
+    // Get navigation tracking data
+    getNavigationData: function() {
+      return navigationData;
+    },
+    
+    // Get navigation context for API
+    getNavigationContext: function() {
+      return getNavigationContext();
+    },
+    
+    // Clear navigation data
+    clearNavigationData: function() {
+      localStorage.removeItem('chatEmbed_navigation');
+      navigationData = {
+        sessionId: null,
+        startTime: null,
+        pages: [],
+        currentPage: null,
+        totalTimeOnSite: 0,
+        scrollDepth: 0,
+        interactions: []
+      };
+    },
+    
+    // Switch to human agent
+    connectToHuman: switchToHumanAgent,
+    
+    // Show/hide widget (if you add minimization functionality)
+    show: function() {
+      chatContainer.style.display = 'flex';
+      trackInteraction('chat_widget_opened', 'widget');
+    },
+    
+    hide: function() {
+      chatContainer.style.display = 'none';
+      trackInteraction('chat_widget_closed', 'widget');
+    }
+  };
+
 })();
