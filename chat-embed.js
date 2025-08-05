@@ -2,7 +2,6 @@
 (function () {
     // Unified config object
     var defaultConfig = {
-        apiUrl: "https://builder.memox.io/api/v1/prediction/832807e0-6eb1-45ae-ab90-1bc0a18e8487",
         title: 'Chat',
         theme: {
             primary: '#0078d4',
@@ -40,8 +39,7 @@
     var apiUrl = config.apiUrl;
     var welcomeMessage = config.welcomeMessage || null;
     var workflowId = config.workflowId;
-    var socketUrl = "wss://hub.memox.io/ws/chat/";
-    // var socketUrl = "ws://localhost:8000/ws/chat/";
+    var socketUrl = config.socketUrl + "/ws/chat/";
 
     // WebSocket connection state
     var currentSocket = null;
