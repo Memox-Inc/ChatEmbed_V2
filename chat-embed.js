@@ -206,9 +206,24 @@
     // Hide scrollbar but keep functionality
     messages.style.scrollbarWidth = 'none'; // Firefox
     messages.style.msOverflowStyle = 'none'; // IE and Edge
-    // WebKit browsers
+    // WebKit browsers and additional markdown styling
     var style = document.createElement('style');
-    style.textContent = '#chat-messages::-webkit-scrollbar { display: none; }';
+    style.textContent = `
+        #chat-messages::-webkit-scrollbar { display: none; }
+        #simple-chat-embed ul { list-style-type: disc !important; }
+        #simple-chat-embed ol { list-style-type: decimal !important; }
+        #simple-chat-embed ul li::marker { color: #6b7280; }
+        #simple-chat-embed ol li::marker { color: #6b7280; font-weight: 600; }
+        #simple-chat-embed pre { white-space: pre-wrap; word-wrap: break-word; }
+        #simple-chat-embed code { word-wrap: break-word; }
+        #simple-chat-embed blockquote { 
+            border-left: 4px solid #e5e7eb; 
+            padding-left: 1rem; 
+            margin: 1rem 0; 
+            color: #6b7280; 
+            font-style: italic; 
+        }
+    `;
     document.head.appendChild(style);
 
     chatContainer.appendChild(messages);
@@ -404,12 +419,156 @@
         return loader;
     }
 
-    // Helper: linkify and style links in bot messages
-    function linkifyAndStyle(text) {
-        // Replace markdown links [text](url) with styled <a>
-        return text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, function (_, label, url) {
+    // Helper: convert markdown to HTML with proper styling
+    function markdownToHtml(text, isStreaming = false) {
+        if (!text) return '';
+        
+        var html = text;
+        
+        // For streaming, only do basic processing to avoid performance issues
+        if (isStreaming) {
+            // Only handle basic formatting during streaming
+            html = html.replace(/\*\*([^*]+)\*\*/g, '<strong style="font-weight:600;">$1</strong>');
+            html = html.replace(/\*([^*]+)\*/g, '<em style="font-style:italic;">$1</em>');
+            html = html.replace(/`([^`]+)`/g, '<code style="background:#f6f8fa;border-radius:3px;padding:2px 4px;font-family:ui-monospace,SFMono-Regular,\'SF Mono\',Consolas,\'Liberation Mono\',Menlo,monospace;font-size:85%;">$1</code>');
+            html = html.replace(/\n/g, '<br>');
+            return html;
+        }
+        
+        // Full markdown processing for completed messages
+        // Handle code blocks (```code```)
+        html = html.replace(/```([^`]+)```/g, function(match, code) {
+            return '<pre style="background:#f6f8fa;border:1px solid #e1e4e8;border-radius:6px;padding:16px;margin:8px 0;overflow-x:auto;font-family:ui-monospace,SFMono-Regular,\'SF Mono\',Consolas,\'Liberation Mono\',Menlo,monospace;font-size:13px;line-height:1.45;"><code>' + escapeHtml(code.trim()) + '</code></pre>';
+        });
+        
+        // Handle inline code (`code`)
+        html = html.replace(/`([^`]+)`/g, function(match, code) {
+            return '<code style="background:#f6f8fa;border-radius:3px;padding:2px 4px;font-family:ui-monospace,SFMono-Regular,\'SF Mono\',Consolas,\'Liberation Mono\',Menlo,monospace;font-size:85%;">' + escapeHtml(code) + '</code>';
+        });
+        
+        // Handle bold text (**text** or __text__)
+        html = html.replace(/\*\*([^*]+)\*\*/g, '<strong style="font-weight:600;">$1</strong>');
+        html = html.replace(/__([^_]+)__/g, '<strong style="font-weight:600;">$1</strong>');
+        
+        // Handle italic text (*text* or _text_)
+        html = html.replace(/\*([^*]+)\*/g, '<em style="font-style:italic;">$1</em>');
+        html = html.replace(/_([^_]+)_/g, '<em style="font-style:italic;">$1</em>');
+        
+        // Handle markdown links [text](url)
+        html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, function (_, label, url) {
             return '<a href="' + url + '" target="_blank" style="font-weight:bold;color:' + (theme.botText || '#4a4e69') + ';text-decoration:underline;cursor:pointer;">' + label + '</a>';
         });
+        
+        // Handle bullet points and numbered lists
+        if (html.includes('\n')) {
+            // Split into lines for list processing
+            var lines = html.split('\n');
+            var inUnorderedList = false;
+            var inOrderedList = false;
+            var processedLines = [];
+            
+            for (var i = 0; i < lines.length; i++) {
+                var line = lines[i];
+                var trimmedLine = line.trim();
+                
+                // Check for blockquotes (> text)
+                var blockquoteMatch = trimmedLine.match(/^>\s+(.+)$/);
+                if (blockquoteMatch) {
+                    // Close any open lists
+                    if (inUnorderedList) {
+                        processedLines.push('</ul>');
+                        inUnorderedList = false;
+                    }
+                    if (inOrderedList) {
+                        processedLines.push('</ol>');
+                        inOrderedList = false;
+                    }
+                    processedLines.push('<blockquote style="border-left:4px solid #e5e7eb;padding-left:1rem;margin:1rem 0;color:#6b7280;font-style:italic;">' + blockquoteMatch[1] + '</blockquote>');
+                    continue;
+                }
+                
+                // Check for unordered list items (-, *, +)
+                var unorderedMatch = trimmedLine.match(/^[-*+]\s+(.+)$/);
+                if (unorderedMatch) {
+                    if (!inUnorderedList) {
+                        if (inOrderedList) {
+                            processedLines.push('</ol>');
+                            inOrderedList = false;
+                        }
+                        processedLines.push('<ul style="margin:8px 0;padding-left:24px;list-style-type:disc;">');
+                        inUnorderedList = true;
+                    }
+                    processedLines.push('<li style="margin:4px 0;">' + unorderedMatch[1] + '</li>');
+                    continue;
+                }
+                
+                // Check for ordered list items (1. 2. etc.)
+                var orderedMatch = trimmedLine.match(/^(\d+)\.\s+(.+)$/);
+                if (orderedMatch) {
+                    if (!inOrderedList) {
+                        if (inUnorderedList) {
+                            processedLines.push('</ul>');
+                            inUnorderedList = false;
+                        }
+                        processedLines.push('<ol style="margin:8px 0;padding-left:24px;">');
+                        inOrderedList = true;
+                    }
+                    processedLines.push('<li style="margin:4px 0;">' + orderedMatch[2] + '</li>');
+                    continue;
+                }
+                
+                // Not a list item, close any open lists
+                if (inUnorderedList) {
+                    processedLines.push('</ul>');
+                    inUnorderedList = false;
+                }
+                if (inOrderedList) {
+                    processedLines.push('</ol>');
+                    inOrderedList = false;
+                }
+                
+                // Handle headers
+                if (trimmedLine.match(/^#{1,6}\s+/)) {
+                    var headerMatch = trimmedLine.match(/^(#{1,6})\s+(.+)$/);
+                    if (headerMatch) {
+                        var level = headerMatch[1].length;
+                        var headerText = headerMatch[2];
+                        var fontSize = ['1.5em', '1.3em', '1.1em', '1em', '0.9em', '0.8em'][level - 1];
+                        processedLines.push('<h' + level + ' style="font-size:' + fontSize + ';font-weight:600;margin:12px 0 8px 0;color:' + (theme.botText || '#4a4e69') + ';">' + headerText + '</h' + level + '>');
+                        continue;
+                    }
+                }
+                
+                // Regular line
+                if (trimmedLine) {
+                    processedLines.push(line);
+                } else {
+                    processedLines.push('<br>');
+                }
+            }
+            
+            // Close any remaining open lists
+            if (inUnorderedList) {
+                processedLines.push('</ul>');
+            }
+            if (inOrderedList) {
+                processedLines.push('</ol>');
+            }
+            
+            html = processedLines.join('\n');
+        }
+        
+        // Handle line breaks
+        html = html.replace(/\n/g, '<br>');
+        
+        return html;
+    }
+    
+    // Helper function to escape HTML
+    function escapeHtml(text) {
+        var div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
 
     // Load messages from localStorage
@@ -491,7 +650,14 @@
                 img.style.display = 'block';
                 msgDiv.appendChild(img);
             } else {
-                msgDiv.innerHTML = linkifyAndStyle(msg.text);
+                // Use markdown conversion for bot messages, check if it's streaming
+                var isStreaming = msg.isStreaming === true;
+                if (msg.sender === 'bot' || msg.sender === 'ai') {
+                    msgDiv.innerHTML = markdownToHtml(msg.text, isStreaming);
+                } else {
+                    // For user messages, just escape HTML and handle basic formatting
+                    msgDiv.innerHTML = escapeHtml(msg.text).replace(/\n/g, '<br>');
+                }
             }
 
             // Create timestamp
@@ -626,7 +792,7 @@
                             lastMessage.isStreaming = false;
                             msgs[msgs.length - 1] = lastMessage;
                             localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
-                            loadMessages();
+                            loadMessages(); // Use immediate loading for completion
                         }
                         return;
                     }
@@ -651,7 +817,7 @@
                             });
                         }
                         localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
-                        loadMessages();
+                        loadMessages(); // Use immediate loading for streaming
                     }
                 } else if (msgData.sender_type === "sales_rep" || msgData.sender === "sales_rep") {
                     var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
