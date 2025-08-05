@@ -1,6 +1,4 @@
-// Simple Chat Embed Widget
 (function () {
-    // Unified config object
     var defaultConfig = {
         title: 'Chat',
         theme: {
@@ -28,7 +26,7 @@
             shadow: '0 2px 8px rgba(0,0,0,0.15)'
         }
     };
-    // Allow global override
+    
     var config = window.SimpleChatEmbedConfig ? {
         ...defaultConfig,
         ...window.SimpleChatEmbedConfig,
@@ -41,18 +39,14 @@
     var workflowId = config.workflowId;
     var socketUrl = config.socketUrl + "/ws/chat/";
 
-    // WebSocket connection state
     var currentSocket = null;
     var isWebSocketConnected = false;
     var humanSocket = null;
     var isHumanAgentActive = false;
 
-    // WebSocket authentication and secure params generation
     function generateSecureWsParams(workflow_id) {
         const secret = '4f3c9a1d8e5b6c2f719a0e3d5a8b7c4d9e6f1a0b3d7c8e2f6a9d0e1b4c5f7a6d';
-        // Encode workflow ID using base64
         const hashedWorkflowId = btoa(String(workflow_id));
-        // Convert to Uint8Array for hashing
         const encoder = new TextEncoder();
         const keyData = encoder.encode(secret);
         const data = encoder.encode(hashedWorkflowId);
@@ -65,10 +59,8 @@
         ).then(key =>
             window.crypto.subtle.sign('HMAC', key, data)
         ).then(signature => {
-            // Convert ArrayBuffer to hex string
             const hashArray = Array.from(new Uint8Array(signature));
             const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-            console.log('Generated secure WebSocket params:', hashedWorkflowId, hashHex);
             return {
                 hashed_workflow_id: hashedWorkflowId,
                 hash: hashHex
@@ -76,7 +68,6 @@
         });
     }
 
-    // Generate unique chat ID
     function generateChatId() {
         return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
             var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
@@ -84,14 +75,13 @@
         });
     }
 
-    // Create chat container with Card design
     var chatContainer = document.createElement('div');
     chatContainer.id = 'simple-chat-embed';
     chatContainer.style.position = 'fixed';
     chatContainer.style.bottom = '20px';
     chatContainer.style.right = '20px';
-    chatContainer.style.width = '384px'; // ~3/12 of large screen
-    chatContainer.style.height = '80vh'; // ~5/6 of viewport height
+    chatContainer.style.width = '384px';
+    chatContainer.style.height = '80vh';
     chatContainer.style.maxHeight = '600px';
     chatContainer.style.background = '#ffffff';
     chatContainer.style.border = '1px solid #e2e8f0';
@@ -105,9 +95,8 @@
     chatContainer.style.flexDirection = 'column';
     chatContainer.style.overflow = 'hidden';
 
-    // Responsive design for mobile
     function setResponsive() {
-        if (window.innerWidth < 768) { // Mobile breakpoint
+        if (window.innerWidth < 768) {
             chatContainer.style.position = 'fixed';
             chatContainer.style.top = '0';
             chatContainer.style.left = '0';
@@ -132,12 +121,11 @@
     setResponsive();
     window.addEventListener('resize', setResponsive);
 
-    // Chat header - Card Header design
     var header = document.createElement('div');
     header.style.display = 'flex';
     header.style.justifyContent = 'space-between';
     header.style.alignItems = 'center';
-    header.style.background = theme.headerBg || '#16a34a'; // Default to green like ChatWindowComponent
+    header.style.background = theme.headerBg || '#16a34a';
     header.style.color = theme.headerText;
     header.style.padding = '2rem';
     header.style.borderTopLeftRadius = '0.75rem';
@@ -152,7 +140,6 @@
 
     var headerActions = document.createElement('div');
     headerActions.style.display = 'flex';
-    //   headerActions.style.gap = '1rem';
 
     var refreshBtn = document.createElement('button');
     refreshBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="m21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg>';
@@ -190,14 +177,12 @@
     closeBtn.onmouseover = function () { closeBtn.style.backgroundColor = 'rgba(255,255,255,0.1)'; };
     closeBtn.onmouseout = function () { closeBtn.style.backgroundColor = 'transparent'; };
 
-    // Store close button reference for later use
     var chatCloseBtn = closeBtn;
 
     headerActions.appendChild(refreshBtn);
     headerActions.appendChild(closeBtn);
     header.appendChild(headerActions);
 
-    // Add separator
     var separator = document.createElement('div');
     separator.style.height = '1px';
     separator.style.background = '#e2e8f0';
@@ -495,6 +480,7 @@
 
             // Handle different message types
             if (msg.text === '' && i === msgs.length - 1) {
+                // Empty message - show typing indicator
                 msgDiv.appendChild(createBouncingDots());
             } else if (msg.text === '[Image]' && i > 0 && isImageDataUrl(msgs[i - 1].text)) {
                 var img = document.createElement('img');
@@ -607,46 +593,68 @@
         var chatID = generateChatId();
         var workflow_id = workflowId;
         var wsParams = await generateSecureWsParams(workflow_id);
-        console.log(wsParams, 'my parms')
         var wsUrl = socketUrl + chatID + '/?workflow_id=' + wsParams.hashed_workflow_id + '&hash=' + wsParams.hash;
-        console.log('Attempting to connect to WebSocket:', wsUrl);
-        console.log('Chat ID:', chatID);
-        console.log('Workflow ID:', workflow_id);
-        console.log('WS Params:', wsParams);
         try {
             currentSocket = new WebSocket(wsUrl);
             currentSocket.onopen = function () {
-                console.log('WebSocket connection opened successfully');
                 isWebSocketConnected = true;
             };
             currentSocket.onmessage = function (event) {
                 var msgData = JSON.parse(event.data);
-                // Skip broadcast and unread messages
-                if (msgData?.type === "broadcast_message" || msgData?.message_type === "unread_message") {
+                
+                // Skip unread messages but allow broadcast messages
+                if (msgData?.message_type === "unread_message") {
                     return;
                 }
-                if (msgData.sender_type === 'ai' || msgData.sender === 'ai') {
-                    // Handle AI messages with streaming support
+                
+                // Handle AI/bot messages (both streaming and regular)
+                if (msgData.sender_type === 'ai' || msgData.sender === 'ai' || msgData.sender_type === 'bot' || msgData.sender === 'bot') {
                     var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
                     var lastMessage = msgs[msgs.length - 1];
-                    // If the last message is from the AI, append the new chunk to it
-                    if (lastMessage && (lastMessage.sender === 'bot' || lastMessage.sender === 'ai')) {
-                        lastMessage.text = lastMessage.text + msgData.content;
-                        msgs[msgs.length - 1] = lastMessage;
-                    } else {
-                        // If the last message is not from the AI, add the new message
-                        msgs.push({
-                            text: msgData.content || '',
-                            sender: 'bot',
-                            isWelcomeMessage: false
-                        });
+                    
+                    // Remove typing indicator if present
+                    if (lastMessage && lastMessage.text === '' && (lastMessage.sender === 'bot' || lastMessage.sender === 'ai')) {
+                        msgs.pop();
+                        lastMessage = msgs[msgs.length - 1] || null;
                     }
-                    localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
-                    loadMessages();
+                    
+                    var content = msgData.content || msgData.message || '';
+                    
+                    // Handle completion signal (empty content with is_complete flag)
+                    if (msgData.is_complete === true && content === '') {
+                        if (lastMessage && lastMessage.isStreaming) {
+                            lastMessage.isStreaming = false;
+                            msgs[msgs.length - 1] = lastMessage;
+                            localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
+                            loadMessages();
+                        }
+                        return;
+                    }
+                    
+                    // Handle any content from AI (treat all as streaming chunks)
+                    if (content) {
+                        // Check if we should append to existing message or create new one
+                        if (lastMessage && 
+                            (lastMessage.sender === 'bot' || lastMessage.sender === 'ai') && 
+                            lastMessage.isStreaming === true) {
+                            // Append to existing streaming message
+                            lastMessage.text += content;
+                            msgs[msgs.length - 1] = lastMessage;
+                        } else {
+                            // Create new streaming message
+                            msgs.push({
+                                text: content,
+                                sender: 'bot',
+                                isWelcomeMessage: false,
+                                isStreaming: true,
+                                messageId: msgData.message_id
+                            });
+                        }
+                        localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
+                        loadMessages();
+                    }
                 } else if (msgData.sender_type === "sales_rep" || msgData.sender === "sales_rep") {
-                    console.log(msgData, 'my msgData')
                     var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
-                    console.log(msgs, 'my msgs')
                     msgs.push({
                         text: msgData.content || '',
                         sender: msgData.sender_type,
@@ -654,10 +662,6 @@
                     })
                     localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
                     loadMessages();
-
-                    // msgs?.push(msgData);
-                    // Handle user messages (echo back)
-                    // Usually these won't be needed as we add user messages immediately
                 }
             };
             currentSocket.onclose = function () {
@@ -686,6 +690,11 @@
         saveMessage(val, 'user');
         input.value = '';
         loadMessages();
+        
+        // Show typing indicator
+        saveMessage('', 'bot');
+        loadMessages();
+        
         // Check for human agent handover first
         if (isHumanAgentActive && humanSocket && humanSocket.readyState === 1) {
             humanSocket.send(val);
@@ -705,8 +714,17 @@
                     // Still connecting, wait a bit more
                     setTimeout(checkConnection, 100);
                 } else {
-                    // Connection failed
-                    saveMessage('Error: Could not connect to chat service.', 'bot');
+                    // Connection failed - remove typing indicator and show error
+                    var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
+                    if (msgs.length > 0 && msgs[msgs.length - 1].text === '') {
+                        msgs.pop(); // Remove typing indicator
+                    }
+                    msgs.push({
+                        text: 'Error: Could not connect to chat service.',
+                        sender: 'bot',
+                        isWelcomeMessage: false
+                    });
+                    localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
                     loadMessages();
                 }
             };
@@ -721,7 +739,17 @@
                 }));
             } catch (error) {
                 console.error('Error sending message:', error);
-                saveMessage('Error sending message. Please try again.', 'bot');
+                // Remove typing indicator and show error
+                var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
+                if (msgs.length > 0 && msgs[msgs.length - 1].text === '') {
+                    msgs.pop(); // Remove typing indicator
+                }
+                msgs.push({
+                    text: 'Error sending message. Please try again.',
+                    sender: 'bot',
+                    isWelcomeMessage: false
+                });
+                localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
                 loadMessages();
             }
         }
@@ -956,8 +984,6 @@
                     leads.push(leadData);
                     localStorage.setItem('simple-chat-leads', JSON.stringify(leads));
 
-                    // Log to console for now
-                    console.log('Lead captured:', leadData);
                     onComplete(leadData);
                 })
                 .catch(function () {
@@ -979,7 +1005,6 @@
                     var leads = JSON.parse(localStorage.getItem('simple-chat-leads') || '[]');
                     leads.push(leadData);
                     localStorage.setItem('simple-chat-leads', JSON.stringify(leads));
-                    console.log('Lead captured:', leadData);
                     onComplete(leadData);
                 });
         };
@@ -1060,7 +1085,6 @@
 
                 // Show welcome message if set and no previous messages
                 var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
-                console.log(msgs, 'my messages');
                 if (welcomeMessage) {
                     saveMessage(welcomeMessage, 'bot', 'welcomeMessage');
                 }
