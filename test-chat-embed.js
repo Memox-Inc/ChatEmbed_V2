@@ -40,7 +40,8 @@
     var apiUrl = config.apiUrl;
     var welcomeMessage = config.welcomeMessage || null;
     var workflowId = config.workflowId;
-    var socketUrl = "ws://localhost:8000/ws/chat/";
+    var socketUrl = "wss://hub.memox.io/ws/chat/";
+    // var socketUrl = "ws://localhost:8000/ws/chat/";
 
     // WebSocket connection state
     var currentSocket = null;
