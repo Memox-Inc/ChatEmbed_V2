@@ -40,176 +40,220 @@
   var apiUrl = config.apiUrl;
   var welcomeMessage = config.welcomeMessage || null;
 
-  // Create chat container
+  // Create chat container with Card design
   var chatContainer = document.createElement('div');
   chatContainer.id = 'simple-chat-embed';
   chatContainer.style.position = 'fixed';
-  chatContainer.style.bottom = '24px';
-  chatContainer.style.right = '24px';
-  chatContainer.style.width = theme.width;
-  chatContainer.style.maxWidth = theme.maxWidth;
-  chatContainer.style.minWidth = theme.minWidth;
-  chatContainer.style.background = theme.background;
-  chatContainer.style.border = '1px solid ' + theme.border;
-  chatContainer.style.borderRadius = '1rem';
-  chatContainer.style.boxShadow = '0 8px 32px 0 rgba(31, 38, 135, 0.15)';
+  chatContainer.style.bottom = '20px';
+  chatContainer.style.right = '20px';
+  chatContainer.style.width = '384px'; // ~3/12 of large screen
+  chatContainer.style.height = '80vh'; // ~5/6 of viewport height
+  chatContainer.style.maxHeight = '600px';
+  chatContainer.style.background = '#ffffff';
+  chatContainer.style.border = '1px solid #e2e8f0';
+  chatContainer.style.borderRadius = '0.75rem';
+  chatContainer.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)';
   chatContainer.style.fontFamily = theme.fontFamily + ', Inter, system-ui, sans-serif';
   chatContainer.style.zIndex = theme.zIndex;
   chatContainer.style.color = theme.text;
-  chatContainer.style.transition = 'width 0.2s, box-shadow 0.2s';
+  chatContainer.style.transition = 'transform 0.3s ease-in-out';
   chatContainer.style.display = 'flex';
   chatContainer.style.flexDirection = 'column';
-  chatContainer.style.height = '60vh';
-  chatContainer.style.maxHeight = '80vh';
   chatContainer.style.overflow = 'hidden';
 
-  // Responsive
+  // Responsive design for mobile
   function setResponsive() {
-    if (window.innerWidth < 500) {
-      chatContainer.style.width = '98vw';
-      chatContainer.style.right = '1vw';
-      chatContainer.style.left = '1vw';
+    if (window.innerWidth < 768) { // Mobile breakpoint
+      chatContainer.style.position = 'fixed';
+      chatContainer.style.top = '0';
+      chatContainer.style.left = '0';
+      chatContainer.style.right = '0';
       chatContainer.style.bottom = '0';
-      chatContainer.style.borderRadius = '8px 8px 0 0';
-      chatContainer.style.minWidth = '0';
+      chatContainer.style.width = '100%';
+      chatContainer.style.height = '100vh';
+      chatContainer.style.borderRadius = '0';
+      chatContainer.style.maxHeight = '100vh';
     } else {
-      chatContainer.style.width = theme.width;
+      chatContainer.style.position = 'fixed';
+      chatContainer.style.top = 'auto';
+      chatContainer.style.left = 'auto';
       chatContainer.style.right = '20px';
-      chatContainer.style.left = '';
       chatContainer.style.bottom = '20px';
-      chatContainer.style.borderRadius = theme.borderRadius;
-      chatContainer.style.minWidth = theme.minWidth;
+      chatContainer.style.width = '384px';
+      chatContainer.style.height = '80vh';
+      chatContainer.style.borderRadius = '0.75rem';
+      chatContainer.style.maxHeight = '600px';
     }
   }
   setResponsive();
   window.addEventListener('resize', setResponsive);
 
-  // Chat header
+  // Chat header - Card Header design
   var header = document.createElement('div');
   header.style.display = 'flex';
   header.style.justifyContent = 'space-between';
   header.style.alignItems = 'center';
-  header.style.background = theme.headerBg || 'rgba(34, 34, 59, 0.95)';
+  header.style.background = theme.headerBg || '#16a34a'; // Default to green like ChatWindowComponent
   header.style.color = theme.headerText;
-  header.style.padding = '0.75rem 1.25rem';
-  header.style.borderTopLeftRadius = '1rem';
-  header.style.borderTopRightRadius = '1rem';
+  header.style.padding = '2rem';
+  header.style.borderTopLeftRadius = '0.75rem';
+  header.style.borderTopRightRadius = '0.75rem';
   header.style.fontWeight = '600';
-  header.style.letterSpacing = '0.01em';
-  header.style.fontSize = '1.1rem';
-  header.style.boxShadow = '0 1px 0 0 #ececec';
+  header.style.fontSize = '1.125rem';
+  header.style.lineHeight = '1.75rem';
 
-  var headerTitle = document.createElement('span');
+  var headerTitle = document.createElement('div');
   headerTitle.innerText = config.title;
   header.appendChild(headerTitle);
 
+  var headerActions = document.createElement('div');
+  headerActions.style.display = 'flex';
+//   headerActions.style.gap = '1rem';
+
   var refreshBtn = document.createElement('button');
-  refreshBtn.innerText = '⟳';
-  refreshBtn.title = 'Clear chat';
+  refreshBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="m21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg>';
+  refreshBtn.title = 'Reset chat';
   refreshBtn.style.background = 'transparent';
   refreshBtn.style.color = theme.headerText;
   refreshBtn.style.border = 'none';
-  refreshBtn.style.fontSize = '1.2rem';
+  refreshBtn.style.padding = '0.5rem';
   refreshBtn.style.cursor = 'pointer';
-  refreshBtn.style.marginLeft = '10px';
-  refreshBtn.style.transition = 'color 0.15s';
-  refreshBtn.onmouseover = function () { refreshBtn.style.color = '#a3a3a3'; };
-  refreshBtn.onmouseout = function () { refreshBtn.style.color = theme.headerText; };
+  refreshBtn.style.borderRadius = '0.375rem';
+  refreshBtn.style.display = 'flex';
+  refreshBtn.style.alignItems = 'center';
+  refreshBtn.style.justifyContent = 'center';
+  refreshBtn.style.transition = 'background-color 0.2s ease-in-out';
+  refreshBtn.onmouseover = function () { refreshBtn.style.backgroundColor = 'rgba(255,255,255,0.1)'; };
+  refreshBtn.onmouseout = function () { refreshBtn.style.backgroundColor = 'transparent'; };
   refreshBtn.onclick = function () {
     localStorage.removeItem('simple-chat-messages');
     loadMessages();
   };
-  header.appendChild(refreshBtn);
-  chatContainer.appendChild(header);
 
-  // Chat messages area
+  var closeBtn = document.createElement('button');
+  closeBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>';
+  closeBtn.title = 'Close chat';
+  closeBtn.style.background = 'transparent';
+  closeBtn.style.color = theme.headerText;
+  closeBtn.style.border = 'none';
+  closeBtn.style.padding = '0.5rem';
+  closeBtn.style.cursor = 'pointer';
+  closeBtn.style.borderRadius = '0.375rem';
+  closeBtn.style.display = 'flex';
+  closeBtn.style.alignItems = 'center';
+  closeBtn.style.justifyContent = 'center';
+  closeBtn.style.transition = 'background-color 0.2s ease-in-out';
+  closeBtn.onmouseover = function () { closeBtn.style.backgroundColor = 'rgba(255,255,255,0.1)'; };
+  closeBtn.onmouseout = function () { closeBtn.style.backgroundColor = 'transparent'; };
+  
+  // Store close button reference for later use
+  var chatCloseBtn = closeBtn;
+
+  headerActions.appendChild(refreshBtn);
+  headerActions.appendChild(closeBtn);
+  header.appendChild(headerActions);
+
+  // Add separator
+  var separator = document.createElement('div');
+  separator.style.height = '1px';
+  separator.style.background = '#e2e8f0';
+  separator.style.marginBottom = '1rem';
+
+  chatContainer.appendChild(header);
+  chatContainer.appendChild(separator);
+
+  // Chat messages area - Card Content design
   var messages = document.createElement('div');
-  messages.style.flex = '1';
+  messages.style.flex = '1 1 0%';
   messages.style.overflowY = 'auto';
-  messages.style.padding = '1.25rem 1rem';
-  messages.style.background = '#f8fafc';
+  messages.style.overflowX = 'hidden';
+  messages.style.padding = '1rem';
+  messages.style.background = '#ffffff';
   messages.id = 'chat-messages';
   messages.style.display = 'flex';
   messages.style.flexDirection = 'column';
-  messages.style.gap = '0.5rem';
+  messages.style.gap = '1rem';
+  messages.style.scrollBehavior = 'smooth';
+  // Hide scrollbar but keep functionality
+  messages.style.scrollbarWidth = 'none'; // Firefox
+  messages.style.msOverflowStyle = 'none'; // IE and Edge
+  // WebKit browsers
+  var style = document.createElement('style');
+  style.textContent = '#chat-messages::-webkit-scrollbar { display: none; }';
+  document.head.appendChild(style);
+  
   chatContainer.appendChild(messages);
 
-  // Chat input area
-  var inputContainer = document.createElement('div');
-  inputContainer.style.display = 'flex';
-  inputContainer.style.flexDirection = 'row';
-  inputContainer.style.alignItems = 'stretch';
-  inputContainer.style.borderTop = '1px solid #ececec';
-  inputContainer.style.background = '#ffffff';
-  inputContainer.style.padding = '0.5rem';
-  inputContainer.style.boxSizing = 'border-box';
-  inputContainer.style.gap = '0';
-  inputContainer.style.width = '100%';
-  inputContainer.style.flex = '0 0 auto';
+  // Chat input area - Card Footer design with separator
+  var inputSeparator = document.createElement('div');
+  inputSeparator.style.height = '1px';
+  inputSeparator.style.background = '#e2e8f0';
+  inputSeparator.style.marginTop = '1rem';
 
-  // Create the <input> field
+  var inputContainer = document.createElement('div');
+  inputContainer.style.padding = '1rem';
+  inputContainer.style.background = '#ffffff';
+  inputContainer.style.display = 'flex';
+  inputContainer.style.flexDirection = 'column';
+  inputContainer.style.borderBottomLeftRadius = '0.75rem';
+  inputContainer.style.borderBottomRightRadius = '0.75rem';
+
+  chatContainer.appendChild(inputSeparator);
+  chatContainer.appendChild(inputContainer);
+
+  // Create input form container
+  var inputForm = document.createElement('div');
+  inputForm.style.display = 'grid';
+  inputForm.style.gridTemplateColumns = '1fr auto';
+  inputForm.style.gap = '1rem';
+  inputForm.style.alignItems = 'center';
+  inputForm.style.width = '100%';
+
+  // Create the <input> field with modern styling
   var input = document.createElement('input');
   input.type = 'text';
-  input.placeholder = 'Type a message…';
-  input.style.flex = '1 1 0%';
-  input.style.minWidth = '0';
-  input.style.width = '100%';
-  input.style.margin = '0';
-  input.style.height = '2.5rem';
-  input.style.padding = '0 2.2rem 0 1rem'; // right padding for icon
-  input.style.border = '1px solid #ececec';
-  input.style.borderRight = 'none';
-  input.style.borderRadius = '0.75rem 0 0 0.75rem';
-  input.style.background = theme.inputBg;
-  input.style.color = theme.inputText;
-  input.style.fontSize = '1rem';
-  input.style.boxSizing = 'border-box';
+  input.placeholder = 'Type your message...';
+  input.style.padding = '0.75rem 1rem';
+  input.style.border = '1px solid #d1d5db';
+  input.style.borderRadius = '0.375rem';
+  input.style.background = '#ffffff';
+  input.style.color = '#374151';
+  input.style.fontSize = '0.875rem';
+  input.style.lineHeight = '1.25rem';
   input.style.outline = 'none';
-  input.style.transition = 'border 0.15s ease-in-out';
+  input.style.transition = 'border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out';
 
-  // on-focus / on-blur adjustments:
+  // Focus and blur states with modern styling
   input.addEventListener('focus', function () {
-    input.style.border = '1.5px solid #a3a3a3';
-    input.style.borderRight = 'none';
+    input.style.borderColor = '#3b82f6';
+    input.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
   });
   input.addEventListener('blur', function () {
-    input.style.border = '1px solid #ececec';
-    input.style.borderRight = 'none';
+    input.style.borderColor = '#d1d5db';
+    input.style.boxShadow = 'none';
   });
 
   // Create the “Send” <button> field
   var sendBtn = document.createElement('button');
   sendBtn.title = 'Send';
-  sendBtn.innerHTML =
-    '<svg width="18" height="18" viewBox="0 0 20 20" fill="none" ' +
-    ' xmlns="http://www.w3.org/2000/svg">' +
-    '  <path d="M2.5 17.5L17.5 10L2.5 2.5V8.33333L13.3333 10L2.5 11.6667V17.5Z" ' +
-    '        fill="currentColor"/>' +
-    '</svg>';
-  sendBtn.style.flex = '0 0 auto';
-  sendBtn.style.margin = '0';
-  sendBtn.style.height = '2.5rem';
-  sendBtn.style.padding = '0 1.25rem';
-  sendBtn.style.background = theme.sendBtnBg;
-  sendBtn.style.color = theme.sendBtnText;
-  sendBtn.style.border = '1px solid #ececec';
-  sendBtn.style.borderLeft = 'none';
-  sendBtn.style.borderRadius = '0 0.75rem 0.75rem 0';
+  sendBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>';
+  sendBtn.style.padding = '0.75rem';
+  sendBtn.style.background = theme.sendBtnBg || '#3b82f6';
+  sendBtn.style.color = '#ffffff';
+  sendBtn.style.border = 'none';
+  sendBtn.style.borderRadius = '0.375rem';
   sendBtn.style.cursor = 'pointer';
-  sendBtn.style.fontWeight = '600';
-  sendBtn.style.fontSize = '1rem';
-  sendBtn.style.transition = 'background 0.15s ease-in-out, color 0.15s ease-in-out';
-  sendBtn.style.boxSizing = 'border-box';
   sendBtn.style.display = 'flex';
-  sendBtn.style.justifyContent = 'center';
   sendBtn.style.alignItems = 'center';
+  sendBtn.style.justifyContent = 'center';
+  sendBtn.style.transition = 'background-color 0.2s ease-in-out';
 
-  // hover state
+  // Hover state for send button
   sendBtn.addEventListener('mouseover', function () {
-    sendBtn.style.background = theme.sendBtnHover;
+    sendBtn.style.backgroundColor = theme.sendBtnHover || '#2563eb';
   });
   sendBtn.addEventListener('mouseout', function () {
-    sendBtn.style.background = theme.sendBtnBg;
+    sendBtn.style.backgroundColor = theme.sendBtnBg || '#3b82f6';
   });
 
   // --- Image upload groundwork ---
@@ -294,19 +338,13 @@
     imageInput.value = '';
   });
 
-  // Chat input area (continued)
-  inputContainer.appendChild(input);
-  inputContainer.appendChild(sendBtn);
+  // Add input and button to form
+  inputForm.appendChild(input);
+  inputForm.appendChild(sendBtn);
+  
+  // Add form to input container
+  inputContainer.appendChild(inputForm);
   chatContainer.appendChild(inputContainer);
-
-  // Powered by memox footer
-  var footer = document.createElement('div');
-  footer.style.textAlign = 'center';
-  footer.style.fontSize = '0.85rem';
-  footer.style.color = '#a3a3a3';
-  footer.style.padding = '0.25rem 0 0.75rem 0';
-  footer.innerHTML = 'Powered by <a href="https://memox.com" target="_blank" style="color:#4a4e69;text-decoration:none;font-weight:600;">memox</a>';
-  chatContainer.appendChild(footer);
 
   // Add chat to body
   document.body.appendChild(chatContainer);
@@ -390,53 +428,103 @@
   }
 
   // Load messages from localStorage
+  // Load messages with modern avatar design like ChatWindowComponent
   function loadMessages() {
     var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
     messages.innerHTML = '';
+    
     for (var i = 0; i < msgs.length; i++) {
       var msg = msgs[i];
-      var msgDiv = document.createElement('div');
-      msgDiv.style.margin = '0';
-      msgDiv.style.padding = '0.75rem 1rem';
-      msgDiv.style.borderRadius = '1rem';
-      msgDiv.style.maxWidth = '66%';
-      msgDiv.style.wordBreak = 'break-word';
-      msgDiv.style.display = 'block';
-      msgDiv.style.minWidth = 'fit-content';
-      msgDiv.style.boxSizing = 'border-box';
-      msgDiv.style.fontSize = '0.97rem';
-      msgDiv.style.lineHeight = '1.7';
-      msgDiv.style.boxShadow = '0 1px 2px 0 #ececec';
-      var wrapper = document.createElement('div');
-      wrapper.style.display = 'flex';
-      wrapper.style.width = '100%';
+      
+      // Create message container with flex layout
+      var messageContainer = document.createElement('div');
+      messageContainer.style.display = 'flex';
+      messageContainer.style.flexDirection = 'column';
+      messageContainer.style.marginBottom = '1rem';
+      
+      // Create avatar and message wrapper
+      var messageWrapper = document.createElement('div');
+      messageWrapper.style.display = 'flex';
+      messageWrapper.style.gap = '0.5rem';
+      
+      // Reverse layout for user messages
       if (msg.sender === 'user') {
-        msgDiv.style.background = theme.userBubble;
-        msgDiv.style.color = theme.userText || '#22223b';
-        wrapper.style.justifyContent = 'flex-end';
-        msgDiv.innerText = msg.text;
-      } else {
-        msgDiv.style.background = theme.botBubble;
-        msgDiv.style.color = theme.botText || '#4a4e69';
-        wrapper.style.justifyContent = 'flex-start';
-        if (msg.text === '' && i === msgs.length - 1) {
-          msgDiv.appendChild(createBouncingDots());
-        } else if (msg.text === '[Image]' && i > 0 && isImageDataUrl(msgs[i - 1].text)) {
-          var img = document.createElement('img');
-          img.src = msgs[i - 1].text;
-          img.style.maxWidth = '180px';
-          img.style.maxHeight = '120px';
-          img.style.borderRadius = '0.75rem';
-          img.style.display = 'block';
-          img.style.margin = '0.25rem 0';
-          msgDiv.appendChild(img);
-        } else {
-          msgDiv.innerHTML = linkifyAndStyle(msg.text);
-        }
+        messageWrapper.style.flexDirection = 'row-reverse';
+        messageWrapper.style.justifyContent = 'flex-start';
       }
-      wrapper.appendChild(msgDiv);
-      messages.appendChild(wrapper);
+      
+      // Create avatar
+      var avatar = document.createElement('div');
+      avatar.style.width = '40px';
+      avatar.style.height = '40px';
+      avatar.style.borderRadius = '50%';
+      avatar.style.backgroundColor = msg.sender === 'user' ? '#e5e7eb' : '#f3f4f6';
+      avatar.style.display = 'flex';
+      avatar.style.alignItems = 'center';
+      avatar.style.justifyContent = 'center';
+      avatar.style.fontSize = '14px';
+      avatar.style.fontWeight = '500';
+      avatar.style.color = '#6b7280';
+      avatar.style.flexShrink = '0';
+      avatar.innerText = msg.sender === 'user' ? 'U' : 'A';
+      
+      // Create message content container
+      var contentContainer = document.createElement('div');
+      contentContainer.style.display = 'flex';
+      contentContainer.style.flexDirection = 'column';
+      contentContainer.style.gap = '0.5rem';
+      contentContainer.style.maxWidth = '70%';
+      
+      // Create message bubble
+      var msgDiv = document.createElement('div');
+      msgDiv.style.padding = '0.75rem 1rem';
+      msgDiv.style.borderRadius = '0.75rem';
+      msgDiv.style.wordBreak = 'break-word';
+      msgDiv.style.fontSize = '0.875rem';
+      msgDiv.style.lineHeight = '1.25rem';
+      
+      if (msg.sender === 'user') {
+        msgDiv.style.backgroundColor = theme.userBubble || '#dbeafe';
+        msgDiv.style.color = theme.userText || '#1e40af';
+        msgDiv.style.alignSelf = 'flex-end';
+      } else {
+        msgDiv.style.backgroundColor = theme.botBubble || '#f1f5f9';
+        msgDiv.style.color = theme.botText || '#475569';
+        msgDiv.style.alignSelf = 'flex-start';
+      }
+      
+      // Handle different message types
+      if (msg.text === '' && i === msgs.length - 1) {
+        msgDiv.appendChild(createBouncingDots());
+      } else if (msg.text === '[Image]' && i > 0 && isImageDataUrl(msgs[i - 1].text)) {
+        var img = document.createElement('img');
+        img.src = msgs[i - 1].text;
+        img.style.maxWidth = '200px';
+        img.style.maxHeight = '150px';
+        img.style.borderRadius = '0.5rem';
+        img.style.display = 'block';
+        msgDiv.appendChild(img);
+      } else {
+        msgDiv.innerHTML = linkifyAndStyle(msg.text);
+      }
+      
+      // Create timestamp
+      var timestamp = document.createElement('div');
+      timestamp.style.fontSize = '0.75rem';
+      timestamp.style.color = '#9ca3af';
+      timestamp.style.alignSelf = msg.sender === 'user' ? 'flex-end' : 'flex-start';
+      var now = new Date();
+      timestamp.innerText = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
+      
+      // Assemble the message
+      contentContainer.appendChild(msgDiv);
+      contentContainer.appendChild(timestamp);
+      messageWrapper.appendChild(avatar);
+      messageWrapper.appendChild(contentContainer);
+      messageContainer.appendChild(messageWrapper);
+      messages.appendChild(messageContainer);
     }
+    
     messages.scrollTop = messages.scrollHeight;
   }
 
@@ -592,9 +680,11 @@
     if (e.key === 'Enter') sendMessage();
   });
 
-  // Lead capture inside chat window
+  // Lead capture form with ChatWindowComponent styling
   function showLeadCaptureInChat(onComplete) {
     messages.innerHTML = '';
+    
+    // Create main container matching ChatWindowComponent layout
     var wrapper = document.createElement('div');
     wrapper.style.display = 'flex';
     wrapper.style.flexDirection = 'column';
@@ -602,79 +692,169 @@
     wrapper.style.justifyContent = 'center';
     wrapper.style.height = '100%';
     wrapper.style.width = '100%';
-    wrapper.style.gap = '1.2rem';
+    // wrapper.style.padding = '2rem';
+    wrapper.style.gap = '1.5rem';
 
-    var title = document.createElement('div');
-    title.innerText = 'Enter to Chat';
-    title.style.fontWeight = '600';
-    title.style.fontSize = '1.2rem';
-    title.style.marginBottom = '0.5rem';
-    wrapper.appendChild(title);
+    // Form fields container
+    var formContainer = document.createElement('div');
+    formContainer.style.width = '100%';
+    formContainer.style.maxWidth = '300px';
+    formContainer.style.display = 'flex';
+    formContainer.style.flexDirection = 'column';
+    formContainer.style.gap = '1.5rem';
 
+    // Full Name field
+    var nameFieldContainer = document.createElement('div');
+    nameFieldContainer.style.display = 'flex';
+    nameFieldContainer.style.alignItems = 'center';
+    nameFieldContainer.style.gap = '1.5rem';
+    
+    var nameLabel = document.createElement('label');
+    nameLabel.innerText = 'Full Name:';
+    nameLabel.style.width = '27%';
+    nameLabel.style.fontSize = '0.875rem';
+    nameLabel.style.fontWeight = '500';
+    nameLabel.style.color = '#374151';
+    
     var nameInput = document.createElement('input');
     nameInput.type = 'text';
-    nameInput.placeholder = 'Your name';
+    nameInput.placeholder = 'Full name';
+    nameInput.style.width = '60%';
     nameInput.style.padding = '0.75rem 1rem';
-    nameInput.style.border = '1px solid #ececec';
-    nameInput.style.borderRadius = '0.75rem';
-    nameInput.style.fontSize = '1rem';
-    nameInput.style.width = '100%';
-    nameInput.style.maxWidth = '260px';
-    wrapper.appendChild(nameInput);
-
+    nameInput.style.border = '1px solid #d1d5db';
+    nameInput.style.borderRadius = '0.375rem';
+    nameInput.style.fontSize = '0.875rem';
+    nameInput.style.outline = 'none';
+    nameInput.style.transition = 'border-color 0.2s ease-in-out';
+    
+    nameInput.addEventListener('focus', function () {
+      nameInput.style.borderColor = '#3b82f6';
+    });
+    nameInput.addEventListener('blur', function () {
+      nameInput.style.borderColor = '#d1d5db';
+    });
+    
+    nameFieldContainer.appendChild(nameLabel);
+    nameFieldContainer.appendChild(nameInput);
+    
+    // Email field
+    var emailFieldContainer = document.createElement('div');
+    emailFieldContainer.style.display = 'flex';
+    emailFieldContainer.style.alignItems = 'center';
+    emailFieldContainer.style.gap = '1.5rem';
+    
+    var emailLabel = document.createElement('label');
+    emailLabel.innerText = 'Email:';
+    emailLabel.style.width = '27%';
+    emailLabel.style.fontSize = '0.875rem';
+    emailLabel.style.fontWeight = '500';
+    emailLabel.style.color = '#374151';
+    
     var emailInput = document.createElement('input');
     emailInput.type = 'email';
-    emailInput.placeholder = 'Email address';
+    emailInput.placeholder = 'Email';
+    emailInput.style.width = '60%';
     emailInput.style.padding = '0.75rem 1rem';
-    emailInput.style.border = '1px solid #ececec';
-    emailInput.style.borderRadius = '0.75rem';
-    emailInput.style.fontSize = '1rem';
-    emailInput.style.width = '100%';
-    emailInput.style.maxWidth = '260px';
-    wrapper.appendChild(emailInput);
+    emailInput.style.border = '1px solid #d1d5db';
+    emailInput.style.borderRadius = '0.375rem';
+    emailInput.style.fontSize = '0.875rem';
+    emailInput.style.outline = 'none';
+    emailInput.style.transition = 'border-color 0.2s ease-in-out';
+    
+    emailInput.addEventListener('focus', function () {
+      emailInput.style.borderColor = '#3b82f6';
+    });
+    emailInput.addEventListener('blur', function () {
+      emailInput.style.borderColor = '#d1d5db';
+    });
+    
+    emailFieldContainer.appendChild(emailLabel);
+    emailFieldContainer.appendChild(emailInput);
+    
+    // Phone field (optional)
+    var phoneFieldContainer = document.createElement('div');
+    phoneFieldContainer.style.display = 'flex';
+    phoneFieldContainer.style.alignItems = 'center';
+    phoneFieldContainer.style.gap = '1.5rem';
+    
+    var phoneLabel = document.createElement('label');
+    phoneLabel.innerText = 'Phone:';
+    phoneLabel.style.width = '27%';
+    phoneLabel.style.fontSize = '0.875rem';
+    phoneLabel.style.fontWeight = '500';
+    phoneLabel.style.color = '#374151';
+    
+    var phoneInput = document.createElement('input');
+    phoneInput.type = 'tel';
+    phoneInput.placeholder = 'Phone';
+    phoneInput.style.width = '60%';
+    phoneInput.style.padding = '0.75rem 1rem';
+    phoneInput.style.border = '1px solid #d1d5db';
+    phoneInput.style.borderRadius = '0.375rem';
+    phoneInput.style.fontSize = '0.875rem';
+    phoneInput.style.outline = 'none';
+    phoneInput.style.transition = 'border-color 0.2s ease-in-out';
+    
+    phoneInput.addEventListener('focus', function () {
+      phoneInput.style.borderColor = '#3b82f6';
+    });
+    phoneInput.addEventListener('blur', function () {
+      phoneInput.style.borderColor = '#d1d5db';
+    });
+    
+    phoneFieldContainer.appendChild(phoneLabel);
+    phoneFieldContainer.appendChild(phoneInput);
+    
+    // Add all fields to form container
+    formContainer.appendChild(nameFieldContainer);
+    formContainer.appendChild(emailFieldContainer);
+    formContainer.appendChild(phoneFieldContainer);
 
+    // Error message
     var emailError = document.createElement('div');
     emailError.style.display = 'none';
-    emailError.style.color = '#e57373';
-    emailError.style.fontSize = '0.95rem';
-    emailError.style.fontStyle = 'italic';
-    emailError.style.marginTop = '0.25rem';
-    emailError.style.marginBottom = '-0.5rem';
-    emailError.innerText = 'please enter a valid email address';
-    wrapper.appendChild(emailError);
+    emailError.style.color = '#ef4444';
+    emailError.style.fontSize = '0.875rem';
+    emailError.style.textAlign = 'center';
+    emailError.innerText = 'Please enter a valid email address';
 
-    var btnRow = document.createElement('div');
-    btnRow.style.display = 'flex';
-    btnRow.style.gap = '0.5rem';
-    btnRow.style.width = '100%';
-    btnRow.style.justifyContent = 'space-between';
-    btnRow.style.maxWidth = '260px';
-
+    // Start Chat button
     var confirmBtn = document.createElement('button');
-    confirmBtn.innerText = 'Enter Chat';
-    confirmBtn.style.background = theme.primary;
-    confirmBtn.style.color = '#fff';
+    confirmBtn.innerText = 'Start Chat';
+    confirmBtn.style.width = '100%';
+    confirmBtn.style.maxWidth = '300px';
+    confirmBtn.style.padding = '0.75rem 1.5rem';
+    confirmBtn.style.background = theme.sendBtnBg || '#16a34a';
+    confirmBtn.style.color = '#ffffff';
     confirmBtn.style.border = 'none';
-    confirmBtn.style.borderRadius = '0.75rem';
-    confirmBtn.style.padding = '0.75rem 1.25rem';
+    confirmBtn.style.borderRadius = '0.375rem';
     confirmBtn.style.cursor = 'pointer';
     confirmBtn.style.fontWeight = '600';
-    confirmBtn.style.fontSize = '1rem';
-    confirmBtn.style.transition = 'background 0.15s, color 0.15s';
-    confirmBtn.onmouseover = function () { confirmBtn.style.background = theme.sendBtnHover; };
-    confirmBtn.onmouseout = function () { confirmBtn.style.background = theme.primary; };
+    confirmBtn.style.fontSize = '0.875rem';
+    confirmBtn.style.transition = 'background-color 0.2s ease-in-out';
+    
+    confirmBtn.addEventListener('mouseover', function () {
+      confirmBtn.style.backgroundColor = theme.sendBtnHover || '#15803d';
+    });
+    confirmBtn.addEventListener('mouseout', function () {
+      confirmBtn.style.backgroundColor = theme.sendBtnBg || '#16a34a';
+    });
+    
+    // Confirmation button click handler
     confirmBtn.onclick = function () {
       var emailVal = emailInput.value.trim();
       if (emailVal && !/^\S+@\S+\.\S+$/.test(emailVal)) {
-        emailInput.style.border = '1.5px solid #e57373';
+        emailInput.style.borderColor = '#ef4444';
         emailError.style.display = 'block';
         emailInput.focus();
         return;
       } else {
-        emailInput.style.border = '1px solid #ececec';
+        emailInput.style.borderColor = '#d1d5db';
         emailError.style.display = 'none';
       }
+      
       messages.innerHTML = '';
+      
       // Collect environment info
       var userAgent = navigator.userAgent;
       var platform = navigator.platform;
@@ -682,11 +862,13 @@
       var timestamp = new Date().toISOString();
       var language = navigator.language;
       var referrer = document.referrer;
+      
       // Fetch public IP address
       fetch('https://api.ipify.org?format=json')
         .then(function (res) { return res.json(); })
         .then(function (ipData) {
           var ip = ipData.ip || '';
+          
           // Generate a GUID for the user (if not already present)
           var guid = localStorage.getItem('simple-chat-user-guid');
           if (!guid) {
@@ -695,9 +877,11 @@
             );
             localStorage.setItem('simple-chat-user-guid', guid);
           }
+          
           var leadData = {
             name: sanitize(nameInput.value),
             email: sanitize(emailInput.value),
+            phone: sanitize(phoneInput.value),
             timestamp,
             userAgent,
             platform,
@@ -707,15 +891,40 @@
             guid,
             ip
           };
+          
           // Store lead in localStorage array for later sending
           var leads = JSON.parse(localStorage.getItem('simple-chat-leads') || '[]');
           leads.push(leadData);
           localStorage.setItem('simple-chat-leads', JSON.stringify(leads));
+          
           // Log to console for now
+          console.log('Lead captured:', leadData);
+          onComplete(leadData);
+        })
+        .catch(function () {
+          // Fallback if IP fetch fails
+          var leadData = {
+            name: sanitize(nameInput.value),
+            email: sanitize(emailInput.value),
+            phone: sanitize(phoneInput.value),
+            timestamp: new Date().toISOString(),
+            userAgent: navigator.userAgent,
+            platform: navigator.platform,
+            url: window.location.href,
+            language: navigator.language,
+            referrer: document.referrer,
+            guid: localStorage.getItem('simple-chat-user-guid') || 'unknown',
+            ip: ''
+          };
+          
+          var leads = JSON.parse(localStorage.getItem('simple-chat-leads') || '[]');
+          leads.push(leadData);
+          localStorage.setItem('simple-chat-leads', JSON.stringify(leads));
           console.log('Lead captured:', leadData);
           onComplete(leadData);
         });
     };
+    
     // Allow pressing Enter to submit the form
     nameInput.addEventListener('keydown', function (e) {
       if (e.key === 'Enter') confirmBtn.click();
@@ -723,53 +932,24 @@
     emailInput.addEventListener('keydown', function (e) {
       if (e.key === 'Enter') confirmBtn.click();
     });
-    btnRow.appendChild(confirmBtn);
+    phoneInput.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') confirmBtn.click();
+    });
 
-    var skipBtn = document.createElement('button');
-    skipBtn.innerText = 'Skip';
-    skipBtn.style.background = '#222';
-    skipBtn.style.color = '#fff';
-    skipBtn.style.border = 'none';
-    skipBtn.style.borderRadius = '0.75rem';
-    skipBtn.style.padding = '0.75rem 1.25rem';
-    skipBtn.style.cursor = 'pointer';
-    skipBtn.style.fontWeight = '600';
-    skipBtn.style.fontSize = '1rem';
-    skipBtn.style.transition = 'background 0.15s, color 0.15s';
-    skipBtn.onmouseover = function () { skipBtn.style.background = '#444'; };
-    skipBtn.onmouseout = function () { skipBtn.style.background = '#222'; };
-    skipBtn.onclick = function () {
-      messages.innerHTML = '';
-      // Optionally log skipped lead
-      var leadData = { name: '', email: '', skipped: true, timestamp: new Date().toISOString() };
-      var leads = JSON.parse(localStorage.getItem('simple-chat-leads') || '[]');
-      leads.push(leadData);
-      localStorage.setItem('simple-chat-leads', JSON.stringify(leads));
-      console.log('Lead skipped:', leadData);
-      onComplete(null);
-    };
-    btnRow.appendChild(skipBtn);
-
-    wrapper.appendChild(btnRow);
+    // Assemble the form
+    wrapper.appendChild(formContainer);
+    wrapper.appendChild(emailError);
+    wrapper.appendChild(confirmBtn);
     messages.appendChild(wrapper);
+    
+    // Focus the first field
     nameInput.focus();
-
-    // Add privacy notice
-    var privacy = document.createElement('div');
-    privacy.style.fontSize = '0.85rem';
-    privacy.style.color = '#888';
-    privacy.style.textAlign = 'center';
-    privacy.style.maxWidth = '260px';
-    privacy.style.marginTop = '0.5rem';
-    privacy.innerHTML = 'By continuing, you agree to our <a href="https://memox.com/privacy" target="_blank" style="color:#4a4e69;text-decoration:underline;">Privacy Policy</a>.';
-    wrapper.appendChild(privacy);
   }
 
   // On load, show lead capture inside chat window
   function maybeShowLeadCapture() {
     if (!window.__simpleChatEmbedLeadCaptured) {
       inputContainer.style.display = 'none';
-      footer.style.display = 'none';
       showLeadCaptureInChat(function (lead) {
         window.__simpleChatEmbedLeadCaptured = true;
         if (lead) {
@@ -818,7 +998,7 @@
         sendBtn.style.display = 'flex';
         sendBtn.style.justifyContent = 'center';
         sendBtn.style.alignItems = 'center';
-        footer.style.display = '';
+        
         // Show welcome message if set and no previous messages
         var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
         console.log(msgs, 'my messages');
@@ -871,7 +1051,7 @@
       sendBtn.style.display = 'flex';
       sendBtn.style.justifyContent = 'center';
       sendBtn.style.alignItems = 'center';
-      footer.style.display = '';
+      
       loadMessages();
     }
   }
@@ -882,6 +1062,66 @@
       return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', '\'': '&#39;' }[c]);
     });
   }
+
+  // Create chat toggle button
+  var chatToggle = document.createElement('button');
+  chatToggle.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-message-circle-icon lucide-message-circle"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>';
+  chatToggle.style.position = 'fixed';
+  chatToggle.style.bottom = '20px';
+  chatToggle.style.right = '20px';
+  chatToggle.style.width = '80px';
+  chatToggle.style.height = '80px';
+  chatToggle.style.borderRadius = '50%';
+  chatToggle.style.backgroundColor = theme.sendBtnBg || '#16a34a';
+  chatToggle.style.color = '#ffffff';
+  chatToggle.style.border = 'none';
+  chatToggle.style.cursor = 'pointer';
+  chatToggle.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
+  chatToggle.style.display = 'flex';
+  chatToggle.style.alignItems = 'center';
+  chatToggle.style.justifyContent = 'center';
+  chatToggle.style.transition = 'all 0.3s ease';
+  chatToggle.style.zIndex = theme.zIndex - 1;
+  
+  // Responsive positioning for mobile
+  function setToggleResponsive() {
+    if (window.innerWidth < 768) {
+      chatToggle.style.bottom = '20px';
+      chatToggle.style.right = '20px';
+    } else {
+      chatToggle.style.bottom = '20px';
+      chatToggle.style.right = '20px';
+    }
+  }
+  setToggleResponsive();
+  window.addEventListener('resize', setToggleResponsive);
+
+  // Initially hide the chat container
+  chatContainer.style.display = 'none';
+  
+  // Toggle functionality
+  var chatOpen = false;
+  chatToggle.addEventListener('click', function () {
+    chatOpen = !chatOpen;
+    if (chatOpen) {
+      chatContainer.style.display = 'flex';
+      chatToggle.style.display = 'none';
+    } else {
+      chatContainer.style.display = 'none';
+      chatToggle.style.display = 'flex';
+    }
+  });
+
+  // Close button functionality from header
+  chatCloseBtn.onclick = function () {
+    chatOpen = false;
+    chatContainer.style.display = 'none';
+    chatToggle.style.display = 'flex';
+  };
+
+  // Add both toggle button and chat container to body
+  document.body.appendChild(chatToggle);
+  
   // Initial load
   maybeShowLeadCapture();
 })();
