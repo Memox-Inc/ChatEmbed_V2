@@ -353,87 +353,7 @@
         sendBtn.style.backgroundColor = theme.sendBtnBg || '#3b82f6';
     });
 
-    // --- Image upload groundwork ---
-    // Place the image upload (clip) button inside the input field, left-aligned
-    inputContainer.style.position = 'relative';
 
-    // var imageInput = document.createElement('input');
-    // imageInput.type = 'file';
-    // imageInput.accept = 'image/*';
-    // imageInput.style.display = 'none';
-
-    // var imageBtn = document.createElement('button');
-    // imageBtn.title = 'Send image';
-    // // Paperclip SVG icon
-    // imageBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7.5 10.5L13.5 4.5C14.3284 3.67157 15.6716 3.67157 16.5 4.5C17.3284 5.32843 17.3284 6.67157 16.5 7.5L8.5 15.5C6.84315 17.1569 4.15685 17.1569 2.5 15.5C0.843146 13.8431 0.843146 11.1569 2.5 9.5L10.5 1.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-    // imageBtn.style.position = 'absolute';
-    // imageBtn.style.left = '8px';
-    // imageBtn.style.top = '50%';
-    // imageBtn.style.transform = 'translateY(-50%)';
-    // imageBtn.style.height = '2rem';
-    // imageBtn.style.width = '2rem';
-    // imageBtn.style.background = 'transparent';
-    // imageBtn.style.color = theme.inputText;
-    // imageBtn.style.border = 'none';
-    // imageBtn.style.borderRadius = '0.5rem';
-    // imageBtn.style.cursor = 'pointer';
-    // imageBtn.style.display = 'flex';
-    // imageBtn.style.justifyContent = 'center';
-    // imageBtn.style.alignItems = 'center';
-    // imageBtn.style.transition = 'background 0.15s, color 0.15s';
-    // imageBtn.onmouseover = function () { imageBtn.style.background = '#ececec'; };
-    // imageBtn.onmouseout = function () { imageBtn.style.background = 'transparent'; };
-    // imageBtn.onclick = function () { imageInput.click(); };
-    // inputContainer.appendChild(imageBtn);
-    // inputContainer.appendChild(imageInput);
-
-    // Adjust input padding to make space for the icon
-    input.style.paddingLeft = '2.5rem';
-    // Add left padding to placeholder text for visual alignment
-    input.style.setProperty('text-indent', '1.5rem');
-
-    // Handle image selection
-    // imageInput.addEventListener('change', function (e) {
-    //     var file = imageInput.files[0];
-    //     if (!file) return;
-    //     // Only allow images up to 5MB
-    //     if (file.size > 5 * 1024 * 1024) {
-    //         saveMessage('Image too large (max 5MB).', 'bot');
-    //         loadMessages();
-    //         return;
-    //     }
-    //     var reader = new FileReader();
-    //     reader.onload = function (evt) {
-    //         var dataUrl = evt.target.result;
-    //         // Save image as a user message (base64 data URL)
-    //         saveMessage('[Image]', 'user');
-    //         loadMessages();
-    //         // Send to AI or human agent
-    //         if (isHumanAgentActive && humanSocket && humanSocket.readyState === 1) {
-    //             // Send as base64 or as a special message type (your backend should handle this securely)
-    //             humanSocket.send(JSON.stringify({ type: 'image', data: dataUrl, filename: file.name }));
-    //         } else {
-    //             // For AI, send as base64 or as a special message type if your API supports it
-    //             fetch(apiUrl, {
-    //                 method: 'POST',
-    //                 headers: { 'Content-Type': 'application/json' },
-    //                 body: JSON.stringify({ image: dataUrl, filename: file.name })
-    //             })
-    //                 .then(res => res.json())
-    //                 .then(result => {
-    //                     let botMsg = result.text || result.answer || '[Image received]';
-    //                     saveMessage(botMsg, 'bot');
-    //                     loadMessages();
-    //                 })
-    //                 .catch(() => {
-    //                     saveMessage('Error sending image.', 'bot');
-    //                     loadMessages();
-    //                 });
-    //         }
-    //     };
-    //     reader.readAsDataURL(file);
-    //     imageInput.value = '';
-    // });
 
     // Add input and button to form
     inputForm.appendChild(input);
@@ -449,61 +369,6 @@
     // Helper function to check if string is image data URL
     function isImageDataUrl(str) {
         return typeof str === 'string' && str.startsWith('data:image/');
-    }
-
-    // Function to create beautiful system notifications
-    function createSystemNotification(message, type) {
-        var notificationContainer = document.createElement('div');
-        notificationContainer.style.display = 'flex';
-        notificationContainer.style.justifyContent = 'center';
-        notificationContainer.style.margin = '1rem 0';
-        notificationContainer.style.animation = 'fadeInUp 0.5s ease-out';
-
-        var notification = document.createElement('div');
-        notification.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
-        notification.style.color = '#ffffff';
-        notification.style.padding = '0.75rem 1.5rem';
-        notification.style.borderRadius = '20px';
-        notification.style.fontSize = '0.875rem';
-        notification.style.fontWeight = '500';
-        notification.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.3)';
-        notification.style.display = 'flex';
-        notification.style.alignItems = 'center';
-        notification.style.gap = '0.5rem';
-        notification.style.maxWidth = '80%';
-        notification.style.textAlign = 'center';
-
-        // Add icon based on type
-        var icon = document.createElement('span');
-        if (type === 'joined') {
-            icon.innerHTML = '👋';
-            notification.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
-            notification.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.3)';
-        } else {
-            icon.innerHTML = '💬';
-        }
-        icon.style.fontSize = '1rem';
-
-        notification.appendChild(icon);
-        notification.appendChild(document.createTextNode(message));
-        notificationContainer.appendChild(notification);
-
-        // Add fade-in animation if not already present
-        if (!document.getElementById('system-notification-style')) {
-            var style = document.createElement('style');
-            style.id = 'system-notification-style';
-            style.innerHTML = `
-                @keyframes fadeInUp {
-                    0% { opacity: 0; transform: translateY(20px); }
-                    100% { opacity: 1; transform: translateY(0); }
-                }
-            `;
-            document.head.appendChild(style);
-        }
-
-        messages.appendChild(notificationContainer);
-        messages.scrollTop = messages.scrollHeight;
-        checkScrollPosition();
     }
 
     function createBouncingDots() {
