@@ -45,6 +45,7 @@
     var humanSocket = null;
     var isHumanAgentActive = false;
     var visitorInfo = null;
+    var isHandoverActive = false;
 
     function generateSecureWsParams(workflow_id) {
         const secret = '4f3c9a1d8e5b6c2f719a0e3d5a8b7c4d9e6f1a0b3d7c8e2f6a9d0e1b4c5f7a6d';
@@ -165,6 +166,7 @@
         localStorage.removeItem('simple-chat-user-guid');
         window.__simpleChatEmbedLeadCaptured = false;
         visitorInfo = null;
+        isHandoverActive = false; // Reset handover flag
         
         // Close existing WebSocket connection
         if (currentSocket) {
@@ -900,6 +902,9 @@
                 if (msgData?.message_type === "handover_message") {
                     console.log('Handover message received:', msgData);
                     
+                    // Set handover flag to stop showing typing indicators
+                    isHandoverActive = true;
+                    
                     // Store handover message in localStorage like other messages
                     var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
                     msgs.push({
@@ -917,8 +922,8 @@
                     return;
                 }
 
-                // Handle AI/bot messages (both streaming and regular)
-                if (msgData.sender_type === 'ai' || msgData.sender === 'ai' || msgData.sender_type === 'bot' || msgData.sender === 'bot') {
+                // Handle AI/bot messages (both streaming and regular) - only if handover is not active
+                if ((msgData.sender_type === 'ai' || msgData.sender === 'ai' || msgData.sender_type === 'bot' || msgData.sender === 'bot') && !isHandoverActive) {
                     var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
                     var lastMessage = msgs[msgs.length - 1];
 
@@ -1019,9 +1024,11 @@
         input.value = '';
         loadMessages();
 
-        // Show typing indicator
-        saveMessage('', 'bot');
-        loadMessages();
+        // Show typing indicator only if handover is not active
+        if (!isHandoverActive) {
+            saveMessage('', 'bot');
+            loadMessages();
+        }
 
         // Check for human agent handover first
         if (isHumanAgentActive && humanSocket && humanSocket.readyState === 1) {
