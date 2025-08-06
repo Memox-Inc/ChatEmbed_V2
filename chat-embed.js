@@ -1,3 +1,4 @@
+
 (function () {
     var defaultConfig = {
         title: 'Chat',
@@ -26,7 +27,7 @@
             shadow: '0 2px 8px rgba(0,0,0,0.15)'
         }
     };
-    
+
     var config = window.SimpleChatEmbedConfig ? {
         ...defaultConfig,
         ...window.SimpleChatEmbedConfig,
@@ -43,6 +44,7 @@
     var isWebSocketConnected = false;
     var humanSocket = null;
     var isHumanAgentActive = false;
+    var visitorInfo = null;
 
     function generateSecureWsParams(workflow_id) {
         const secret = '4f3c9a1d8e5b6c2f719a0e3d5a8b7c4d9e6f1a0b3d7c8e2f6a9d0e1b4c5f7a6d';
@@ -158,7 +160,21 @@
     refreshBtn.onmouseout = function () { refreshBtn.style.backgroundColor = 'transparent'; };
     refreshBtn.onclick = function () {
         localStorage.removeItem('simple-chat-messages');
-        loadMessages();
+        localStorage.removeItem('simple-chat-session');
+        localStorage.removeItem('simple-chat-leads');
+        localStorage.removeItem('simple-chat-user-guid');
+        window.__simpleChatEmbedLeadCaptured = false;
+        visitorInfo = null;
+        
+        // Close existing WebSocket connection
+        if (currentSocket) {
+            currentSocket.close();
+            currentSocket = null;
+            isWebSocketConnected = false;
+        }
+        
+        // Reset and show lead capture form
+        maybeShowLeadCapture();
     };
 
     var closeBtn = document.createElement('button');
@@ -227,6 +243,43 @@
     document.head.appendChild(style);
 
     chatContainer.appendChild(messages);
+
+    // Create scroll to bottom button
+    var scrollToBottomBtn = document.createElement('button');
+    scrollToBottomBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 13 5 5 5-5"/><path d="M12 18V6"/></svg>';
+    scrollToBottomBtn.title = 'Scroll to bottom';
+    scrollToBottomBtn.style.position = 'absolute';
+    scrollToBottomBtn.style.right = '1rem';
+    scrollToBottomBtn.style.bottom = '5rem';
+    scrollToBottomBtn.style.width = '40px';
+    scrollToBottomBtn.style.height = '40px';
+    scrollToBottomBtn.style.borderRadius = '50%';
+    scrollToBottomBtn.style.background = theme.sendBtnBg || '#3b82f6';
+    scrollToBottomBtn.style.color = '#ffffff';
+    scrollToBottomBtn.style.border = 'none';
+    scrollToBottomBtn.style.cursor = 'pointer';
+    scrollToBottomBtn.style.display = 'none'; // Initially hidden
+    scrollToBottomBtn.style.alignItems = 'center';
+    scrollToBottomBtn.style.justifyContent = 'center';
+    scrollToBottomBtn.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
+    scrollToBottomBtn.style.transition = 'all 0.3s ease';
+    scrollToBottomBtn.style.zIndex = '10';
+    
+    scrollToBottomBtn.addEventListener('mouseover', function () {
+        scrollToBottomBtn.style.backgroundColor = theme.sendBtnHover || '#2563eb';
+        scrollToBottomBtn.style.transform = 'scale(1.1)';
+    });
+    scrollToBottomBtn.addEventListener('mouseout', function () {
+        scrollToBottomBtn.style.backgroundColor = theme.sendBtnBg || '#3b82f6';
+        scrollToBottomBtn.style.transform = 'scale(1)';
+    });
+    
+    scrollToBottomBtn.onclick = function() {
+        messages.scrollTop = messages.scrollHeight;
+        scrollToBottomBtn.style.display = 'none';
+    };
+    
+    chatContainer.appendChild(scrollToBottomBtn);
 
     // Chat input area - Card Footer design with separator
     var inputSeparator = document.createElement('div');
@@ -304,35 +357,35 @@
     // Place the image upload (clip) button inside the input field, left-aligned
     inputContainer.style.position = 'relative';
 
-    var imageInput = document.createElement('input');
-    imageInput.type = 'file';
-    imageInput.accept = 'image/*';
-    imageInput.style.display = 'none';
+    // var imageInput = document.createElement('input');
+    // imageInput.type = 'file';
+    // imageInput.accept = 'image/*';
+    // imageInput.style.display = 'none';
 
-    var imageBtn = document.createElement('button');
-    imageBtn.title = 'Send image';
-    // Paperclip SVG icon
-    imageBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7.5 10.5L13.5 4.5C14.3284 3.67157 15.6716 3.67157 16.5 4.5C17.3284 5.32843 17.3284 6.67157 16.5 7.5L8.5 15.5C6.84315 17.1569 4.15685 17.1569 2.5 15.5C0.843146 13.8431 0.843146 11.1569 2.5 9.5L10.5 1.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-    imageBtn.style.position = 'absolute';
-    imageBtn.style.left = '8px';
-    imageBtn.style.top = '50%';
-    imageBtn.style.transform = 'translateY(-50%)';
-    imageBtn.style.height = '2rem';
-    imageBtn.style.width = '2rem';
-    imageBtn.style.background = 'transparent';
-    imageBtn.style.color = theme.inputText;
-    imageBtn.style.border = 'none';
-    imageBtn.style.borderRadius = '0.5rem';
-    imageBtn.style.cursor = 'pointer';
-    imageBtn.style.display = 'flex';
-    imageBtn.style.justifyContent = 'center';
-    imageBtn.style.alignItems = 'center';
-    imageBtn.style.transition = 'background 0.15s, color 0.15s';
-    imageBtn.onmouseover = function () { imageBtn.style.background = '#ececec'; };
-    imageBtn.onmouseout = function () { imageBtn.style.background = 'transparent'; };
-    imageBtn.onclick = function () { imageInput.click(); };
-    inputContainer.appendChild(imageBtn);
-    inputContainer.appendChild(imageInput);
+    // var imageBtn = document.createElement('button');
+    // imageBtn.title = 'Send image';
+    // // Paperclip SVG icon
+    // imageBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7.5 10.5L13.5 4.5C14.3284 3.67157 15.6716 3.67157 16.5 4.5C17.3284 5.32843 17.3284 6.67157 16.5 7.5L8.5 15.5C6.84315 17.1569 4.15685 17.1569 2.5 15.5C0.843146 13.8431 0.843146 11.1569 2.5 9.5L10.5 1.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    // imageBtn.style.position = 'absolute';
+    // imageBtn.style.left = '8px';
+    // imageBtn.style.top = '50%';
+    // imageBtn.style.transform = 'translateY(-50%)';
+    // imageBtn.style.height = '2rem';
+    // imageBtn.style.width = '2rem';
+    // imageBtn.style.background = 'transparent';
+    // imageBtn.style.color = theme.inputText;
+    // imageBtn.style.border = 'none';
+    // imageBtn.style.borderRadius = '0.5rem';
+    // imageBtn.style.cursor = 'pointer';
+    // imageBtn.style.display = 'flex';
+    // imageBtn.style.justifyContent = 'center';
+    // imageBtn.style.alignItems = 'center';
+    // imageBtn.style.transition = 'background 0.15s, color 0.15s';
+    // imageBtn.onmouseover = function () { imageBtn.style.background = '#ececec'; };
+    // imageBtn.onmouseout = function () { imageBtn.style.background = 'transparent'; };
+    // imageBtn.onclick = function () { imageInput.click(); };
+    // inputContainer.appendChild(imageBtn);
+    // inputContainer.appendChild(imageInput);
 
     // Adjust input padding to make space for the icon
     input.style.paddingLeft = '2.5rem';
@@ -340,47 +393,47 @@
     input.style.setProperty('text-indent', '1.5rem');
 
     // Handle image selection
-    imageInput.addEventListener('change', function (e) {
-        var file = imageInput.files[0];
-        if (!file) return;
-        // Only allow images up to 5MB
-        if (file.size > 5 * 1024 * 1024) {
-            saveMessage('Image too large (max 5MB).', 'bot');
-            loadMessages();
-            return;
-        }
-        var reader = new FileReader();
-        reader.onload = function (evt) {
-            var dataUrl = evt.target.result;
-            // Save image as a user message (base64 data URL)
-            saveMessage('[Image]', 'user');
-            loadMessages();
-            // Send to AI or human agent
-            if (isHumanAgentActive && humanSocket && humanSocket.readyState === 1) {
-                // Send as base64 or as a special message type (your backend should handle this securely)
-                humanSocket.send(JSON.stringify({ type: 'image', data: dataUrl, filename: file.name }));
-            } else {
-                // For AI, send as base64 or as a special message type if your API supports it
-                fetch(apiUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ image: dataUrl, filename: file.name })
-                })
-                    .then(res => res.json())
-                    .then(result => {
-                        let botMsg = result.text || result.answer || '[Image received]';
-                        saveMessage(botMsg, 'bot');
-                        loadMessages();
-                    })
-                    .catch(() => {
-                        saveMessage('Error sending image.', 'bot');
-                        loadMessages();
-                    });
-            }
-        };
-        reader.readAsDataURL(file);
-        imageInput.value = '';
-    });
+    // imageInput.addEventListener('change', function (e) {
+    //     var file = imageInput.files[0];
+    //     if (!file) return;
+    //     // Only allow images up to 5MB
+    //     if (file.size > 5 * 1024 * 1024) {
+    //         saveMessage('Image too large (max 5MB).', 'bot');
+    //         loadMessages();
+    //         return;
+    //     }
+    //     var reader = new FileReader();
+    //     reader.onload = function (evt) {
+    //         var dataUrl = evt.target.result;
+    //         // Save image as a user message (base64 data URL)
+    //         saveMessage('[Image]', 'user');
+    //         loadMessages();
+    //         // Send to AI or human agent
+    //         if (isHumanAgentActive && humanSocket && humanSocket.readyState === 1) {
+    //             // Send as base64 or as a special message type (your backend should handle this securely)
+    //             humanSocket.send(JSON.stringify({ type: 'image', data: dataUrl, filename: file.name }));
+    //         } else {
+    //             // For AI, send as base64 or as a special message type if your API supports it
+    //             fetch(apiUrl, {
+    //                 method: 'POST',
+    //                 headers: { 'Content-Type': 'application/json' },
+    //                 body: JSON.stringify({ image: dataUrl, filename: file.name })
+    //             })
+    //                 .then(res => res.json())
+    //                 .then(result => {
+    //                     let botMsg = result.text || result.answer || '[Image received]';
+    //                     saveMessage(botMsg, 'bot');
+    //                     loadMessages();
+    //                 })
+    //                 .catch(() => {
+    //                     saveMessage('Error sending image.', 'bot');
+    //                     loadMessages();
+    //                 });
+    //         }
+    //     };
+    //     reader.readAsDataURL(file);
+    //     imageInput.value = '';
+    // });
 
     // Add input and button to form
     inputForm.appendChild(input);
@@ -396,6 +449,61 @@
     // Helper function to check if string is image data URL
     function isImageDataUrl(str) {
         return typeof str === 'string' && str.startsWith('data:image/');
+    }
+
+    // Function to create beautiful system notifications
+    function createSystemNotification(message, type) {
+        var notificationContainer = document.createElement('div');
+        notificationContainer.style.display = 'flex';
+        notificationContainer.style.justifyContent = 'center';
+        notificationContainer.style.margin = '1rem 0';
+        notificationContainer.style.animation = 'fadeInUp 0.5s ease-out';
+
+        var notification = document.createElement('div');
+        notification.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+        notification.style.color = '#ffffff';
+        notification.style.padding = '0.75rem 1.5rem';
+        notification.style.borderRadius = '20px';
+        notification.style.fontSize = '0.875rem';
+        notification.style.fontWeight = '500';
+        notification.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.3)';
+        notification.style.display = 'flex';
+        notification.style.alignItems = 'center';
+        notification.style.gap = '0.5rem';
+        notification.style.maxWidth = '80%';
+        notification.style.textAlign = 'center';
+
+        // Add icon based on type
+        var icon = document.createElement('span');
+        if (type === 'joined') {
+            icon.innerHTML = '👋';
+            notification.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
+            notification.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.3)';
+        } else {
+            icon.innerHTML = '💬';
+        }
+        icon.style.fontSize = '1rem';
+
+        notification.appendChild(icon);
+        notification.appendChild(document.createTextNode(message));
+        notificationContainer.appendChild(notification);
+
+        // Add fade-in animation if not already present
+        if (!document.getElementById('system-notification-style')) {
+            var style = document.createElement('style');
+            style.id = 'system-notification-style';
+            style.innerHTML = `
+                @keyframes fadeInUp {
+                    0% { opacity: 0; transform: translateY(20px); }
+                    100% { opacity: 1; transform: translateY(0); }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+
+        messages.appendChild(notificationContainer);
+        messages.scrollTop = messages.scrollHeight;
+        checkScrollPosition();
     }
 
     function createBouncingDots() {
@@ -422,9 +530,9 @@
     // Helper: convert markdown to HTML with proper styling
     function markdownToHtml(text, isStreaming = false) {
         if (!text) return '';
-        
+
         var html = text;
-        
+
         // For streaming, only do basic processing to avoid performance issues
         if (isStreaming) {
             // Only handle basic formatting during streaming
@@ -434,31 +542,31 @@
             html = html.replace(/\n/g, '<br>');
             return html;
         }
-        
+
         // Full markdown processing for completed messages
         // Handle code blocks (```code```)
-        html = html.replace(/```([^`]+)```/g, function(match, code) {
+        html = html.replace(/```([^`]+)```/g, function (match, code) {
             return '<pre style="background:#f6f8fa;border:1px solid #e1e4e8;border-radius:6px;padding:16px;margin:8px 0;overflow-x:auto;font-family:ui-monospace,SFMono-Regular,\'SF Mono\',Consolas,\'Liberation Mono\',Menlo,monospace;font-size:13px;line-height:1.45;"><code>' + escapeHtml(code.trim()) + '</code></pre>';
         });
-        
+
         // Handle inline code (`code`)
-        html = html.replace(/`([^`]+)`/g, function(match, code) {
+        html = html.replace(/`([^`]+)`/g, function (match, code) {
             return '<code style="background:#f6f8fa;border-radius:3px;padding:2px 4px;font-family:ui-monospace,SFMono-Regular,\'SF Mono\',Consolas,\'Liberation Mono\',Menlo,monospace;font-size:85%;">' + escapeHtml(code) + '</code>';
         });
-        
+
         // Handle bold text (**text** or __text__)
         html = html.replace(/\*\*([^*]+)\*\*/g, '<strong style="font-weight:600;">$1</strong>');
         html = html.replace(/__([^_]+)__/g, '<strong style="font-weight:600;">$1</strong>');
-        
+
         // Handle italic text (*text* or _text_)
         html = html.replace(/\*([^*]+)\*/g, '<em style="font-style:italic;">$1</em>');
         html = html.replace(/_([^_]+)_/g, '<em style="font-style:italic;">$1</em>');
-        
+
         // Handle markdown links [text](url)
         html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, function (_, label, url) {
             return '<a href="' + url + '" target="_blank" style="font-weight:bold;color:' + (theme.botText || '#4a4e69') + ';text-decoration:underline;cursor:pointer;">' + label + '</a>';
         });
-        
+
         // Handle bullet points and numbered lists
         if (html.includes('\n')) {
             // Split into lines for list processing
@@ -466,11 +574,11 @@
             var inUnorderedList = false;
             var inOrderedList = false;
             var processedLines = [];
-            
+
             for (var i = 0; i < lines.length; i++) {
                 var line = lines[i];
                 var trimmedLine = line.trim();
-                
+
                 // Check for blockquotes (> text)
                 var blockquoteMatch = trimmedLine.match(/^>\s+(.+)$/);
                 if (blockquoteMatch) {
@@ -486,7 +594,7 @@
                     processedLines.push('<blockquote style="border-left:4px solid #e5e7eb;padding-left:1rem;margin:1rem 0;color:#6b7280;font-style:italic;">' + blockquoteMatch[1] + '</blockquote>');
                     continue;
                 }
-                
+
                 // Check for unordered list items (-, *, +)
                 var unorderedMatch = trimmedLine.match(/^[-*+]\s+(.+)$/);
                 if (unorderedMatch) {
@@ -501,7 +609,7 @@
                     processedLines.push('<li style="margin:4px 0;">' + unorderedMatch[1] + '</li>');
                     continue;
                 }
-                
+
                 // Check for ordered list items (1. 2. etc.)
                 var orderedMatch = trimmedLine.match(/^(\d+)\.\s+(.+)$/);
                 if (orderedMatch) {
@@ -516,7 +624,7 @@
                     processedLines.push('<li style="margin:4px 0;">' + orderedMatch[2] + '</li>');
                     continue;
                 }
-                
+
                 // Not a list item, close any open lists
                 if (inUnorderedList) {
                     processedLines.push('</ul>');
@@ -526,7 +634,7 @@
                     processedLines.push('</ol>');
                     inOrderedList = false;
                 }
-                
+
                 // Handle headers
                 if (trimmedLine.match(/^#{1,6}\s+/)) {
                     var headerMatch = trimmedLine.match(/^(#{1,6})\s+(.+)$/);
@@ -538,7 +646,7 @@
                         continue;
                     }
                 }
-                
+
                 // Regular line
                 if (trimmedLine) {
                     processedLines.push(line);
@@ -546,7 +654,7 @@
                     processedLines.push('<br>');
                 }
             }
-            
+
             // Close any remaining open lists
             if (inUnorderedList) {
                 processedLines.push('</ul>');
@@ -554,16 +662,16 @@
             if (inOrderedList) {
                 processedLines.push('</ol>');
             }
-            
+
             html = processedLines.join('\n');
         }
-        
+
         // Handle line breaks
         html = html.replace(/\n/g, '<br>');
-        
+
         return html;
     }
-    
+
     // Helper function to escape HTML
     function escapeHtml(text) {
         var div = document.createElement('div');
@@ -579,6 +687,60 @@
 
         for (var i = 0; i < msgs.length; i++) {
             var msg = msgs[i];
+
+            // Handle system notifications (like handover messages) differently
+            if (msg.isSystemNotification) {
+                var notificationContainer = document.createElement('div');
+                notificationContainer.style.display = 'flex';
+                notificationContainer.style.justifyContent = 'center';
+                notificationContainer.style.margin = '1rem 0';
+                notificationContainer.style.animation = 'fadeInUp 0.5s ease-out';
+
+                var notification = document.createElement('div');
+                notification.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+                notification.style.color = '#ffffff';
+                notification.style.padding = '0.75rem 1.5rem';
+                notification.style.borderRadius = '20px';
+                notification.style.fontSize = '0.875rem';
+                notification.style.fontWeight = '500';
+                notification.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.3)';
+                notification.style.display = 'flex';
+                notification.style.alignItems = 'center';
+                notification.style.gap = '0.5rem';
+                notification.style.maxWidth = '80%';
+                notification.style.textAlign = 'center';
+
+                // Add icon based on notification type
+                var icon = document.createElement('span');
+                if (msg.notificationType === 'joined') {
+                    icon.innerHTML = '👋';
+                    notification.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
+                    notification.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.3)';
+                } else {
+                    icon.innerHTML = '💬';
+                }
+                icon.style.fontSize = '1rem';
+
+                notification.appendChild(icon);
+                notification.appendChild(document.createTextNode(msg.text));
+                notificationContainer.appendChild(notification);
+                
+                // Add fade-in animation if not already present
+                if (!document.getElementById('system-notification-style')) {
+                    var style = document.createElement('style');
+                    style.id = 'system-notification-style';
+                    style.innerHTML = `
+                        @keyframes fadeInUp {
+                            0% { opacity: 0; transform: translateY(20px); }
+                            100% { opacity: 1; transform: translateY(0); }
+                        }
+                    `;
+                    document.head.appendChild(style);
+                }
+                
+                messages.appendChild(notificationContainer);
+                continue;
+            }
 
             // Create message container with flex layout
             var messageContainer = document.createElement('div');
@@ -660,17 +822,16 @@
                 }
             }
 
-            // Create timestamp
-            var timestamp = document.createElement('div');
-            timestamp.style.fontSize = '0.75rem';
-            timestamp.style.color = '#9ca3af';
-            timestamp.style.alignSelf = msg.sender === 'user' ? 'flex-end' : 'flex-start';
-            var now = new Date();
-            timestamp.innerText = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
-
+            if (!msg.isWelcomeMessage) {
+                var timestamp = document.createElement('div');
+                timestamp.style.fontSize = '0.75rem';
+                timestamp.style.color = '#9ca3af';
+                timestamp.style.alignSelf = msg.sender === 'user' ? 'flex-end' : 'flex-start';
+                timestamp.innerText = msg.created_at
+                contentContainer.appendChild(timestamp);
+            }
             // Assemble the message
             contentContainer.appendChild(msgDiv);
-            contentContainer.appendChild(timestamp);
             messageWrapper.appendChild(avatar);
             messageWrapper.appendChild(contentContainer);
             messageContainer.appendChild(messageWrapper);
@@ -678,7 +839,51 @@
         }
 
         messages.scrollTop = messages.scrollHeight;
+        
+        // Check if scroll button should be visible with a small delay to ensure proper rendering
+        setTimeout(function() {
+            // Force scroll to bottom again to ensure it works
+            messages.scrollTop = messages.scrollHeight;
+            checkScrollPosition();
+        }, 100);
     }
+
+    // Function to check scroll position and show/hide scroll button
+    function checkScrollPosition() {
+        // Add a small threshold to account for rounding differences
+        var scrollThreshold = 100;
+        var isScrolledToBottom = messages.scrollHeight - messages.scrollTop <= messages.clientHeight + scrollThreshold;
+        
+        if (isScrolledToBottom) {
+            scrollToBottomBtn.style.display = 'none';
+        } else {
+            scrollToBottomBtn.style.display = 'flex';
+        }
+    }
+
+    // Function to force scroll to bottom with retries
+    function forceScrollToBottom() {
+        var attempts = 0;
+        var maxAttempts = 5;
+        
+        function tryScroll() {
+            messages.scrollTop = messages.scrollHeight;
+            attempts++;
+            
+            if (attempts < maxAttempts && messages.scrollTop < messages.scrollHeight - messages.clientHeight - 10) {
+                setTimeout(tryScroll, 50);
+            } else {
+                checkScrollPosition();
+            }
+        }
+        
+        tryScroll();
+    }
+
+    // Add scroll event listener to messages container
+    messages.addEventListener('scroll', function() {
+        checkScrollPosition();
+    });
 
     // Save message to localStorage
     function saveMessage(msg, sender, type = "") {
@@ -690,7 +895,7 @@
 
         }
         else {
-            msgs.push({ text: msg, isWelcomeMessage: false, sender: sender });
+            msgs.push({ text: msg, isWelcomeMessage: false, sender, created_at: formatTimeStamp(new Date().toISOString()) });
         }
         localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
     }
@@ -756,10 +961,63 @@
     // --- WebSocket connection management ---
     async function connectWebSocket() {
         if (isWebSocketConnected || currentSocket) return;
-        var chatID = generateChatId();
-        var workflow_id = workflowId;
-        var wsParams = await generateSecureWsParams(workflow_id);
-        var wsUrl = socketUrl + chatID + '/?workflow_id=' + wsParams.hashed_workflow_id + '&hash=' + wsParams.hash;
+        
+        // Try to get stored session data first
+        var storedSession = localStorage.getItem('simple-chat-session');
+        var chatID, workflow_id, wsParams;
+        
+        if (storedSession) {
+            try {
+                var sessionData = JSON.parse(storedSession);
+                // Check if session data is complete and not too old (optional: 24 hours)
+                var sessionAge = new Date() - new Date(sessionData.timestamp);
+                var maxAge = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+                
+                if (sessionData.chatID && sessionData.workflowId && sessionData.hashedWorkflowId && 
+                    sessionData.hash && sessionData.visitorInfo && sessionAge < maxAge) {
+                    chatID = sessionData.chatID;
+                    workflow_id = sessionData.workflowId;
+                    wsParams = {
+                        hashed_workflow_id: sessionData.hashedWorkflowId,
+                        hash: sessionData.hash
+                    };
+                    visitorInfo = sessionData.visitorInfo;
+                    console.log('Using stored session data for WebSocket connection');
+                } else {
+                    // Session is invalid or expired, generate new data
+                    throw new Error('Invalid or expired session');
+                }
+            } catch (error) {
+                console.log('Invalid session data, generating new session');
+                // Clear invalid session data
+                localStorage.removeItem('simple-chat-session');
+                storedSession = null;
+            }
+        }
+        
+        if (!storedSession) {
+            // Generate new session data if not stored or invalid
+            chatID = generateChatId();
+            workflow_id = workflowId;
+            wsParams = await generateSecureWsParams(workflow_id);
+            console.log('Generated new session data for WebSocket connection');
+            
+            // Only store if we have visitor info (from completed form)
+            if (visitorInfo) {
+                var chatSessionData = {
+                    chatID: chatID,
+                    workflowId: workflow_id,
+                    hashedWorkflowId: wsParams.hashed_workflow_id,
+                    hash: wsParams.hash,
+                    visitorInfo: visitorInfo,
+                    timestamp: new Date().toISOString()
+                };
+                localStorage.setItem('simple-chat-session', JSON.stringify(chatSessionData));
+            }
+        }
+        
+        var wsUrl = `${socketUrl}${chatID}/?workflow_id=${wsParams.hashed_workflow_id}&hash=${wsParams.hash}&visitorInfo=${JSON.stringify(visitorInfo)}`;
+        console.log(visitorInfo,'my visitor info')
         try {
             currentSocket = new WebSocket(wsUrl);
             currentSocket.onopen = function () {
@@ -767,25 +1025,45 @@
             };
             currentSocket.onmessage = function (event) {
                 var msgData = JSON.parse(event.data);
-                
+
                 // Skip unread messages but allow broadcast messages
                 if (msgData?.message_type === "unread_message") {
                     return;
                 }
-                
+
+                if (msgData?.message_type === "handover_message") {
+                    console.log('Handover message received:', msgData);
+                    
+                    // Store handover message in localStorage like other messages
+                    var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
+                    msgs.push({
+                        text: msgData.sender + ' has entered the chat',
+                        sender: 'system',
+                        isWelcomeMessage: false,
+                        isSystemNotification: true,
+                        notificationType: 'joined',
+                        created_at: formatTimeStamp(msgData.created_at || new Date().toISOString())
+                    });
+                    localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
+                    
+                    // Reload messages to show the stored handover message
+                    loadMessages();
+                    return;
+                }
+
                 // Handle AI/bot messages (both streaming and regular)
                 if (msgData.sender_type === 'ai' || msgData.sender === 'ai' || msgData.sender_type === 'bot' || msgData.sender === 'bot') {
                     var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
                     var lastMessage = msgs[msgs.length - 1];
-                    
+
                     // Remove typing indicator if present
                     if (lastMessage && lastMessage.text === '' && (lastMessage.sender === 'bot' || lastMessage.sender === 'ai')) {
                         msgs.pop();
                         lastMessage = msgs[msgs.length - 1] || null;
                     }
-                    
+
                     var content = msgData.content || msgData.message || '';
-                    
+
                     // Handle completion signal (empty content with is_complete flag)
                     if (msgData.is_complete === true && content === '') {
                         if (lastMessage && lastMessage.isStreaming) {
@@ -796,12 +1074,12 @@
                         }
                         return;
                     }
-                    
+
                     // Handle any content from AI (treat all as streaming chunks)
                     if (content) {
                         // Check if we should append to existing message or create new one
-                        if (lastMessage && 
-                            (lastMessage.sender === 'bot' || lastMessage.sender === 'ai') && 
+                        if (lastMessage &&
+                            (lastMessage.sender === 'bot' || lastMessage.sender === 'ai') &&
                             lastMessage.isStreaming === true) {
                             // Append to existing streaming message
                             lastMessage.text += content;
@@ -813,7 +1091,9 @@
                                 sender: 'bot',
                                 isWelcomeMessage: false,
                                 isStreaming: true,
-                                messageId: msgData.message_id
+                                messageId: msgData.message_id,
+                                created_at: formatTimeStamp(msgData.created_at)
+
                             });
                         }
                         localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
@@ -824,7 +1104,9 @@
                     msgs.push({
                         text: msgData.content || '',
                         sender: msgData.sender_type,
-                        isWelcomeMessage: false
+                        isWelcomeMessage: false,
+                        created_at: formatTimeStamp(msgData.created_at)
+
                     })
                     localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
                     loadMessages();
@@ -847,6 +1129,20 @@
         }
     }
 
+    function formatTimeStamp(timestamp) {
+        const createdAt = new Date(timestamp)// or your date value
+        console.log(createdAt, 'createdAT')
+        const formattedTime = createdAt.toLocaleTimeString("en-US", {
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: true
+        });
+        return formattedTime;
+
+    }
+
+
+
     // --- Message sending logic update ---
     // This function now uses WebSocket instead of API calls
     function sendMessage() {
@@ -856,11 +1152,11 @@
         saveMessage(val, 'user');
         input.value = '';
         loadMessages();
-        
+
         // Show typing indicator
         saveMessage('', 'bot');
         loadMessages();
-        
+
         // Check for human agent handover first
         if (isHumanAgentActive && humanSocket && humanSocket.readyState === 1) {
             humanSocket.send(val);
@@ -959,11 +1255,16 @@
         // Full Name field
         var nameFieldContainer = document.createElement('div');
         nameFieldContainer.style.display = 'flex';
-        nameFieldContainer.style.alignItems = 'center';
-        nameFieldContainer.style.gap = '1.5rem';
+        nameFieldContainer.style.flexDirection = 'column';
+        nameFieldContainer.style.gap = '0.5rem';
+
+        var nameInputRow = document.createElement('div');
+        nameInputRow.style.display = 'flex';
+        nameInputRow.style.alignItems = 'center';
+        nameInputRow.style.gap = '1.5rem';
 
         var nameLabel = document.createElement('label');
-        nameLabel.innerText = 'Full Name:';
+        nameLabel.innerText = 'Full Name:*';
         nameLabel.style.width = '27%';
         nameLabel.style.fontSize = '0.875rem';
         nameLabel.style.fontWeight = '500';
@@ -987,17 +1288,34 @@
             nameInput.style.borderColor = '#d1d5db';
         });
 
-        nameFieldContainer.appendChild(nameLabel);
-        nameFieldContainer.appendChild(nameInput);
+        nameInputRow.appendChild(nameLabel);
+        nameInputRow.appendChild(nameInput);
+
+        // Name error message (below the input)
+        var nameError = document.createElement('div');
+        nameError.style.display = 'none';
+        nameError.style.color = '#ef4444';
+        nameError.style.fontSize = '0.75rem';
+        nameError.style.marginLeft = '27%';
+        nameError.style.paddingLeft = '1.5rem';
+        nameError.innerText = 'Full name is required';
+
+        nameFieldContainer.appendChild(nameInputRow);
+        nameFieldContainer.appendChild(nameError);
 
         // Email field
         var emailFieldContainer = document.createElement('div');
         emailFieldContainer.style.display = 'flex';
-        emailFieldContainer.style.alignItems = 'center';
-        emailFieldContainer.style.gap = '1.5rem';
+        emailFieldContainer.style.flexDirection = 'column';
+        emailFieldContainer.style.gap = '0.5rem';
+
+        var emailInputRow = document.createElement('div');
+        emailInputRow.style.display = 'flex';
+        emailInputRow.style.alignItems = 'center';
+        emailInputRow.style.gap = '1.5rem';
 
         var emailLabel = document.createElement('label');
-        emailLabel.innerText = 'Email:';
+        emailLabel.innerText = 'Email:*';
         emailLabel.style.width = '27%';
         emailLabel.style.fontSize = '0.875rem';
         emailLabel.style.fontWeight = '500';
@@ -1021,17 +1339,34 @@
             emailInput.style.borderColor = '#d1d5db';
         });
 
-        emailFieldContainer.appendChild(emailLabel);
-        emailFieldContainer.appendChild(emailInput);
+        emailInputRow.appendChild(emailLabel);
+        emailInputRow.appendChild(emailInput);
 
-        // Phone field (optional)
+        // Email error message (below the input)
+        var emailError = document.createElement('div');
+        emailError.style.display = 'none';
+        emailError.style.color = '#ef4444';
+        emailError.style.fontSize = '0.75rem';
+        emailError.style.marginLeft = '27%';
+        emailError.style.paddingLeft = '1.5rem';
+        emailError.innerText = 'Please enter a valid email address';
+
+        emailFieldContainer.appendChild(emailInputRow);
+        emailFieldContainer.appendChild(emailError);
+
+        // Phone field (required)
         var phoneFieldContainer = document.createElement('div');
         phoneFieldContainer.style.display = 'flex';
-        phoneFieldContainer.style.alignItems = 'center';
-        phoneFieldContainer.style.gap = '1.5rem';
+        phoneFieldContainer.style.flexDirection = 'column';
+        phoneFieldContainer.style.gap = '0.5rem';
+
+        var phoneInputRow = document.createElement('div');
+        phoneInputRow.style.display = 'flex';
+        phoneInputRow.style.alignItems = 'center';
+        phoneInputRow.style.gap = '1.5rem';
 
         var phoneLabel = document.createElement('label');
-        phoneLabel.innerText = 'Phone:';
+        phoneLabel.innerText = 'Phone:*';
         phoneLabel.style.width = '27%';
         phoneLabel.style.fontSize = '0.875rem';
         phoneLabel.style.fontWeight = '500';
@@ -1039,7 +1374,8 @@
 
         var phoneInput = document.createElement('input');
         phoneInput.type = 'tel';
-        phoneInput.placeholder = 'Phone';
+        phoneInput.placeholder = 'Phone number';
+        phoneInput.maxLength = 20;
         phoneInput.style.width = '60%';
         phoneInput.style.padding = '0.75rem 1rem';
         phoneInput.style.border = '1px solid #d1d5db';
@@ -1055,21 +1391,25 @@
             phoneInput.style.borderColor = '#d1d5db';
         });
 
-        phoneFieldContainer.appendChild(phoneLabel);
-        phoneFieldContainer.appendChild(phoneInput);
+        phoneInputRow.appendChild(phoneLabel);
+        phoneInputRow.appendChild(phoneInput);
+
+        // Phone error message (below the input)
+        var phoneError = document.createElement('div');
+        phoneError.style.display = 'none';
+        phoneError.style.color = '#ef4444';
+        phoneError.style.fontSize = '0.75rem';
+        phoneError.style.marginLeft = '27%';
+        phoneError.style.paddingLeft = '1.5rem';
+        phoneError.innerText = 'Phone number is required';
+
+        phoneFieldContainer.appendChild(phoneInputRow);
+        phoneFieldContainer.appendChild(phoneError);
 
         // Add all fields to form container
         formContainer.appendChild(nameFieldContainer);
         formContainer.appendChild(emailFieldContainer);
         formContainer.appendChild(phoneFieldContainer);
-
-        // Error message
-        var emailError = document.createElement('div');
-        emailError.style.display = 'none';
-        emailError.style.color = '#ef4444';
-        emailError.style.fontSize = '0.875rem';
-        emailError.style.textAlign = 'center';
-        emailError.innerText = 'Please enter a valid email address';
 
         // Start Chat button
         var confirmBtn = document.createElement('button');
@@ -1094,19 +1434,88 @@
         });
 
         // Confirmation button click handler
-        confirmBtn.onclick = function () {
+        confirmBtn.onclick = async function () {
+            var nameVal = nameInput.value.trim();
             var emailVal = emailInput.value.trim();
-            if (emailVal && !/^\S+@\S+\.\S+$/.test(emailVal)) {
+            var phoneVal = phoneInput.value.trim();
+            var hasErrors = false;
+
+            // Reset all error states
+            nameInput.style.borderColor = '#d1d5db';
+            emailInput.style.borderColor = '#d1d5db';
+            phoneInput.style.borderColor = '#d1d5db';
+            nameError.style.display = 'none';
+            emailError.style.display = 'none';
+            phoneError.style.display = 'none';
+
+            // Validate name (required)
+            if (!nameVal) {
+                nameInput.style.borderColor = '#ef4444';
+                nameError.style.display = 'block';
+                hasErrors = true;
+            }
+
+            // Validate email (required and format)
+            if (!emailVal) {
                 emailInput.style.borderColor = '#ef4444';
+                emailError.innerText = 'Email is required';
                 emailError.style.display = 'block';
-                emailInput.focus();
+                hasErrors = true;
+            } else if (!/^\S+@\S+\.\S+$/.test(emailVal)) {
+                emailInput.style.borderColor = '#ef4444';
+                emailError.innerText = 'Please enter a valid email address';
+                emailError.style.display = 'block';
+                hasErrors = true;
+            }
+
+            // Validate phone (required and max length 20)
+            if (!phoneVal) {
+                phoneInput.style.borderColor = '#ef4444';
+                phoneError.innerText = 'Phone number is required';
+                phoneError.style.display = 'block';
+                hasErrors = true;
+            } else if (phoneVal.length > 20) {
+                phoneInput.style.borderColor = '#ef4444';
+                phoneError.innerText = 'Phone number must be 20 characters or less';
+                phoneError.style.display = 'block';
+                hasErrors = true;
+            } else if (!/^[\+]?[0-9\s\-\(\)\.]{1,20}$/.test(phoneVal)) {
+                phoneInput.style.borderColor = '#ef4444';
+                phoneError.innerText = 'Please enter a valid phone number';
+                phoneError.style.display = 'block';
+                hasErrors = true;
+            }
+
+            if (hasErrors) {
+                // Focus on first error field
+                if (!nameVal) nameInput.focus();
+                else if (!emailVal || !/^\S+@\S+\.\S+$/.test(emailVal)) emailInput.focus();
+                else if (!phoneVal || phoneVal.length > 20 || !/^[\+]?[0-9\s\-\(\)\.]{1,20}$/.test(phoneVal)) phoneInput.focus();
                 return;
-            } else {
-                emailInput.style.borderColor = '#d1d5db';
-                emailError.style.display = 'none';
             }
 
             messages.innerHTML = '';
+            await createVisitor(
+                sanitize(nameInput.value),
+                sanitize(emailInput.value),
+                sanitize(phoneInput.value),
+            );
+
+            // Generate and store chat session data
+            var chatID = generateChatId();
+            var workflow_id = workflowId;
+            var wsParams = await generateSecureWsParams(workflow_id);
+            
+            // Store chat session data in localStorage
+            var chatSessionData = {
+                chatID: chatID,
+                workflowId: workflow_id,
+                hashedWorkflowId: wsParams.hashed_workflow_id,
+                hash: wsParams.hash,
+                visitorInfo: visitorInfo,
+                timestamp: new Date().toISOString()
+            };
+            localStorage.setItem('simple-chat-session', JSON.stringify(chatSessionData));
 
             // Collect environment info
             var userAgent = navigator.userAgent;
@@ -1188,7 +1597,6 @@
 
         // Assemble the form
         wrapper.appendChild(formContainer);
-        wrapper.appendChild(emailError);
         wrapper.appendChild(confirmBtn);
         messages.appendChild(wrapper);
 
@@ -1198,6 +1606,32 @@
 
     // On load, show lead capture inside chat window
     function maybeShowLeadCapture() {
+        // Check if we have existing messages in localStorage
+        var existingMessages = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
+        var storedSession = localStorage.getItem('simple-chat-session');
+        
+        // If we have messages and session data, skip the form
+        if (existingMessages.length > 0 && storedSession) {
+            window.__simpleChatEmbedLeadCaptured = true;
+            
+            // Load stored session data
+            var sessionData = JSON.parse(storedSession);
+            visitorInfo = sessionData.visitorInfo;
+            
+            // Show chat input immediately
+            setupChatInput();
+            loadMessages();
+            
+            // Ensure auto-scroll to bottom after loading existing messages with robust scroll
+            setTimeout(function() {
+                forceScrollToBottom();
+            }, 200);
+            
+            // Automatically establish WebSocket connection with stored session data
+            connectWebSocket();
+            return;
+        }
+        
         if (!window.__simpleChatEmbedLeadCaptured) {
             inputContainer.style.display = 'none';
             showLeadCaptureInChat(function (lead) {
@@ -1205,49 +1639,7 @@
                 if (lead) {
                     window.SimpleChatEmbedLead = lead;
                 }
-                // Restore chat input flex layout after lead form
-                inputContainer.style.display = 'flex';
-                inputContainer.style.flexDirection = 'row';
-                inputContainer.style.width = '100%';
-                inputContainer.style.boxSizing = 'border-box';
-                inputContainer.style.padding = '0.5rem';
-                inputContainer.style.gap = '0';
-                inputContainer.style.alignItems = 'stretch';
-                inputContainer.style.flex = '0 0 auto';
-                inputContainer.style.borderTop = '1px solid #ececec';
-                inputContainer.style.background = '#ffffff';
-                input.style.flex = '1 1 0%';
-                input.style.minWidth = '0';
-                input.style.width = 'auto';
-                input.style.margin = '0';
-                input.style.height = '2.5rem';
-                input.style.padding = '0 1rem';
-                input.style.border = '1px solid #ececec';
-                input.style.borderRight = 'none';
-                input.style.borderRadius = '0.75rem 0 0 0.75rem';
-                input.style.background = theme.inputBg;
-                input.style.color = theme.inputText;
-                input.style.fontSize = '1rem';
-                input.style.boxSizing = 'border-box';
-                input.style.outline = 'none';
-                input.style.transition = 'border 0.15s ease-in-out';
-                sendBtn.style.flex = '0 0 auto';
-                sendBtn.style.margin = '0';
-                sendBtn.style.height = '2.5rem';
-                sendBtn.style.padding = '0 1.25rem';
-                sendBtn.style.background = theme.sendBtnBg;
-                sendBtn.style.color = theme.sendBtnText;
-                sendBtn.style.border = '1px solid #ececec';
-                sendBtn.style.borderLeft = 'none';
-                sendBtn.style.borderRadius = '0 0.75rem 0.75rem 0';
-                sendBtn.style.cursor = 'pointer';
-                sendBtn.style.fontWeight = '600';
-                sendBtn.style.fontSize = '1rem';
-                sendBtn.style.transition = 'background 0.15s ease-in-out, color 0.15s ease-in-out';
-                sendBtn.style.boxSizing = 'border-box';
-                sendBtn.style.display = 'flex';
-                sendBtn.style.justifyContent = 'center';
-                sendBtn.style.alignItems = 'center';
+                setupChatInput();
 
                 // Show welcome message if set and no previous messages
                 var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
@@ -1257,52 +1649,55 @@
                 loadMessages();
             });
         } else {
-            // Already captured, show chat input
-            inputContainer.style.display = 'flex';
-            inputContainer.style.flexDirection = 'row';
-            inputContainer.style.width = '100%';
-            inputContainer.style.boxSizing = 'border-box';
-            inputContainer.style.padding = '0.5rem';
-            inputContainer.style.gap = '0';
-            inputContainer.style.alignItems = 'stretch';
-            inputContainer.style.flex = '0 0 auto';
-            inputContainer.style.borderTop = '1px solid #ececec';
-            inputContainer.style.background = '#ffffff';
-            input.style.flex = '1 1 0%';
-            input.style.minWidth = '0';
-            input.style.width = 'auto';
-            input.style.margin = '0';
-            input.style.height = '2.5rem';
-            input.style.padding = '0 1rem';
-            input.style.border = '1px solid #ececec';
-            input.style.borderRight = 'none';
-            input.style.borderRadius = '0.75rem 0 0 0.75rem';
-            input.style.background = theme.inputBg;
-            input.style.color = theme.inputText;
-            input.style.fontSize = '1rem';
-            input.style.boxSizing = 'border-box';
-            input.style.outline = 'none';
-            input.style.transition = 'border 0.15s ease-in-out';
-            sendBtn.style.flex = '0 0 auto';
-            sendBtn.style.margin = '0';
-            sendBtn.style.height = '2.5rem';
-            sendBtn.style.padding = '0 1.25rem';
-            sendBtn.style.background = theme.sendBtnBg;
-            sendBtn.style.color = theme.sendBtnText;
-            sendBtn.style.border = '1px solid #ececec';
-            sendBtn.style.borderLeft = 'none';
-            sendBtn.style.borderRadius = '0 0.75rem 0.75rem 0';
-            sendBtn.style.cursor = 'pointer';
-            sendBtn.style.fontWeight = '600';
-            sendBtn.style.fontSize = '1rem';
-            sendBtn.style.transition = 'background 0.15s ease-in-out, color 0.15s ease-in-out';
-            sendBtn.style.boxSizing = 'border-box';
-            sendBtn.style.display = 'flex';
-            sendBtn.style.justifyContent = 'center';
-            sendBtn.style.alignItems = 'center';
-
+            setupChatInput();
             loadMessages();
         }
+    }
+
+    // Helper function to setup chat input styling
+    function setupChatInput() {
+        inputContainer.style.display = 'flex';
+        inputContainer.style.flexDirection = 'row';
+        inputContainer.style.width = '100%';
+        inputContainer.style.boxSizing = 'border-box';
+        inputContainer.style.padding = '0.5rem';
+        inputContainer.style.gap = '0';
+        inputContainer.style.alignItems = 'stretch';
+        inputContainer.style.flex = '0 0 auto';
+        inputContainer.style.borderTop = '1px solid #ececec';
+        inputContainer.style.background = '#ffffff';
+        input.style.flex = '1 1 0%';
+        input.style.minWidth = '0';
+        input.style.width = 'auto';
+        input.style.margin = '0';
+        input.style.height = '2.5rem';
+        input.style.padding = '0 1rem';
+        input.style.border = '1px solid #ececec';
+        input.style.borderRight = 'none';
+        input.style.borderRadius = '0.75rem 0 0 0.75rem';
+        input.style.background = theme.inputBg;
+        input.style.color = theme.inputText;
+        input.style.fontSize = '1rem';
+        input.style.boxSizing = 'border-box';
+        input.style.outline = 'none';
+        input.style.transition = 'border 0.15s ease-in-out';
+        sendBtn.style.flex = '0 0 auto';
+        sendBtn.style.margin = '0';
+        sendBtn.style.height = '2.5rem';
+        sendBtn.style.padding = '0 1.25rem';
+        sendBtn.style.background = theme.sendBtnBg;
+        sendBtn.style.color = theme.sendBtnText;
+        sendBtn.style.border = '1px solid #ececec';
+        sendBtn.style.borderLeft = 'none';
+        sendBtn.style.borderRadius = '0 0.75rem 0.75rem 0';
+        sendBtn.style.cursor = 'pointer';
+        sendBtn.style.fontWeight = '600';
+        sendBtn.style.fontSize = '1rem';
+        sendBtn.style.transition = 'background 0.15s ease-in-out, color 0.15s ease-in-out';
+        sendBtn.style.boxSizing = 'border-box';
+        sendBtn.style.display = 'flex';
+        sendBtn.style.justifyContent = 'center';
+        sendBtn.style.alignItems = 'center';
     }
 
     // Sanitize input to prevent XSS
@@ -1355,6 +1750,11 @@
         if (chatOpen) {
             chatContainer.style.display = 'flex';
             chatToggle.style.display = 'none';
+            
+            // Auto-scroll to bottom when chat opens with robust scroll function
+            setTimeout(function() {
+                forceScrollToBottom();
+            }, 150);
         } else {
             chatContainer.style.display = 'none';
             chatToggle.style.display = 'flex';
@@ -1378,6 +1778,96 @@
     window.generateSecureWsParams = generateSecureWsParams;
     window.connectWebSocket = connectWebSocket;
 
+    // Helper function to create visitor
+    const createVisitor = async (name, email, phone) => {
+        try {
+            var baseUrl = "http://localhost:8000/api/v1/"
+            var token = "cbacbe059689c3dec8173c05d806c7266b50176e"
+
+            const getVisitor = await fetch(`${baseUrl}visitors/?email=${email}`, {
+                method: "GET",
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Token ${token} `,
+                }
+            })
+
+            const getVisitorJson = await getVisitor.json();
+
+            if (getVisitorJson.detail === "Not found." || !getVisitorJson.length) {
+                // If visitor does not exist, create a new one
+                const visitor = await fetch(`${baseUrl}visitors/`, {
+                    method: "POST",
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Token ${token} `,
+                    },
+                    body: JSON.stringify({
+                        name,
+                        email,
+                        phone_number: phone,
+                    })
+                })
+                
+                if (!visitor.ok) {
+                    throw new Error(`Failed to create visitor: ${visitor.status}`);
+                }
+                
+                const visitorData = await visitor.json();
+                console.log(visitorData, 'visitorData')
+                visitorInfo = {
+                    "id": visitorData.id,
+                    "name": visitorData.name
+                };
+            }
+            else {
+                visitorInfo = {
+                    "id": getVisitorJson[0].id,
+                    "name": getVisitorJson[0].name
+                };
+                console.log(visitorInfo, 'visitorInfo')
+            }
+        } catch (error) {
+            console.error('Error creating/fetching visitor:', error);
+            // Create fallback visitor info for offline mode
+            visitorInfo = {
+                "id": "offline_" + Date.now(),
+                "name": name
+            };
+        }
+    }
+
+    // Function to check and auto-connect with stored session on widget load
+    function checkAndAutoConnect() {
+        var storedSession = localStorage.getItem('simple-chat-session');
+        
+        if (storedSession) {
+            try {
+                var sessionData = JSON.parse(storedSession);
+                // Check if session data is complete and not too old (24 hours)
+                var sessionAge = new Date() - new Date(sessionData.timestamp);
+                var maxAge = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+                
+                if (sessionData.chatID && sessionData.workflowId && sessionData.hashedWorkflowId && 
+                    sessionData.hash && sessionData.visitorInfo && sessionAge < maxAge) {
+                    
+                    // Set visitor info from stored session
+                    visitorInfo = sessionData.visitorInfo;
+                    
+                    // Auto-connect if not already connected
+                    if (!isWebSocketConnected && !currentSocket) {
+                        connectWebSocket();
+                    }
+                }
+            } catch (error) {
+                console.log('Error checking stored session for auto-connect:', error);
+            }
+        }
+    }
+
     // Initial load
     maybeShowLeadCapture();
+    
+    // Check for auto-connection after initial setup
+    setTimeout(checkAndAutoConnect, 100);
 })();
