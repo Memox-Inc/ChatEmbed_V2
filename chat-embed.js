@@ -552,6 +552,16 @@
         var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
         messages.innerHTML = '';
 
+         // Check if handover has already occurred by looking for handover messages
+        var hasHandoverMessage = msgs.some(function(msg) {
+            return msg.isSystemNotification && msg.notificationType === 'joined';
+        });
+        
+        // Set handover flag if handover message exists in chat history
+        if (hasHandoverMessage) {
+            isHandoverActive = true;
+        }
+
         for (var i = 0; i < msgs.length; i++) {
             var msg = msgs[i];
 
@@ -972,15 +982,17 @@
                     }
                 } else if (msgData.sender_type === "sales_rep" || msgData.sender === "sales_rep") {
                     var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
-                    msgs.push({
-                        text: msgData.content || '',
-                        sender: msgData.sender_type,
-                        isWelcomeMessage: false,
-                        created_at: formatTimeStamp(msgData.created_at)
-
-                    })
-                    localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
-                    loadMessages();
+                    var content = msgData.content || '';
+                    if (content.trim()) {
+                        msgs.push({
+                            text: content,
+                            sender: msgData.sender_type,
+                            isWelcomeMessage: false,
+                            created_at: formatTimeStamp(msgData.created_at)
+                        });
+                        localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
+                        loadMessages();
+                    }
                 }
             };
             currentSocket.onclose = function () {
