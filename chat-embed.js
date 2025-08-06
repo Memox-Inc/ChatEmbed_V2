@@ -822,6 +822,9 @@
                 }
             }
 
+            // Assemble the message
+            contentContainer.appendChild(msgDiv);
+            
             if (!msg.isWelcomeMessage) {
                 var timestamp = document.createElement('div');
                 timestamp.style.fontSize = '0.75rem';
@@ -830,8 +833,6 @@
                 timestamp.innerText = msg.created_at
                 contentContainer.appendChild(timestamp);
             }
-            // Assemble the message
-            contentContainer.appendChild(msgDiv);
             messageWrapper.appendChild(avatar);
             messageWrapper.appendChild(contentContainer);
             messageContainer.appendChild(messageWrapper);
