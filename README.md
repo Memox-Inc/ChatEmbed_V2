@@ -116,3 +116,38 @@ theme: {
 ```
 
 The chat widget will automatically appear in the bottom-right corner of your page.
+
+## Development
+
+### Local Development Server
+
+For local development and testing:
+
+1. Install dependencies:
+```bash
+npm install
+```
+
+2. Start the development server:
+```bash
+npm run dev
+```
+
+This will serve the chat embed files on `http://localhost:8080` with CORS enabled.
+
+### Integration with mmx-unified-chat
+
+To use the local version in the mmx-unified-chat project:
+
+1. Start the ChatEmbed_V2 dev server (as shown above)
+2. In the mmx-unified-chat project, ensure your `.env` file has:
+```
+NEXT_PUBLIC_CHAT_EMBED_OVERRIDE=http://localhost:8080/chat-embed.js
+```
+3. The SimpleChatWidget will automatically use your local version instead of the CDN
+
+### Available Scripts
+
+- `npm run dev` - Start development server on port 8080
+- `npm run serve` - Same as dev (alias)
+- `npm start` - Same as serve (alias)
