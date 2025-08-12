@@ -24,7 +24,15 @@
             sendBtnBg: '#0078d4',
             sendBtnText: '#fff',
             sendBtnHover: '#005fa3',
-            shadow: '0 2px 8px rgba(0,0,0,0.15)'
+            shadow: '0 2px 8px rgba(0,0,0,0.15)',
+            salesRepBubble: '#f1f5f9',
+            salesRepText: '#475569',
+            salesRepAvatar: '#E4E7FC',
+            userAvatar: '#8349ff',
+            botAvatar: '#E4E7FC',
+            handoverNotificationBg: '#E4E7FC',
+            handoverNotificationText: '#334155',
+            handoverNotificationBorder: '#8349FF'
         }
     };
 
@@ -42,8 +50,6 @@
 
     var currentSocket = null;
     var isWebSocketConnected = false;
-    var humanSocket = null;
-    var isHumanAgentActive = false;
     var visitorInfo = null;
     var isHandoverActive = false;
 
@@ -160,26 +166,38 @@
     refreshBtn.onmouseover = function () { refreshBtn.style.backgroundColor = 'rgba(255,255,255,0.1)'; };
     refreshBtn.onmouseout = function () { refreshBtn.style.backgroundColor = 'transparent'; };
     refreshBtn.onclick = function () {
-        localStorage.removeItem('simple-chat-messages');
-        localStorage.removeItem('simple-chat-session');
-        localStorage.removeItem('simple-chat-leads');
-        localStorage.removeItem('simple-chat-user-guid');
-        window.__simpleChatEmbedLeadCaptured = false;
-        visitorInfo = null;
-        isHandoverActive = false; // Reset handover flag
-        
-        // Close existing WebSocket connection
-        if (currentSocket) {
-            currentSocket.close();
-            currentSocket = null;
-            isWebSocketConnected = false;
-        }
-        
-        // Reset and show lead capture form
-        maybeShowLeadCapture();
-    };
+        var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
+        var wasHandoverActive = msgs.some(function (msg) {
+            return msg.isSystemNotification && msg.notificationType === 'joined';
+        });
 
-    var closeBtn = document.createElement('button');
+        var storedSession = localStorage.getItem('simple-chat-session');
+        var sessionHandoverActive = false;
+        if (storedSession) {
+            try {
+                var sessionData = JSON.parse(storedSession);
+                sessionHandoverActive = sessionData.handoverOccurred === true;
+            } catch (error) {
+                console.log('Error reading session handover flag:', error);
+            }
+        }
+
+        localStorage.removeItem('simple-chat-messages');
+
+        if (!wasHandoverActive && !sessionHandoverActive) {
+            isHandoverActive = false;
+        } else {
+            isHandoverActive = true;
+        }
+
+        console.log('Reset chat: handover status preserved =', isHandoverActive);
+
+        setupChatInput();
+        if (welcomeMessage) {
+            saveMessage(welcomeMessage, 'bot', 'welcomeMessage');
+        }
+        loadMessages();
+    }; var closeBtn = document.createElement('button');
     closeBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>';
     closeBtn.title = 'Close chat';
     closeBtn.style.background = 'transparent';
@@ -209,7 +227,6 @@
     chatContainer.appendChild(header);
     chatContainer.appendChild(separator);
 
-    // Chat messages area - Card Content design
     var messages = document.createElement('div');
     messages.style.flex = '1 1 0%';
     messages.style.overflowY = 'auto';
@@ -221,10 +238,8 @@
     messages.style.flexDirection = 'column';
     messages.style.gap = '1rem';
     messages.style.scrollBehavior = 'smooth';
-    // Hide scrollbar but keep functionality
-    messages.style.scrollbarWidth = 'none'; // Firefox
-    messages.style.msOverflowStyle = 'none'; // IE and Edge
-    // WebKit browsers and additional markdown styling
+    messages.style.scrollbarWidth = 'none';
+    messages.style.msOverflowStyle = 'none';
     var style = document.createElement('style');
     style.textContent = `
         #chat-messages::-webkit-scrollbar { display: none; }
@@ -246,7 +261,6 @@
 
     chatContainer.appendChild(messages);
 
-    // Create scroll to bottom button
     var scrollToBottomBtn = document.createElement('button');
     scrollToBottomBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 13 5 5 5-5"/><path d="M12 18V6"/></svg>';
     scrollToBottomBtn.title = 'Scroll to bottom';
@@ -260,13 +274,13 @@
     scrollToBottomBtn.style.color = '#ffffff';
     scrollToBottomBtn.style.border = 'none';
     scrollToBottomBtn.style.cursor = 'pointer';
-    scrollToBottomBtn.style.display = 'none'; // Initially hidden
+    scrollToBottomBtn.style.display = 'none';
     scrollToBottomBtn.style.alignItems = 'center';
     scrollToBottomBtn.style.justifyContent = 'center';
     scrollToBottomBtn.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
     scrollToBottomBtn.style.transition = 'all 0.3s ease';
     scrollToBottomBtn.style.zIndex = '10';
-    
+
     scrollToBottomBtn.addEventListener('mouseover', function () {
         scrollToBottomBtn.style.backgroundColor = theme.sendBtnHover || '#2563eb';
         scrollToBottomBtn.style.transform = 'scale(1.1)';
@@ -275,15 +289,14 @@
         scrollToBottomBtn.style.backgroundColor = theme.sendBtnBg || '#3b82f6';
         scrollToBottomBtn.style.transform = 'scale(1)';
     });
-    
-    scrollToBottomBtn.onclick = function() {
+
+    scrollToBottomBtn.onclick = function () {
         messages.scrollTop = messages.scrollHeight;
         scrollToBottomBtn.style.display = 'none';
     };
-    
+
     chatContainer.appendChild(scrollToBottomBtn);
 
-    // Chat input area - Card Footer design with separator
     var inputSeparator = document.createElement('div');
     inputSeparator.style.height = '1px';
     inputSeparator.style.background = '#e2e8f0';
@@ -300,7 +313,6 @@
     chatContainer.appendChild(inputSeparator);
     chatContainer.appendChild(inputContainer);
 
-    // Create input form container
     var inputForm = document.createElement('div');
     inputForm.style.display = 'grid';
     inputForm.style.gridTemplateColumns = '1fr auto';
@@ -308,7 +320,6 @@
     inputForm.style.alignItems = 'center';
     inputForm.style.width = '100%';
 
-    // Create the <input> field with modern styling
     var input = document.createElement('input');
     input.type = 'text';
     input.placeholder = 'Type your message...';
@@ -322,7 +333,6 @@
     input.style.outline = 'none';
     input.style.transition = 'border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out';
 
-    // Focus and blur states with modern styling
     input.addEventListener('focus', function () {
         input.style.borderColor = '#3b82f6';
         input.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
@@ -347,7 +357,6 @@
     sendBtn.style.justifyContent = 'center';
     sendBtn.style.transition = 'background-color 0.2s ease-in-out';
 
-    // Hover state for send button
     sendBtn.addEventListener('mouseover', function () {
         sendBtn.style.backgroundColor = theme.sendBtnHover || '#2563eb';
     });
@@ -355,17 +364,12 @@
         sendBtn.style.backgroundColor = theme.sendBtnBg || '#3b82f6';
     });
 
-
-
-    // Add input and button to form
     inputForm.appendChild(input);
     inputForm.appendChild(sendBtn);
 
-    // Add form to input container
     inputContainer.appendChild(inputForm);
     chatContainer.appendChild(inputContainer);
 
-    // Add chat to body
     document.body.appendChild(chatContainer);
 
     // Helper function to check if string is image data URL
@@ -552,11 +556,11 @@
         var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
         messages.innerHTML = '';
 
-         // Check if handover has already occurred by looking for handover messages
-        var hasHandoverMessage = msgs.some(function(msg) {
+        // Check if handover has already occurred by looking for handover messages
+        var hasHandoverMessage = msgs.some(function (msg) {
             return msg.isSystemNotification && msg.notificationType === 'joined';
         });
-        
+
         // Set handover flag if handover message exists in chat history
         if (hasHandoverMessage) {
             isHandoverActive = true;
@@ -580,7 +584,6 @@
                 notification.style.borderRadius = '20px';
                 notification.style.fontSize = '0.875rem';
                 notification.style.fontWeight = '500';
-                notification.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.3)';
                 notification.style.display = 'flex';
                 notification.style.alignItems = 'center';
                 notification.style.gap = '0.5rem';
@@ -591,8 +594,9 @@
                 var icon = document.createElement('span');
                 if (msg.notificationType === 'joined') {
                     icon.innerHTML = '👋';
-                    notification.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
-                    notification.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.3)';
+                    notification.style.background = theme.handoverNotificationBg || '#E4E7FC';
+                    notification.style.color = theme.handoverNotificationText || '#334155';
+                    notification.style.border = '1px solid ' + (theme.handoverNotificationBorder || '#8349FF');
                 } else {
                     icon.innerHTML = '💬';
                 }
@@ -601,7 +605,7 @@
                 notification.appendChild(icon);
                 notification.appendChild(document.createTextNode(msg.text));
                 notificationContainer.appendChild(notification);
-                
+
                 // Add fade-in animation if not already present
                 if (!document.getElementById('system-notification-style')) {
                     var style = document.createElement('style');
@@ -614,7 +618,7 @@
                     `;
                     document.head.appendChild(style);
                 }
-                
+
                 messages.appendChild(notificationContainer);
                 continue;
             }
@@ -630,50 +634,106 @@
             messageWrapper.style.display = 'flex';
             messageWrapper.style.gap = '0.5rem';
 
-            // Reverse layout for user messages
+            // Reverse layout for user messages only (bot and sales_rep start from left)
             if (msg.sender === 'user') {
                 messageWrapper.style.flexDirection = 'row-reverse';
                 messageWrapper.style.justifyContent = 'flex-start';
             }
 
-            // Create avatar
-            var avatar = document.createElement('div');
-            avatar.style.width = '40px';
-            avatar.style.height = '40px';
-            avatar.style.borderRadius = '50%';
-            avatar.style.backgroundColor = msg.sender === 'user' ? '#e5e7eb' : '#f3f4f6';
-            avatar.style.display = 'flex';
-            avatar.style.alignItems = 'center';
-            avatar.style.justifyContent = 'center';
-            avatar.style.fontSize = '14px';
-            avatar.style.fontWeight = '500';
-            avatar.style.color = '#6b7280';
-            avatar.style.flexShrink = '0';
-            avatar.innerText = msg.sender === 'user' ? 'U' : 'A';
+            // Create avatar for user, sales_rep, and bot messages
+            var avatar = null;
+            if (msg.sender === 'user') {
+                avatar = document.createElement('div');
+                avatar.style.width = '40px';
+                avatar.style.height = '40px';
+                avatar.style.borderRadius = '50%';
+                avatar.style.display = 'flex';
+                avatar.style.alignItems = 'center';
+                avatar.style.justifyContent = 'center';
+                avatar.style.background = theme.userAvatar || '#8349ff';
+
+                // Load user SVG from assets
+                var userSvg = document.createElement('div');
+                userSvg.innerHTML = `
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M19 21V19C19 17.9391 18.5786 16.9217 17.8284 16.1716C17.0783 15.4214 16.0609 15 15 15H9C7.93913 15 6.92172 15.4214 6.17157 16.1716C5.42143 16.9217 5 17.9391 5 19V21" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M12 11C14.2091 11 16 9.20914 16 7C16 4.79086 14.2091 3 12 3C9.79086 3 8 4.79086 8 7C8 9.20914 9.79086 11 12 11Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                `;
+                avatar.appendChild(userSvg);
+            } else if (msg.sender === 'sales_rep') {
+                avatar = document.createElement('div');
+                avatar.style.width = '40px';
+                avatar.style.height = '40px';
+                avatar.style.borderRadius = '50%';
+                avatar.style.display = 'flex';
+                avatar.style.alignItems = 'center';
+                avatar.style.justifyContent = 'center';
+                avatar.style.background = theme.salesRepAvatar || '#E4E7FC';
+                var iconColor = theme.primary || '#8349FF';
+                avatar.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" style="width:26px;height:26px;color:' + iconColor + ';" width="200" height="200" viewBox="0 0 24 24"><path fill="currentColor" d="M19.938 8H21a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-1.062A8.001 8.001 0 0 1 12 23v-2a6 6 0 0 0 6-6V9A6 6 0 0 0 6 9v7H3a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h1.062a8.001 8.001 0 0 1 15.876 0ZM3 10v4h1v-4H3Zm17 0v4h1v-4h-1ZM7.76 15.785l1.06-1.696A5.972 5.972 0 0 0 12 15a5.972 5.972 0 0 0 3.18-.911l1.06 1.696A7.963 7.963 0 0 1 12 17a7.962 7.962 0 0 1-4.24-1.215Z"/></svg>'; // Sales rep icon
+            } else if (msg.sender === 'bot' || msg.sender === 'ai') {
+                avatar = document.createElement('div');
+                avatar.style.width = '40px';
+                avatar.style.height = '40px';
+                avatar.style.borderRadius = '50%';
+                avatar.style.display = 'flex';
+                avatar.style.alignItems = 'center';
+                avatar.style.justifyContent = 'center';
+                avatar.style.background = theme.botAvatar || '#E4E7FC';
+
+                // Load bot SVG from assets
+                var botSvg = document.createElement('div');
+                var iconColor = theme.primary || '#8349ff';
+                botSvg.innerHTML = `
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <g clip-path="url(#clip0_4_4929)">
+                            <path d="M19 11H5C3.89543 11 3 11.8954 3 13V19C3 20.1046 3.89543 21 5 21H19C20.1046 21 21 20.1046 21 19V13C21 11.8954 20.1046 11 19 11Z" stroke="${iconColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M12 7C13.1046 7 14 6.10457 14 5C14 3.89543 13.1046 3 12 3C10.8954 3 10 3.89543 10 5C10 6.10457 10.8954 7 12 7Z" stroke="${iconColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M12 7V11" stroke="${iconColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </g>
+                        <defs>
+                            <clipPath id="clip0_4_4929">
+                                <rect width="24" height="24" fill="white"/>
+                            </clipPath>
+                        </defs>
+                    </svg>
+                `;
+                avatar.appendChild(botSvg);
+            }
 
             // Create message content container
             var contentContainer = document.createElement('div');
             contentContainer.style.display = 'flex';
             contentContainer.style.flexDirection = 'column';
             contentContainer.style.gap = '0.5rem';
-            contentContainer.style.maxWidth = '70%';
+            contentContainer.style.maxWidth = msg.sender === 'user' ? '70%' : '70%'; // All message types now have avatars
 
-            // Create message bubble
             var msgDiv = document.createElement('div');
             msgDiv.style.padding = '0.75rem 1rem';
-            msgDiv.style.borderRadius = '0.75rem';
             msgDiv.style.wordBreak = 'break-word';
             msgDiv.style.fontSize = '0.875rem';
             msgDiv.style.lineHeight = '1.25rem';
+            msgDiv.style.position = 'relative';
 
             if (msg.sender === 'user') {
+                // User message styling
                 msgDiv.style.backgroundColor = theme.userBubble || '#dbeafe';
                 msgDiv.style.color = theme.userText || '#1e40af';
                 msgDiv.style.alignSelf = 'flex-end';
+                msgDiv.style.borderRadius = '1rem 1rem 0.25rem 1rem';
+                msgDiv.style.boxShadow = '0 2px 8px rgba(59, 130, 246, 0.15)';
+            } else if (msg.sender === 'sales_rep') {
+                msgDiv.style.background = theme.salesRepBubble || '#f1f5f9';
+                msgDiv.style.color = theme.salesRepText || '#475569';
+                msgDiv.style.alignSelf = 'flex-start';
+                msgDiv.style.borderRadius = '1rem 1rem 1rem 0.25rem';
             } else {
                 msgDiv.style.backgroundColor = theme.botBubble || '#f1f5f9';
                 msgDiv.style.color = theme.botText || '#475569';
                 msgDiv.style.alignSelf = 'flex-start';
+                msgDiv.style.borderRadius = '1rem 1rem 1rem 0.25rem';
+                msgDiv.style.boxShadow = '0 2px 8px rgba(71, 85, 105, 0.1)';
             }
 
             // Handle different message types
@@ -689,19 +749,47 @@
                 img.style.display = 'block';
                 msgDiv.appendChild(img);
             } else {
-                // Use markdown conversion for bot messages, check if it's streaming
+                // Content wrapper for all messages
+                var contentWrapper = document.createElement('div');
+
+                // Use markdown conversion for bot messages, plain text for others
                 var isStreaming = msg.isStreaming === true;
                 if (msg.sender === 'bot' || msg.sender === 'ai') {
-                    msgDiv.innerHTML = markdownToHtml(msg.text, isStreaming);
+                    contentWrapper.innerHTML = markdownToHtml(msg.text, isStreaming);
+                } else if (msg.sender === 'sales_rep') {
+                    // Sales rep messages with clean formatting and sender name at top
+                    var messageText = escapeHtml(msg.text).replace(/\n/g, '<br>');
+                    var senderName = 'Sales Representative';
+
+                    // Safely extract sender name
+                    if (msg.senderName) {
+                        if (typeof msg.senderName === 'string') {
+                            senderName = msg.senderName;
+                        } else if (msg.senderName.name) {
+                            senderName = msg.senderName.name;
+                        }
+                    }
+
+                    // Create message content with sender name at the top
+                    contentWrapper.innerHTML =
+                        '<div style=" padding-bottom: 6px; font-size: 0.75rem; color: #6b7280; font-weight: 500;">~ ' +
+                        senderName + '</div>' + messageText;
+
+                    contentWrapper.style.fontWeight = '500';
+                    contentWrapper.style.lineHeight = '1.4';
+                    contentWrapper.style.display = 'block';
+                    contentWrapper.style.width = '100%';
                 } else {
-                    // For user messages, just escape HTML and handle basic formatting
-                    msgDiv.innerHTML = escapeHtml(msg.text).replace(/\n/g, '<br>');
+                    // User messages
+                    contentWrapper.innerHTML = escapeHtml(msg.text).replace(/\n/g, '<br>');
                 }
+
+                msgDiv.appendChild(contentWrapper);
             }
 
             // Assemble the message
             contentContainer.appendChild(msgDiv);
-            
+
             if (!msg.isWelcomeMessage) {
                 var timestamp = document.createElement('div');
                 timestamp.style.fontSize = '0.75rem';
@@ -710,16 +798,19 @@
                 timestamp.innerText = msg.created_at
                 contentContainer.appendChild(timestamp);
             }
-            messageWrapper.appendChild(avatar);
+            // Only append avatar if it exists (user messages only)
+            if (avatar) {
+                messageWrapper.appendChild(avatar);
+            }
             messageWrapper.appendChild(contentContainer);
             messageContainer.appendChild(messageWrapper);
             messages.appendChild(messageContainer);
         }
 
         messages.scrollTop = messages.scrollHeight;
-        
+
         // Check if scroll button should be visible with a small delay to ensure proper rendering
-        setTimeout(function() {
+        setTimeout(function () {
             // Force scroll to bottom again to ensure it works
             messages.scrollTop = messages.scrollHeight;
             checkScrollPosition();
@@ -731,7 +822,7 @@
         // Add a small threshold to account for rounding differences
         var scrollThreshold = 100;
         var isScrolledToBottom = messages.scrollHeight - messages.scrollTop <= messages.clientHeight + scrollThreshold;
-        
+
         if (isScrolledToBottom) {
             scrollToBottomBtn.style.display = 'none';
         } else {
@@ -743,23 +834,23 @@
     function forceScrollToBottom() {
         var attempts = 0;
         var maxAttempts = 5;
-        
+
         function tryScroll() {
             messages.scrollTop = messages.scrollHeight;
             attempts++;
-            
+
             if (attempts < maxAttempts && messages.scrollTop < messages.scrollHeight - messages.clientHeight - 10) {
                 setTimeout(tryScroll, 50);
             } else {
                 checkScrollPosition();
             }
         }
-        
+
         tryScroll();
     }
 
     // Add scroll event listener to messages container
-    messages.addEventListener('scroll', function() {
+    messages.addEventListener('scroll', function () {
         checkScrollPosition();
     });
 
@@ -778,80 +869,21 @@
         localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
     }
 
-    // --- Human takeover groundwork ---
-    // This flag determines if the chat is currently handled by a human agent (via WebSocket/Django backend)
-    var isHumanAgentActive = false;
-    // This will hold the WebSocket connection if/when a human agent takes over
-    var humanSocket = null;
-
-    /**
-     * Call this function to switch the chat from AI to human agent mode.
-     * It will close any existing AI session and establish a secure WebSocket connection to your backend.
-     *
-     * @param {string} wsUrl - The WebSocket URL for your Django backend (e.g. wss://yourdomain.com/ws/support/room_id/)
-     * @param {string} authToken - (Optional) A secure token for authenticating the user/session with your backend.
-     */
-    function switchToHumanAgent(wsUrl, authToken) {
-        if (isHumanAgentActive) return; // Already in human mode
-        isHumanAgentActive = true;
-        // Optionally, show a UI message: "You are now chatting with a human agent."
-        saveMessage('You are now chatting with a human agent.', 'bot');
-        loadMessages();
-        // Close any previous socket
-        if (humanSocket) humanSocket.close();
-        // --- SECURITY NOTE ---
-        // Always use wss:// (secure WebSocket) in production.
-        // Pass a secure, short-lived auth token (JWT or similar) to authenticate the user/session.
-        // Never expose sensitive credentials in the client code.
-        var wsFullUrl = wsUrl;
-        if (authToken) {
-            // Example: append token as query param (your backend should validate it!)
-            wsFullUrl += (wsUrl.indexOf('?') === -1 ? '?' : '&') + 'token=' + encodeURIComponent(authToken);
-        }
-        humanSocket = new WebSocket(wsFullUrl);
-        humanSocket.onopen = function () {
-            // Optionally notify the backend of the chat history or user info here
-            // humanSocket.send(JSON.stringify({type: 'init', history: ...}));
-        };
-        humanSocket.onmessage = function (event) {
-            // Expect messages from the agent as plain text or JSON
-            var data = event.data;
-            try {
-                var parsed = JSON.parse(data);
-                if (parsed.text) data = parsed.text;
-            } catch (e) { }
-            saveMessage(data, 'bot');
-            loadMessages();
-        };
-        humanSocket.onclose = function () {
-            // Optionally notify the user
-            saveMessage('The human agent has left the chat.', 'bot');
-            loadMessages();
-            isHumanAgentActive = false;
-            humanSocket = null;
-        };
-        humanSocket.onerror = function (err) {
-            saveMessage('Connection error with human agent.', 'bot');
-            loadMessages();
-        };
-    }
-
-    // --- WebSocket connection management ---
     async function connectWebSocket() {
         if (isWebSocketConnected || currentSocket) return;
-        
+
         // Try to get stored session data first
         var storedSession = localStorage.getItem('simple-chat-session');
         var chatID, workflow_id, wsParams;
-        
+
         if (storedSession) {
             try {
                 var sessionData = JSON.parse(storedSession);
                 // Check if session data is complete and not too old (optional: 24 hours)
                 var sessionAge = new Date() - new Date(sessionData.timestamp);
                 var maxAge = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
-                
-                if (sessionData.chatID && sessionData.workflowId && sessionData.hashedWorkflowId && 
+
+                if (sessionData.chatID && sessionData.workflowId && sessionData.hashedWorkflowId &&
                     sessionData.hash && sessionData.visitorInfo && sessionAge < maxAge) {
                     chatID = sessionData.chatID;
                     workflow_id = sessionData.workflowId;
@@ -872,14 +904,14 @@
                 storedSession = null;
             }
         }
-        
+
         if (!storedSession) {
             // Generate new session data if not stored or invalid
             chatID = generateChatId();
             workflow_id = workflowId;
             wsParams = await generateSecureWsParams(workflow_id);
             console.log('Generated new session data for WebSocket connection');
-            
+
             // Only store if we have visitor info (from completed form)
             if (visitorInfo) {
                 var chatSessionData = {
@@ -893,9 +925,8 @@
                 localStorage.setItem('simple-chat-session', JSON.stringify(chatSessionData));
             }
         }
-        
+
         var wsUrl = `${socketUrl}${chatID}/?workflow_id=${wsParams.hashed_workflow_id}&hash=${wsParams.hash}&visitorInfo=${JSON.stringify(visitorInfo)}`;
-        console.log(visitorInfo,'my visitor info')
         try {
             currentSocket = new WebSocket(wsUrl);
             currentSocket.onopen = function () {
@@ -911,10 +942,22 @@
 
                 if (msgData?.message_type === "handover_message") {
                     console.log('Handover message received:', msgData);
-                    
+
                     // Set handover flag to stop showing typing indicators
                     isHandoverActive = true;
-                    
+
+                    // Store handover flag in session data for persistence
+                    var storedSession = localStorage.getItem('simple-chat-session');
+                    if (storedSession) {
+                        try {
+                            var sessionData = JSON.parse(storedSession);
+                            sessionData.handoverOccurred = true;
+                            localStorage.setItem('simple-chat-session', JSON.stringify(sessionData));
+                        } catch (error) {
+                            console.log('Error updating session with handover flag:', error);
+                        }
+                    }
+
                     // Store handover message in localStorage like other messages
                     var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
                     msgs.push({
@@ -926,7 +969,7 @@
                         created_at: formatTimeStamp(msgData.created_at || new Date().toISOString())
                     });
                     localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
-                    
+
                     // Reload messages to show the stored handover message
                     loadMessages();
                     return;
@@ -934,6 +977,8 @@
 
                 // Handle AI/bot messages (both streaming and regular) - only if handover is not active
                 if ((msgData.sender_type === 'ai' || msgData.sender === 'ai' || msgData.sender_type === 'bot' || msgData.sender === 'bot') && !isHandoverActive) {
+
+                    console.log(msgData, 'my message Data')
                     var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
                     var lastMessage = msgs[msgs.length - 1];
 
@@ -977,22 +1022,29 @@
 
                             });
                         }
+                        console.log(msgs, 'my messages')
                         localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
                         loadMessages(); // Use immediate loading for streaming
                     }
                 } else if (msgData.sender_type === "sales_rep" || msgData.sender === "sales_rep") {
-                    var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
                     var content = msgData.content || '';
-                    if (content.trim()) {
-                        msgs.push({
-                            text: content,
-                            sender: msgData.sender_type,
-                            isWelcomeMessage: false,
-                            created_at: formatTimeStamp(msgData.created_at)
-                        });
-                        localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
-                        loadMessages();
+
+                    // Ignore empty sales_rep messages completely - these should not create typing indicators
+                    if (!content || !content.trim()) {
+                        console.log('Ignoring empty sales_rep message:', msgData);
+                        return;
                     }
+
+                    var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
+                    msgs.push({
+                        text: content,
+                        sender: msgData.sender_type,
+                        senderName: msgData.sender || msgData.sender_name || 'Sales Representative', // Capture sender name
+                        isWelcomeMessage: false,
+                        created_at: formatTimeStamp(msgData.created_at)
+                    });
+                    localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
+                    loadMessages();
                 }
             };
             currentSocket.onclose = function () {
@@ -1042,12 +1094,6 @@
             loadMessages();
         }
 
-        // Check for human agent handover first
-        if (isHumanAgentActive && humanSocket && humanSocket.readyState === 1) {
-            humanSocket.send(val);
-            return;
-        }
-        // Ensure WebSocket connection is established
         if (!isWebSocketConnected || !currentSocket || currentSocket.readyState !== WebSocket.OPEN) {
             connectWebSocket();
             // Wait for connection and then send message
@@ -1102,23 +1148,14 @@
         }
     }
 
-    // --- Example usage ---
-    // To trigger human takeover from outside (e.g. by a button or backend event), call:
-    // switchToHumanAgent('wss://yourdomain.com/ws/support/room_id/', 'secure-auth-token');
-    //
-    // You can expose this function globally if needed:
-    window.SimpleChatEmbedSwitchToHuman = switchToHumanAgent;
-
     sendBtn.onclick = sendMessage;
     input.addEventListener('keydown', function (e) {
         if (e.key === 'Enter') sendMessage();
     });
 
-    // Lead capture form with ChatWindowComponent styling
     function showLeadCaptureInChat(onComplete) {
         messages.innerHTML = '';
 
-        // Create main container matching ChatWindowComponent layout
         var wrapper = document.createElement('div');
         wrapper.style.display = 'flex';
         wrapper.style.flexDirection = 'column';
@@ -1126,10 +1163,8 @@
         wrapper.style.justifyContent = 'center';
         wrapper.style.height = '100%';
         wrapper.style.width = '100%';
-        // wrapper.style.padding = '2rem';
         wrapper.style.gap = '1.5rem';
 
-        // Form fields container
         var formContainer = document.createElement('div');
         formContainer.style.width = '100%';
         formContainer.style.maxWidth = '300px';
@@ -1137,7 +1172,6 @@
         formContainer.style.flexDirection = 'column';
         formContainer.style.gap = '1.5rem';
 
-        // Full Name field
         var nameFieldContainer = document.createElement('div');
         nameFieldContainer.style.display = 'flex';
         nameFieldContainer.style.flexDirection = 'column';
@@ -1390,7 +1424,7 @@
             var chatID = generateChatId();
             var workflow_id = workflowId;
             var wsParams = await generateSecureWsParams(workflow_id);
-            
+
             // Store chat session data in localStorage
             var chatSessionData = {
                 chatID: chatID,
@@ -1491,32 +1525,43 @@
 
     // On load, show lead capture inside chat window
     function maybeShowLeadCapture() {
-        // Check if we have existing messages in localStorage
+        // Check if we have existing messages in localStorage - if yes, skip lead form
         var existingMessages = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
         var storedSession = localStorage.getItem('simple-chat-session');
-        
+
         // If we have messages and session data, skip the form
         if (existingMessages.length > 0 && storedSession) {
             window.__simpleChatEmbedLeadCaptured = true;
-            
-            // Load stored session data
-            var sessionData = JSON.parse(storedSession);
-            visitorInfo = sessionData.visitorInfo;
-            
+
+            // Load stored session data and check for handover flag
+            try {
+                var sessionData = JSON.parse(storedSession);
+                visitorInfo = sessionData.visitorInfo;
+
+                // Check if handover occurred in this session
+                if (sessionData.handoverOccurred === true) {
+                    isHandoverActive = true;
+                    console.log('Restored handover status from session data');
+                }
+            } catch (error) {
+                console.log('Error parsing session data:', error);
+            }
+
             // Show chat input immediately
             setupChatInput();
             loadMessages();
-            
+
             // Ensure auto-scroll to bottom after loading existing messages with robust scroll
-            setTimeout(function() {
+            setTimeout(function () {
                 forceScrollToBottom();
             }, 200);
-            
+
             // Automatically establish WebSocket connection with stored session data
             connectWebSocket();
             return;
         }
-        
+
+        // Only show lead capture form if we don't have messages or haven't captured lead yet
         if (!window.__simpleChatEmbedLeadCaptured) {
             inputContainer.style.display = 'none';
             showLeadCaptureInChat(function (lead) {
@@ -1635,9 +1680,9 @@
         if (chatOpen) {
             chatContainer.style.display = 'flex';
             chatToggle.style.display = 'none';
-            
+
             // Auto-scroll to bottom when chat opens with robust scroll function
-            setTimeout(function() {
+            setTimeout(function () {
                 forceScrollToBottom();
             }, 150);
         } else {
@@ -1666,8 +1711,16 @@
     // Helper function to create visitor
     const createVisitor = async (name, email, phone) => {
         try {
-            var baseUrl = "http://localhost:8000/api/v1/"
-            var token = "cbacbe059689c3dec8173c05d806c7266b50176e"
+            var baseUrl = null
+            var token = null
+            if (config.socketUrl === "wss://hub.memox.io") {
+                baseUrl = "https://hub.memox.io/api/v1/"
+                token = "eedb5fc2b457815409e45f3b1dc023c276c9cedb"
+            }
+            else {
+                baseUrl = "http://localhost:8000/api/v1/"
+                token = "cbacbe059689c3dec8173c05d806c7266b50176e"
+            }
 
             const getVisitor = await fetch(`${baseUrl}visitors/?email=${email}`, {
                 method: "GET",
@@ -1693,11 +1746,11 @@
                         phone_number: phone,
                     })
                 })
-                
+
                 if (!visitor.ok) {
                     throw new Error(`Failed to create visitor: ${visitor.status}`);
                 }
-                
+
                 const visitorData = await visitor.json();
                 console.log(visitorData, 'visitorData')
                 visitorInfo = {
@@ -1725,20 +1778,20 @@
     // Function to check and auto-connect with stored session on widget load
     function checkAndAutoConnect() {
         var storedSession = localStorage.getItem('simple-chat-session');
-        
+
         if (storedSession) {
             try {
                 var sessionData = JSON.parse(storedSession);
                 // Check if session data is complete and not too old (24 hours)
                 var sessionAge = new Date() - new Date(sessionData.timestamp);
                 var maxAge = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
-                
-                if (sessionData.chatID && sessionData.workflowId && sessionData.hashedWorkflowId && 
+
+                if (sessionData.chatID && sessionData.workflowId && sessionData.hashedWorkflowId &&
                     sessionData.hash && sessionData.visitorInfo && sessionAge < maxAge) {
-                    
+
                     // Set visitor info from stored session
                     visitorInfo = sessionData.visitorInfo;
-                    
+
                     // Auto-connect if not already connected
                     if (!isWebSocketConnected && !currentSocket) {
                         connectWebSocket();
@@ -1752,7 +1805,7 @@
 
     // Initial load
     maybeShowLeadCapture();
-    
+
     // Check for auto-connection after initial setup
     setTimeout(checkAndAutoConnect, 100);
 })();
