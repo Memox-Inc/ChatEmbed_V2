@@ -10,9 +10,9 @@
     <script>
         // Production test configuration
         window.SimpleChatEmbedConfig = {
-            socketUrl: "ws://localhost:8000",
+            socketUrl: "wss://hub.memox.io",
             workflowId: "a2b8ad41-9fb7-40ed-8e5d-d64cbcad8f03",
-            title: "Production Test Chat",
+            title: "Containerone",
             welcomeMessage: "Welcome! This is a production test of the chat system.",
             theme: {
                 primary: '#8349ff',
@@ -21,6 +21,14 @@
                 botBubble: '#f8f9fa',
                 userText: '#fff',
                 botText: '#2d3748',
+                salesRepBubble: '#f8f9fa',   
+                salesRepText: '#2d3748',    
+                userAvatar: '#8349ff',      
+                botAvatar: '#E4E7FC',       
+                salesRepAvatar: '#E4E7FC',   
+                handoverNotificationBg: '#E4E7FC',     
+                handoverNotificationText: '#334155',   
+                handoverNotificationBorder: '#8349FF', 
                 background: '#fff',
                 border: '#e2e8f0',
                 text: '#2d3748',
@@ -34,10 +42,11 @@
                 shadow: '0 10px 30px rgba(0,0,0,0.1)'
             }
         };
+
         
    
     </script>
     
-    <script src="./chat-embed.js"></script>
+    <script src="./chat-embed-min.js"></script>
 </body>
 </html>
