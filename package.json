@@ -1,0 +1,22 @@
+{
+  "name": "chatembed-v2",
+  "version": "1.0.0",
+  "description": "Chat embed widget for web applications",
+  "main": "chat-embed.js",
+  "scripts": {
+    "dev": "npx serve . -p 8080 --cors",
+    "serve": "npx serve . -p 8080 --cors",
+    "start": "npm run serve"
+  },
+  "keywords": [
+    "chat",
+    "embed",
+    "widget",
+    "javascript"
+  ],
+  "author": "Memox Inc",
+  "license": "MIT",
+  "devDependencies": {
+    "serve": "^14.2.1"
+  }
+}
