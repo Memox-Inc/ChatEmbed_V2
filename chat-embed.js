@@ -1436,15 +1436,6 @@
             var language = navigator.language;
             var referrer = document.referrer;
 
-            // Generate a GUID for the user (if not already present)
-            var guid = localStorage.getItem('simple-chat-user-guid');
-            if (!guid) {
-                guid = ([1e7] + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, c =>
-                    (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
-                );
-                localStorage.setItem('simple-chat-user-guid', guid);
-            }
-
             var leadData = {
                 name: sanitize(nameInput.value),
                 email: sanitize(emailInput.value),
@@ -1455,7 +1446,6 @@
                 url,
                 language,
                 referrer,
-                guid,
                 ip: '' // Remove IP tracking for faster loading
             };
 
