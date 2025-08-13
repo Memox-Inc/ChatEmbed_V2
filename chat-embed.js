@@ -1072,8 +1072,8 @@
 
     // --- Message sending logic update ---
     // This function now uses WebSocket instead of API calls
-    function sendMessage() {
-        var val = input.value.trim();
+    function sendMessage(value) {
+        var val = input.value.trim() || value
         if (!val) return;
         // Save user message immediately
         saveMessage(val, 'user');
@@ -1455,6 +1455,8 @@
             localStorage.setItem('simple-chat-leads', JSON.stringify(leads));
 
             onComplete(leadData);
+            sendMessage(`${nameInput.value} ${emailInput.value} ${phoneInput.value}`);  
+
         };
 
         // Allow pressing Enter to submit the form
