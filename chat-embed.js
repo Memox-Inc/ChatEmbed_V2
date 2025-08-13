@@ -190,7 +190,6 @@
             isHandoverActive = true;
         }
 
-        console.log('Reset chat: handover status preserved =', isHandoverActive);
 
         setupChatInput();
         if (welcomeMessage) {
@@ -892,7 +891,6 @@
                         hash: sessionData.hash
                     };
                     visitorInfo = sessionData.visitorInfo;
-                    console.log('Using stored session data for WebSocket connection');
                 } else {
                     // Session is invalid or expired, generate new data
                     throw new Error('Invalid or expired session');
@@ -910,7 +908,6 @@
             chatID = generateChatId();
             workflow_id = workflowId;
             wsParams = await generateSecureWsParams(workflow_id);
-            console.log('Generated new session data for WebSocket connection');
 
             // Only store if we have visitor info (from completed form)
             if (visitorInfo) {
@@ -941,7 +938,6 @@
                 }
 
                 if (msgData?.message_type === "handover_message") {
-                    console.log('Handover message received:', msgData);
 
                     // Set handover flag to stop showing typing indicators
                     isHandoverActive = true;
@@ -978,7 +974,6 @@
                 // Handle AI/bot messages (both streaming and regular) - only if handover is not active
                 if ((msgData.sender_type === 'ai' || msgData.sender === 'ai' || msgData.sender_type === 'bot' || msgData.sender === 'bot') && !isHandoverActive) {
 
-                    console.log(msgData, 'my message Data')
                     var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
                     var lastMessage = msgs[msgs.length - 1];
 
@@ -1022,7 +1017,6 @@
 
                             });
                         }
-                        console.log(msgs, 'my messages')
                         localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
                         loadMessages(); // Use immediate loading for streaming
                     }
@@ -1031,7 +1025,6 @@
 
                     // Ignore empty sales_rep messages completely - these should not create typing indicators
                     if (!content || !content.trim()) {
-                        console.log('Ignoring empty sales_rep message:', msgData);
                         return;
                     }
 
@@ -1066,7 +1059,6 @@
 
     function formatTimeStamp(timestamp) {
         const createdAt = new Date(timestamp)// or your date value
-        console.log(createdAt, 'createdAT')
         const formattedTime = createdAt.toLocaleTimeString("en-US", {
             hour: "2-digit",
             minute: "2-digit",
@@ -1444,63 +1436,35 @@
             var language = navigator.language;
             var referrer = document.referrer;
 
-            // Fetch public IP address
-            fetch('https://api.ipify.org?format=json')
-                .then(function (res) { return res.json(); })
-                .then(function (ipData) {
-                    var ip = ipData.ip || '';
+            // Generate a GUID for the user (if not already present)
+            var guid = localStorage.getItem('simple-chat-user-guid');
+            if (!guid) {
+                guid = ([1e7] + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, c =>
+                    (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+                );
+                localStorage.setItem('simple-chat-user-guid', guid);
+            }
 
-                    // Generate a GUID for the user (if not already present)
-                    var guid = localStorage.getItem('simple-chat-user-guid');
-                    if (!guid) {
-                        guid = ([1e7] + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, c =>
-                            (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
-                        );
-                        localStorage.setItem('simple-chat-user-guid', guid);
-                    }
+            var leadData = {
+                name: sanitize(nameInput.value),
+                email: sanitize(emailInput.value),
+                phone: sanitize(phoneInput.value),
+                timestamp,
+                userAgent,
+                platform,
+                url,
+                language,
+                referrer,
+                guid,
+                ip: '' // Remove IP tracking for faster loading
+            };
 
-                    var leadData = {
-                        name: sanitize(nameInput.value),
-                        email: sanitize(emailInput.value),
-                        phone: sanitize(phoneInput.value),
-                        timestamp,
-                        userAgent,
-                        platform,
-                        url,
-                        language,
-                        referrer,
-                        guid,
-                        ip
-                    };
+            // Store lead in localStorage array for later sending
+            var leads = JSON.parse(localStorage.getItem('simple-chat-leads') || '[]');
+            leads.push(leadData);
+            localStorage.setItem('simple-chat-leads', JSON.stringify(leads));
 
-                    // Store lead in localStorage array for later sending
-                    var leads = JSON.parse(localStorage.getItem('simple-chat-leads') || '[]');
-                    leads.push(leadData);
-                    localStorage.setItem('simple-chat-leads', JSON.stringify(leads));
-
-                    onComplete(leadData);
-                })
-                .catch(function () {
-                    // Fallback if IP fetch fails
-                    var leadData = {
-                        name: sanitize(nameInput.value),
-                        email: sanitize(emailInput.value),
-                        phone: sanitize(phoneInput.value),
-                        timestamp: new Date().toISOString(),
-                        userAgent: navigator.userAgent,
-                        platform: navigator.platform,
-                        url: window.location.href,
-                        language: navigator.language,
-                        referrer: document.referrer,
-                        guid: localStorage.getItem('simple-chat-user-guid') || 'unknown',
-                        ip: ''
-                    };
-
-                    var leads = JSON.parse(localStorage.getItem('simple-chat-leads') || '[]');
-                    leads.push(leadData);
-                    localStorage.setItem('simple-chat-leads', JSON.stringify(leads));
-                    onComplete(leadData);
-                });
+            onComplete(leadData);
         };
 
         // Allow pressing Enter to submit the form
@@ -1541,7 +1505,6 @@
                 // Check if handover occurred in this session
                 if (sessionData.handoverOccurred === true) {
                     isHandoverActive = true;
-                    console.log('Restored handover status from session data');
                 }
             } catch (error) {
                 console.log('Error parsing session data:', error);
@@ -1752,7 +1715,6 @@
                 }
 
                 const visitorData = await visitor.json();
-                console.log(visitorData, 'visitorData')
                 visitorInfo = {
                     "id": visitorData.id,
                     "name": visitorData.name
@@ -1763,7 +1725,6 @@
                     "id": getVisitorJson[0].id,
                     "name": getVisitorJson[0].name
                 };
-                console.log(visitorInfo, 'visitorInfo')
             }
         } catch (error) {
             console.error('Error creating/fetching visitor:', error);
