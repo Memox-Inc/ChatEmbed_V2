@@ -1,5 +1,24 @@
 
 (function () {
+    // Load marked.js library
+    if (typeof marked === 'undefined') {
+        var script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/marked/lib/marked.umd.js';
+        script.onload = function() {
+            console.log('Marked.js library loaded');
+            initializeChatEmbed();
+        };
+        script.onerror = function() {
+            console.warn('Failed to load marked.js from CDN, initializing without it');
+            initializeChatEmbed();
+        };
+        document.head.appendChild(script);
+        return;
+    } else {
+        initializeChatEmbed();
+    }
+
+function initializeChatEmbed() {
     var defaultConfig = {
         title: 'Chat',
         theme: {
@@ -397,149 +416,53 @@
         return loader;
     }
 
-    // Helper: convert markdown to HTML with proper styling
+    // Helper: convert markdown to HTML using marked.js library
     function markdownToHtml(text, isStreaming = false) {
         if (!text) return '';
 
-        var html = text;
-
-        // For streaming, only do basic processing to avoid performance issues
-        if (isStreaming) {
-            // Only handle basic formatting during streaming
-            html = html.replace(/\*\*([^*]+)\*\*/g, '<strong style="font-weight:600;">$1</strong>');
-            html = html.replace(/\*([^*]+)\*/g, '<em style="font-style:italic;">$1</em>');
-            html = html.replace(/`([^`]+)`/g, '<code style="background:#f6f8fa;border-radius:3px;padding:2px 4px;font-family:ui-monospace,SFMono-Regular,\'SF Mono\',Consolas,\'Liberation Mono\',Menlo,monospace;font-size:85%;">$1</code>');
-            html = html.replace(/\n/g, '<br>');
-            return html;
+        // Always use marked.js for consistent processing, whether streaming or not
+        try {
+            // Check if marked is available
+            if (typeof marked === 'undefined') {
+                throw new Error('marked.js not available');
+            }
+            
+            // Use marked with minimal configuration first to test
+            var result = marked.parse(text, {
+                breaks: true, // Convert single line breaks to <br>
+                gfm: true // GitHub flavored markdown
+            });
+            
+            // Post-process to add our custom styles to links
+            if (typeof result === 'string') {
+                // Add custom styling to links
+                result = result.replace(/<a\s+href="([^"]*)"([^>]*)>([^<]*)<\/a>/g, function(match, href, attrs, text) {
+                    return '<a href="' + href + '" target="_blank" style="font-weight:bold;color:' + (theme.botText || '#4a4e69') + ';text-decoration:underline;cursor:pointer;">' + text + '</a>';
+                });
+                
+                // Add custom styling to lists
+                result = result.replace(/<ul>/g, '<ul style="margin:8px 0;padding-left:24px;">');
+                result = result.replace(/<ol>/g, '<ol style="margin:8px 0;padding-left:24px;">');
+                result = result.replace(/<li>/g, '<li style="margin:4px 0;">');
+                
+                // Add custom styling to code blocks
+                result = result.replace(/<pre><code>/g, '<pre style="background:#f6f8fa;border:1px solid #e1e4e8;border-radius:6px;padding:16px;margin:8px 0;overflow-x:auto;font-family:ui-monospace,SFMono-Regular,\'SF Mono\',Consolas,\'Liberation Mono\',Menlo,monospace;font-size:13px;line-height:1.45;"><code>');
+                result = result.replace(/<code>/g, '<code style="background:#f6f8fa;border-radius:3px;padding:2px 4px;font-family:ui-monospace,SFMono-Regular,\'SF Mono\',Consolas,\'Liberation Mono\',Menlo,monospace;font-size:85%;">');
+                
+                // Add custom styling to strong/em
+                result = result.replace(/<strong>/g, '<strong style="font-weight:600;">');
+                result = result.replace(/<em>/g, '<em style="font-style:italic;">');
+                
+                return result;
+            }
+            
+            return String(result);
+            
+        } catch (error) {
+            console.error('Markdown parsing error:', error);
+            // Fallback to escaped text with line breaks
+            return escapeHtml(text).replace(/\n/g, '<br>');
         }
-
-        // Full markdown processing for completed messages
-        // Handle code blocks (```code```)
-        html = html.replace(/```([^`]+)```/g, function (match, code) {
-            return '<pre style="background:#f6f8fa;border:1px solid #e1e4e8;border-radius:6px;padding:16px;margin:8px 0;overflow-x:auto;font-family:ui-monospace,SFMono-Regular,\'SF Mono\',Consolas,\'Liberation Mono\',Menlo,monospace;font-size:13px;line-height:1.45;"><code>' + escapeHtml(code.trim()) + '</code></pre>';
-        });
-
-        // Handle inline code (`code`)
-        html = html.replace(/`([^`]+)`/g, function (match, code) {
-            return '<code style="background:#f6f8fa;border-radius:3px;padding:2px 4px;font-family:ui-monospace,SFMono-Regular,\'SF Mono\',Consolas,\'Liberation Mono\',Menlo,monospace;font-size:85%;">' + escapeHtml(code) + '</code>';
-        });
-
-        // Handle bold text (**text** or __text__)
-        html = html.replace(/\*\*([^*]+)\*\*/g, '<strong style="font-weight:600;">$1</strong>');
-        html = html.replace(/__([^_]+)__/g, '<strong style="font-weight:600;">$1</strong>');
-
-        // Handle italic text (*text* or _text_)
-        html = html.replace(/\*([^*]+)\*/g, '<em style="font-style:italic;">$1</em>');
-        html = html.replace(/_([^_]+)_/g, '<em style="font-style:italic;">$1</em>');
-
-        // Handle markdown links [text](url)
-        html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, function (_, label, url) {
-            return '<a href="' + url + '" target="_blank" style="font-weight:bold;color:' + (theme.botText || '#4a4e69') + ';text-decoration:underline;cursor:pointer;">' + label + '</a>';
-        });
-
-        // Handle bullet points and numbered lists
-        if (html.includes('\n')) {
-            // Split into lines for list processing
-            var lines = html.split('\n');
-            var inUnorderedList = false;
-            var inOrderedList = false;
-            var processedLines = [];
-
-            for (var i = 0; i < lines.length; i++) {
-                var line = lines[i];
-                var trimmedLine = line.trim();
-
-                // Check for blockquotes (> text)
-                var blockquoteMatch = trimmedLine.match(/^>\s+(.+)$/);
-                if (blockquoteMatch) {
-                    // Close any open lists
-                    if (inUnorderedList) {
-                        processedLines.push('</ul>');
-                        inUnorderedList = false;
-                    }
-                    if (inOrderedList) {
-                        processedLines.push('</ol>');
-                        inOrderedList = false;
-                    }
-                    processedLines.push('<blockquote style="border-left:4px solid #e5e7eb;padding-left:1rem;margin:1rem 0;color:#6b7280;font-style:italic;">' + blockquoteMatch[1] + '</blockquote>');
-                    continue;
-                }
-
-                // Check for unordered list items (-, *, +)
-                var unorderedMatch = trimmedLine.match(/^[-*+]\s+(.+)$/);
-                if (unorderedMatch) {
-                    if (!inUnorderedList) {
-                        if (inOrderedList) {
-                            processedLines.push('</ol>');
-                            inOrderedList = false;
-                        }
-                        processedLines.push('<ul style="margin:8px 0;padding-left:24px;list-style-type:disc;">');
-                        inUnorderedList = true;
-                    }
-                    processedLines.push('<li style="margin:4px 0;">' + unorderedMatch[1] + '</li>');
-                    continue;
-                }
-
-                // Check for ordered list items (1. 2. etc.)
-                var orderedMatch = trimmedLine.match(/^(\d+)\.\s+(.+)$/);
-                if (orderedMatch) {
-                    if (!inOrderedList) {
-                        if (inUnorderedList) {
-                            processedLines.push('</ul>');
-                            inUnorderedList = false;
-                        }
-                        processedLines.push('<ol style="margin:8px 0;padding-left:24px;">');
-                        inOrderedList = true;
-                    }
-                    processedLines.push('<li style="margin:4px 0;">' + orderedMatch[2] + '</li>');
-                    continue;
-                }
-
-                // Not a list item, close any open lists
-                if (inUnorderedList) {
-                    processedLines.push('</ul>');
-                    inUnorderedList = false;
-                }
-                if (inOrderedList) {
-                    processedLines.push('</ol>');
-                    inOrderedList = false;
-                }
-
-                // Handle headers
-                if (trimmedLine.match(/^#{1,6}\s+/)) {
-                    var headerMatch = trimmedLine.match(/^(#{1,6})\s+(.+)$/);
-                    if (headerMatch) {
-                        var level = headerMatch[1].length;
-                        var headerText = headerMatch[2];
-                        var fontSize = ['1.5em', '1.3em', '1.1em', '1em', '0.9em', '0.8em'][level - 1];
-                        processedLines.push('<h' + level + ' style="font-size:' + fontSize + ';font-weight:600;margin:12px 0 8px 0;color:' + (theme.botText || '#4a4e69') + ';">' + headerText + '</h' + level + '>');
-                        continue;
-                    }
-                }
-
-                // Regular line
-                if (trimmedLine) {
-                    processedLines.push(line);
-                } else {
-                    processedLines.push('<br>');
-                }
-            }
-
-            // Close any remaining open lists
-            if (inUnorderedList) {
-                processedLines.push('</ul>');
-            }
-            if (inOrderedList) {
-                processedLines.push('</ol>');
-            }
-
-            html = processedLines.join('\n');
-        }
-
-        // Handle line breaks
-        html = html.replace(/\n/g, '<br>');
-
-        return html;
     }
 
     // Helper function to escape HTML
@@ -752,9 +675,8 @@
                 var contentWrapper = document.createElement('div');
 
                 // Use markdown conversion for bot messages, plain text for others
-                var isStreaming = msg.isStreaming === true;
                 if (msg.sender === 'bot' || msg.sender === 'ai') {
-                    contentWrapper.innerHTML = markdownToHtml(msg.text, isStreaming);
+                    contentWrapper.innerHTML = markdownToHtml(msg.text);
                 } else if (msg.sender === 'sales_rep') {
                     // Sales rep messages with clean formatting and sender name at top
                     var messageText = escapeHtml(msg.text).replace(/\n/g, '<br>');
@@ -988,10 +910,11 @@
                     // Handle completion signal (empty content with is_complete flag)
                     if (msgData.is_complete === true && content === '') {
                         if (lastMessage && lastMessage.isStreaming) {
+                            console.log('Stream completed');
                             lastMessage.isStreaming = false;
                             msgs[msgs.length - 1] = lastMessage;
                             localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
-                            loadMessages(); // Use immediate loading for completion
+                            // No need to reload - already processed correctly
                         }
                         return;
                     }
@@ -1004,6 +927,7 @@
                             lastMessage.isStreaming === true) {
                             // Append to existing streaming message
                             lastMessage.text += content;
+                            lastMessage.lastChunkTime = Date.now(); // Track when last chunk arrived
                             msgs[msgs.length - 1] = lastMessage;
                         } else {
                             // Create new streaming message
@@ -1013,8 +937,8 @@
                                 isWelcomeMessage: false,
                                 isStreaming: true,
                                 messageId: msgData.message_id,
-                                created_at: formatTimeStamp(msgData.created_at)
-
+                                created_at: formatTimeStamp(msgData.created_at),
+                                lastChunkTime: Date.now() // Track when last chunk arrived
                             });
                         }
                         localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
@@ -1761,4 +1685,6 @@
 
     // Check for auto-connection after initial setup
     setTimeout(checkAndAutoConnect, 100);
-})();
+} // End of initializeChatEmbed function
+
+})(); // End of main IIFE
