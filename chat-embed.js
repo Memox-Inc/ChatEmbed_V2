@@ -71,6 +71,7 @@ function initializeChatEmbed() {
     var isWebSocketConnected = false;
     var visitorInfo = null;
     var isHandoverActive = false;
+    var isFormShowing = false;
 
     function generateSecureWsParams(workflow_id) {
         const secret = '4f3c9a1d8e5b6c2f719a0e3d5a8b7c4d9e6f1a0b3d7c8e2f6a9d0e1b4c5f7a6d';
@@ -185,6 +186,11 @@ function initializeChatEmbed() {
     refreshBtn.onmouseover = function () { refreshBtn.style.backgroundColor = 'rgba(255,255,255,0.1)'; };
     refreshBtn.onmouseout = function () { refreshBtn.style.backgroundColor = 'transparent'; };
     refreshBtn.onclick = function () {
+        // Don't allow reset when form is showing
+        if (isFormShowing) {
+            return;
+        }
+        
         var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
         var wasHandoverActive = msgs.some(function (msg) {
             return msg.isSystemNotification && msg.notificationType === 'joined';
@@ -1070,6 +1076,7 @@ function initializeChatEmbed() {
     });
 
     function showLeadCaptureInChat(onComplete) {
+        isFormShowing = true; // Set flag to prevent reset during form display
         messages.innerHTML = '';
 
         var wrapper = document.createElement('div');
@@ -1444,6 +1451,7 @@ function initializeChatEmbed() {
         if (!window.__simpleChatEmbedLeadCaptured) {
             inputContainer.style.display = 'none';
             showLeadCaptureInChat(function (lead) {
+                isFormShowing = false; // Reset flag when form is completed
                 window.__simpleChatEmbedLeadCaptured = true;
                 if (lead) {
                     window.SimpleChatEmbedLead = lead;
