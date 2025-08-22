@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "npx serve . -p 8080 --cors",
     "serve": "npx serve . -p 8080 --cors",
-    "start": "npm run serve"
+    "start": "npm run serve",
+    "build": "uglifyjs chat-embed.js -c -m -o chat-embed-min.js",
+    "prebuild": "echo 'Building minified version of chat-embed.js...'"
   },
   "keywords": [
     "chat",
@@ -17,6 +19,7 @@
   "author": "Memox Inc",
   "license": "MIT",
   "devDependencies": {
-    "serve": "^14.2.1"
+    "serve": "^14.2.1",
+    "uglify-js": "^3.17.4"
   }
 }
