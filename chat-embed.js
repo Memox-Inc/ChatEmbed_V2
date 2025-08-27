@@ -71,6 +71,24 @@ function initializeChatEmbed() {
     var isWebSocketConnected = false;
     var visitorInfo = null;
     var isHandoverActive = false;
+    var isFormShowing = false;
+
+    // Function to update button states based on form visibility
+    function updateButtonStates() {
+        if (isFormShowing) {
+            // Disable appearance when form is showing
+            refreshBtn.style.opacity = '0.5';
+            refreshBtn.style.cursor = 'not-allowed';
+            clearSessionBtn.style.opacity = '0.5';
+            clearSessionBtn.style.cursor = 'not-allowed';
+        } else {
+            // Enable appearance when form is not showing
+            refreshBtn.style.opacity = '1';
+            refreshBtn.style.cursor = 'pointer';
+            clearSessionBtn.style.opacity = '1';
+            clearSessionBtn.style.cursor = 'pointer';
+        }
+    }
 
     function generateSecureWsParams(workflow_id) {
         const secret = '4f3c9a1d8e5b6c2f719a0e3d5a8b7c4d9e6f1a0b3d7c8e2f6a9d0e1b4c5f7a6d';
@@ -168,10 +186,11 @@ function initializeChatEmbed() {
 
     var headerActions = document.createElement('div');
     headerActions.style.display = 'flex';
+    headerActions.style.gap = '0.25rem';
 
     var refreshBtn = document.createElement('button');
     refreshBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="m21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg>';
-    refreshBtn.title = 'Reset chat';
+    refreshBtn.title = 'Clear chat history';
     refreshBtn.style.background = 'transparent';
     refreshBtn.style.color = theme.headerText;
     refreshBtn.style.border = 'none';
@@ -182,9 +201,20 @@ function initializeChatEmbed() {
     refreshBtn.style.alignItems = 'center';
     refreshBtn.style.justifyContent = 'center';
     refreshBtn.style.transition = 'background-color 0.2s ease-in-out';
-    refreshBtn.onmouseover = function () { refreshBtn.style.backgroundColor = 'rgba(255,255,255,0.1)'; };
-    refreshBtn.onmouseout = function () { refreshBtn.style.backgroundColor = 'transparent'; };
+    refreshBtn.onmouseover = function () { 
+        if (!isFormShowing) {
+            refreshBtn.style.backgroundColor = 'rgba(255,255,255,0.1)'; 
+        }
+    };
+    refreshBtn.onmouseout = function () { 
+        refreshBtn.style.backgroundColor = 'transparent'; 
+    };
     refreshBtn.onclick = function () {
+        // Don't allow reset when form is showing
+        if (isFormShowing) {
+            return;
+        }
+        
         var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
         var wasHandoverActive = msgs.some(function (msg) {
             return msg.isSystemNotification && msg.notificationType === 'joined';
@@ -215,7 +245,75 @@ function initializeChatEmbed() {
             saveMessage(welcomeMessage, 'bot', 'welcomeMessage');
         }
         loadMessages();
-    }; var closeBtn = document.createElement('button');
+    };
+
+    // Create Clear Session button
+    var clearSessionBtn = document.createElement('button');
+    clearSessionBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>';
+    clearSessionBtn.title = 'Clear session & restart';
+    clearSessionBtn.style.background = 'transparent';
+    clearSessionBtn.style.color = theme.headerText;
+    clearSessionBtn.style.border = 'none';
+    clearSessionBtn.style.padding = '0.5rem';
+    clearSessionBtn.style.cursor = 'pointer';
+    clearSessionBtn.style.borderRadius = '0.375rem';
+    clearSessionBtn.style.display = 'flex';
+    clearSessionBtn.style.alignItems = 'center';
+    clearSessionBtn.style.justifyContent = 'center';
+    clearSessionBtn.style.transition = 'background-color 0.2s ease-in-out';
+    clearSessionBtn.onmouseover = function () { 
+        if (!isFormShowing) {
+            clearSessionBtn.style.backgroundColor = 'rgba(255,255,255,0.1)'; 
+        }
+    };
+    clearSessionBtn.onmouseout = function () { 
+        clearSessionBtn.style.backgroundColor = 'transparent'; 
+    };
+    clearSessionBtn.onclick = function () {
+        // Don't allow session clear when form is showing
+        if (isFormShowing) {
+            return;
+        }
+        
+        // Clear all chat data
+        localStorage.removeItem('simple-chat-messages');
+        localStorage.removeItem('simple-chat-session');
+        localStorage.removeItem('simple-chat-leads');
+        localStorage.removeItem('simple-chat-user-guid');
+        
+        // Reset all flags
+        isHandoverActive = false;
+        isFormShowing = false;
+        window.__simpleChatEmbedLeadCaptured = false;
+        visitorInfo = null;
+        
+        // Close WebSocket connection
+        if (currentSocket) {
+            currentSocket.close();
+            currentSocket = null;
+            isWebSocketConnected = false;
+        }
+        
+        // Show lead capture form again
+        inputContainer.style.display = 'none';
+        showLeadCaptureInChat(function (lead) {
+            isFormShowing = false;
+            updateButtonStates(); // Update button appearance
+            window.__simpleChatEmbedLeadCaptured = true;
+            if (lead) {
+                window.SimpleChatEmbedLead = lead;
+            }
+            setupChatInput();
+
+            // Show welcome message if set
+            if (welcomeMessage) {
+                saveMessage(welcomeMessage, 'bot', 'welcomeMessage');
+            }
+            loadMessages();
+        });
+    };
+
+    var closeBtn = document.createElement('button');
     closeBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>';
     closeBtn.title = 'Close chat';
     closeBtn.style.background = 'transparent';
@@ -234,6 +332,7 @@ function initializeChatEmbed() {
     var chatCloseBtn = closeBtn;
 
     headerActions.appendChild(refreshBtn);
+    headerActions.appendChild(clearSessionBtn);
     headerActions.appendChild(closeBtn);
     header.appendChild(headerActions);
 
@@ -1070,6 +1169,8 @@ function initializeChatEmbed() {
     });
 
     function showLeadCaptureInChat(onComplete) {
+        isFormShowing = true; // Set flag to prevent reset during form display
+        updateButtonStates(); // Update button appearance
         messages.innerHTML = '';
 
         var wrapper = document.createElement('div');
@@ -1444,6 +1545,8 @@ function initializeChatEmbed() {
         if (!window.__simpleChatEmbedLeadCaptured) {
             inputContainer.style.display = 'none';
             showLeadCaptureInChat(function (lead) {
+                isFormShowing = false; // Reset flag when form is completed
+                updateButtonStates(); // Update button appearance
                 window.__simpleChatEmbedLeadCaptured = true;
                 if (lead) {
                     window.SimpleChatEmbedLead = lead;
