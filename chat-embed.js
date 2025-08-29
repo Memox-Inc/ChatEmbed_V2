@@ -2539,6 +2539,63 @@ function initializeChatEmbed() {
                 window.open(product.url, '_blank');
             });
 
+            // Product image (use product.image or first of product.images)
+            if (productsConfig.displayFields.showImage !== false) {
+                var imgUrl = product.image || (product.images && product.images.length ? product.images[0] : null);
+
+                // Prepare a safe fallback to repo image.jpg (resolved relative to the embed script)
+                var resolvedFallback = null;
+                try {
+                    var scriptSrc = (document.currentScript && document.currentScript.src) || (function(){ var s = document.getElementsByTagName('script'); return s[s.length-1] && s[s.length-1].src; })();
+                    resolvedFallback = new URL('image.jpg', scriptSrc || location.href).href;
+                } catch (e) {
+                    resolvedFallback = 'image.jpg';
+                }
+
+                // Create wrapper and img element first. We'll set src immediately if we have one,
+                // otherwise we'll try to discover an Open Graph image from the product URL.
+                var imgWrapper = document.createElement('div');
+                imgWrapper.style.width = '100%';
+                imgWrapper.style.height = '140px';
+                imgWrapper.style.overflow = 'hidden';
+                imgWrapper.style.borderRadius = '0.375rem';
+                imgWrapper.style.marginBottom = '0.75rem';
+
+                var imgEl = document.createElement('img');
+                imgEl.loading = 'lazy';
+                // If we already have an image, use it. Otherwise use the resolved fallback for now.
+                imgEl.src = imgUrl || resolvedFallback;
+                // If the image fails to load, use a light gray SVG data URI as last-resort fallback
+                imgEl.onerror = function() {
+                    imgEl.onerror = null;
+                    imgEl.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="240"><rect width="100%" height="100%" fill="%23f3f4f6"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%239ca3af" font-family="Arial,Helvetica,sans-serif" font-size="16">No image</text></svg>';
+                };
+                imgEl.alt = product.title || 'Product image';
+                imgEl.style.width = '100%';
+                imgEl.style.height = '100%';
+                imgEl.style.objectFit = 'cover';
+                imgEl.style.display = 'block';
+
+                imgWrapper.appendChild(imgEl);
+                productCard.appendChild(imgWrapper);
+
+                // If we don't have an explicit product image, try to discover an Open Graph image
+                // from the product URL (best-effort). This avoids CORS errors by falling back to
+                // a configured `productsConfig.ogProxy` if direct fetch fails.
+                if ((!product.image && !(product.images && product.images.length)) && product.url) {
+                    (async function() {
+                        try {
+                            var og = await fetchOgImage(product.url);
+                            if (og) {
+                                imgEl.src = og;
+                            }
+                        } catch (e) {
+                            // ignore
+                        }
+                    })();
+                }
+            }
+
             var productTitle = document.createElement('h3');
             productTitle.innerText = product.title;
             productTitle.style.fontSize = '0.875rem';
@@ -2702,6 +2759,52 @@ function initializeChatEmbed() {
         wrapper.appendChild(backBtn);
         messages.appendChild(wrapper);
         });
+    }
+
+    // Try to fetch Open Graph image from a URL. This will attempt a direct fetch+parse first
+    // (which requires the target to allow CORS). If that fails and `productsConfig.ogProxy`
+    // is configured, it will call the proxy URL with the target URL as `?url=` and expect
+    // a JSON response { ogImage: 'https://...' } or plain text image URL.
+    async function fetchOgImage(targetUrl) {
+        if (!targetUrl) return null;
+
+        // First attempt: direct fetch and parse (fast path for permissive pages)
+        try {
+            var resp = await fetch(targetUrl, { method: 'GET' });
+            if (resp.ok) {
+                var text = await resp.text();
+                // Extract <meta property="og:image" content="..."> or property="twitter:image"
+                var m = text.match(/<meta[^>]+property=["']og:image["'][^>]*content=["']([^"']+)["'][^>]*>/i) ||
+                        text.match(/<meta[^>]+name=["']twitter:image["'][^>]*content=["']([^"']+)["'][^>]*>/i);
+                if (m && m[1]) {
+                    return m[1];
+                }
+            }
+        } catch (e) {
+            // likely CORS or network error - fall through to proxy attempt
+        }
+
+        // Second attempt: use configured proxy to fetch OG data server-side
+        if (productsConfig && productsConfig.ogProxy) {
+            try {
+                var proxyUrl = productsConfig.ogProxy + (productsConfig.ogProxy.includes('?') ? '&' : '?') + 'url=' + encodeURIComponent(targetUrl);
+                var pResp = await fetch(proxyUrl, { method: 'GET' });
+                if (pResp.ok) {
+                    var ct = pResp.headers.get('content-type') || '';
+                    if (ct.indexOf('application/json') !== -1) {
+                        var j = await pResp.json();
+                        if (j && (j.ogImage || j.image)) return j.ogImage || j.image;
+                    } else {
+                        var txt = await pResp.text();
+                        if (txt && txt.trim()) return txt.trim();
+                    }
+                }
+            } catch (e) {
+                // ignore proxy failure
+            }
+        }
+
+        return null;
     }
 
     // Custom form for lead capture
