@@ -427,6 +427,58 @@ function initializeChatEmbed() {
     inputContainer.style.borderBottomLeftRadius = '0.75rem';
     inputContainer.style.borderBottomRightRadius = '0.75rem';
 
+    // Quick question buttons container
+    var quickButtonsContainer = document.createElement('div');
+    quickButtonsContainer.style.display = 'none'; // Initially hidden, shown when input is active
+    quickButtonsContainer.style.flexDirection = 'column';
+    quickButtonsContainer.style.gap = '0.5rem';
+    quickButtonsContainer.style.marginBottom = '1rem';
+    quickButtonsContainer.style.width = '100%';
+
+    // Create quick question buttons if configured
+    if (config.quickQuestions && config.quickQuestions.length > 0) {
+        config.quickQuestions.forEach(function(question, index) {
+            var quickBtn = document.createElement('button');
+            quickBtn.innerText = question;
+            quickBtn.style.padding = '0.75rem 1rem';
+            quickBtn.style.background = '#f3f4f6';
+            quickBtn.style.color = '#374151';
+            quickBtn.style.border = '1px solid #d1d5db';
+            quickBtn.style.borderRadius = '0.5rem';
+            quickBtn.style.cursor = 'pointer';
+            quickBtn.style.fontSize = '0.875rem';
+            quickBtn.style.transition = 'all 0.2s ease-in-out';
+            quickBtn.style.width = '100%';
+            quickBtn.style.textAlign = 'left';
+            quickBtn.style.boxSizing = 'border-box';
+
+            quickBtn.addEventListener('mouseover', function() {
+                quickBtn.style.background = theme.sendBtnBg || '#3b82f6';
+                quickBtn.style.color = '#ffffff';
+                quickBtn.style.borderColor = theme.sendBtnBg || '#3b82f6';
+            });
+
+            quickBtn.addEventListener('mouseout', function() {
+                quickBtn.style.background = '#f3f4f6';
+                quickBtn.style.color = '#374151';
+                quickBtn.style.borderColor = '#d1d5db';
+            });
+
+            quickBtn.addEventListener('click', function() {
+                input.value = question;
+                sendMessage();
+                // Hide quick buttons after first use if not permanent
+                if (!config.quickQuestionsPermanent) {
+                    quickButtonsContainer.style.display = 'none';
+                }
+            });
+
+            quickButtonsContainer.appendChild(quickBtn);
+        });
+    }
+
+    inputContainer.appendChild(quickButtonsContainer);
+
     chatContainer.appendChild(inputSeparator);
     chatContainer.appendChild(inputContainer);
 
@@ -815,7 +867,7 @@ function initializeChatEmbed() {
                 timestamp.style.fontSize = '0.75rem';
                 timestamp.style.color = '#9ca3af';
                 timestamp.style.alignSelf = msg.sender === 'user' ? 'flex-end' : 'flex-start';
-                timestamp.innerText = msg.created_at
+                timestamp.innerText = msg.created_at;
                 contentContainer.appendChild(timestamp);
             }
             // Only append avatar if it exists (user messages only)
@@ -1342,10 +1394,62 @@ function initializeChatEmbed() {
         phoneFieldContainer.appendChild(phoneInputRow);
         phoneFieldContainer.appendChild(phoneError);
 
+        // Zip Code field (required)
+        var zipFieldContainer = document.createElement('div');
+        zipFieldContainer.style.display = 'flex';
+        zipFieldContainer.style.flexDirection = 'column';
+        zipFieldContainer.style.gap = '0.5rem';
+
+        var zipInputRow = document.createElement('div');
+        zipInputRow.style.display = 'flex';
+        zipInputRow.style.alignItems = 'center';
+        zipInputRow.style.gap = '1.5rem';
+
+        var zipLabel = document.createElement('label');
+        zipLabel.innerText = 'Zip Code:*';
+        zipLabel.style.width = '27%';
+        zipLabel.style.fontSize = '0.875rem';
+        zipLabel.style.fontWeight = '500';
+        zipLabel.style.color = '#374151';
+
+        var zipInput = document.createElement('input');
+        zipInput.type = 'text';
+        zipInput.placeholder = 'Zip code';
+        zipInput.style.width = '60%';
+        zipInput.style.padding = '0.75rem 1rem';
+        zipInput.style.border = '1px solid #d1d5db';
+        zipInput.style.borderRadius = '0.375rem';
+        zipInput.style.fontSize = '0.875rem';
+        zipInput.style.outline = 'none';
+        zipInput.style.transition = 'border-color 0.2s ease-in-out';
+
+        zipInput.addEventListener('focus', function () {
+            zipInput.style.borderColor = '#3b82f6';
+        });
+        zipInput.addEventListener('blur', function () {
+            zipInput.style.borderColor = '#d1d5db';
+        });
+
+        zipInputRow.appendChild(zipLabel);
+        zipInputRow.appendChild(zipInput);
+
+        // Zip error message (below the input)
+        var zipError = document.createElement('div');
+        zipError.style.display = 'none';
+        zipError.style.color = '#ef4444';
+        zipError.style.fontSize = '0.75rem';
+        zipError.style.marginLeft = '27%';
+        zipError.style.paddingLeft = '1.5rem';
+        zipError.innerText = 'Zip code is required';
+
+        zipFieldContainer.appendChild(zipInputRow);
+        zipFieldContainer.appendChild(zipError);
+
         // Add all fields to form container
         formContainer.appendChild(nameFieldContainer);
         formContainer.appendChild(emailFieldContainer);
         formContainer.appendChild(phoneFieldContainer);
+        formContainer.appendChild(zipFieldContainer);
 
         // Start Chat button
         var confirmBtn = document.createElement('button');
@@ -1385,6 +1489,21 @@ function initializeChatEmbed() {
             phoneError.style.display = 'none';
 
             // Validate name (required)
+
+            var zipVal = zipInput.value.trim();
+            var hasErrors = false;
+
+            // Reset all error states
+            nameInput.style.borderColor = '#d1d5db';
+            emailInput.style.borderColor = '#d1d5db';
+            phoneInput.style.borderColor = '#d1d5db';
+            zipInput.style.borderColor = '#d1d5db';
+            nameError.style.display = 'none';
+            emailError.style.display = 'none';
+            phoneError.style.display = 'none';
+            zipError.style.display = 'none';
+
+            // Validate name (required)
             if (!nameVal) {
                 nameInput.style.borderColor = '#ef4444';
                 nameError.style.display = 'block';
@@ -1422,11 +1541,25 @@ function initializeChatEmbed() {
                 hasErrors = true;
             }
 
+            // Validate zip code (required, basic format: 3-10 alphanumeric)
+            if (!zipVal) {
+                zipInput.style.borderColor = '#ef4444';
+                zipError.innerText = 'Zip code is required';
+                zipError.style.display = 'block';
+                hasErrors = true;
+            } else if (!/^\w{3,10}$/.test(zipVal)) {
+                zipInput.style.borderColor = '#ef4444';
+                zipError.innerText = 'Please enter a valid zip code';
+                zipError.style.display = 'block';
+                hasErrors = true;
+            }
+
             if (hasErrors) {
                 // Focus on first error field
                 if (!nameVal) nameInput.focus();
                 else if (!emailVal || !/^\S+@\S+\.\S+$/.test(emailVal)) emailInput.focus();
                 else if (!phoneVal || phoneVal.length > 20 || !/^[\+]?[0-9\s\-\(\)\.]{1,20}$/.test(phoneVal)) phoneInput.focus();
+                else if (!zipVal || !/^\w{3,10}$/.test(zipVal)) zipInput.focus();
                 return;
             }
 
@@ -1435,6 +1568,7 @@ function initializeChatEmbed() {
                 sanitize(nameInput.value),
                 sanitize(emailInput.value),
                 sanitize(phoneInput.value),
+                sanitize(zipInput.value)
             );
 
             // Generate and store chat session data
@@ -1465,6 +1599,7 @@ function initializeChatEmbed() {
                 name: sanitize(nameInput.value),
                 email: sanitize(emailInput.value),
                 phone: sanitize(phoneInput.value),
+                zip: sanitize(zipInput.value),
                 timestamp,
                 userAgent,
                 platform,
@@ -1480,7 +1615,7 @@ function initializeChatEmbed() {
             localStorage.setItem('simple-chat-leads', JSON.stringify(leads));
 
             onComplete(leadData);
-            sendMessage(`${nameInput.value} ${emailInput.value} ${phoneInput.value}`);  
+            sendMessage(`${nameInput.value} ${emailInput.value} ${phoneInput.value} ${zipInput.value}`);  
 
         };
 
@@ -1494,6 +1629,9 @@ function initializeChatEmbed() {
         phoneInput.addEventListener('keydown', function (e) {
             if (e.key === 'Enter') confirmBtn.click();
         });
+        zipInput.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') confirmBtn.click();
+        });
 
         // Assemble the form
         wrapper.appendChild(formContainer);
@@ -1501,7 +1639,7 @@ function initializeChatEmbed() {
         messages.appendChild(wrapper);
 
         // Focus the first field
-        nameInput.focus();
+    nameInput.focus();
     }
 
     // On load, show lead capture inside chat window
@@ -1569,47 +1707,55 @@ function initializeChatEmbed() {
     // Helper function to setup chat input styling
     function setupChatInput() {
         inputContainer.style.display = 'flex';
-        inputContainer.style.flexDirection = 'row';
+        inputContainer.style.flexDirection = 'column';
         inputContainer.style.width = '100%';
         inputContainer.style.boxSizing = 'border-box';
-        inputContainer.style.padding = '0.5rem';
+        inputContainer.style.padding = '1rem';
         inputContainer.style.gap = '0';
-        inputContainer.style.alignItems = 'stretch';
         inputContainer.style.flex = '0 0 auto';
         inputContainer.style.borderTop = '1px solid #ececec';
         inputContainer.style.background = '#ffffff';
-        input.style.flex = '1 1 0%';
-        input.style.minWidth = '0';
-        input.style.width = 'auto';
-        input.style.margin = '0';
-        input.style.height = '2.5rem';
-        input.style.padding = '0 1rem';
-        input.style.border = '1px solid #ececec';
-        input.style.borderRight = 'none';
-        input.style.borderRadius = '0.75rem 0 0 0.75rem';
+        
+        // Show quick buttons based on configuration
+        if (config.quickQuestions && config.quickQuestions.length > 0) {
+            var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
+            var isFirstSession = msgs.length === 0 || (msgs.length === 1 && msgs[0].isWelcomeMessage);
+            
+            // Show if permanent OR if it's the first session
+            if (config.quickQuestionsPermanent || isFirstSession) {
+                quickButtonsContainer.style.display = 'flex';
+            } else {
+                quickButtonsContainer.style.display = 'none';
+            }
+        }
+        
+        // Style the input form container
+        inputForm.style.display = 'grid';
+        inputForm.style.gridTemplateColumns = '1fr auto';
+        inputForm.style.gap = '1rem';
+        inputForm.style.alignItems = 'center';
+        inputForm.style.width = '100%';
+        
+        input.style.padding = '0.75rem 1rem';
+        input.style.border = '1px solid #d1d5db';
+        input.style.borderRadius = '0.375rem';
         input.style.background = theme.inputBg;
         input.style.color = theme.inputText;
-        input.style.fontSize = '1rem';
-        input.style.boxSizing = 'border-box';
+        input.style.fontSize = '0.875rem';
+        input.style.lineHeight = '1.25rem';
         input.style.outline = 'none';
-        input.style.transition = 'border 0.15s ease-in-out';
-        sendBtn.style.flex = '0 0 auto';
-        sendBtn.style.margin = '0';
-        sendBtn.style.height = '2.5rem';
-        sendBtn.style.padding = '0 1.25rem';
-        sendBtn.style.background = theme.sendBtnBg;
-        sendBtn.style.color = theme.sendBtnText;
-        sendBtn.style.border = '1px solid #ececec';
-        sendBtn.style.borderLeft = 'none';
-        sendBtn.style.borderRadius = '0 0.75rem 0.75rem 0';
+        input.style.transition = 'border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out';
+        
+        sendBtn.style.padding = '0.75rem';
+        sendBtn.style.background = theme.sendBtnBg || '#3b82f6';
+        sendBtn.style.color = '#ffffff';
+        sendBtn.style.border = 'none';
+        sendBtn.style.borderRadius = '0.375rem';
         sendBtn.style.cursor = 'pointer';
-        sendBtn.style.fontWeight = '600';
-        sendBtn.style.fontSize = '1rem';
-        sendBtn.style.transition = 'background 0.15s ease-in-out, color 0.15s ease-in-out';
-        sendBtn.style.boxSizing = 'border-box';
         sendBtn.style.display = 'flex';
-        sendBtn.style.justifyContent = 'center';
         sendBtn.style.alignItems = 'center';
+        sendBtn.style.justifyContent = 'center';
+        sendBtn.style.transition = 'background-color 0.2s ease-in-out';
     }
 
     // Sanitize input to prevent XSS
@@ -1691,7 +1837,7 @@ function initializeChatEmbed() {
     window.connectWebSocket = connectWebSocket;
 
     // Helper function to create visitor
-    const createVisitor = async (name, email, phone) => {
+    const createVisitor = async (name, email, phone, zip) => {
         try {
             var baseUrl = null
             var token = null
@@ -1726,6 +1872,7 @@ function initializeChatEmbed() {
                         name,
                         email,
                         phone_number: phone,
+                        zip_code: zip
                     })
                 })
 
