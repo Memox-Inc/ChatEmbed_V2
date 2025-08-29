@@ -2580,19 +2580,63 @@ function initializeChatEmbed() {
                 productCard.appendChild(imgWrapper);
 
                 // If we don't have an explicit product image, try to discover an Open Graph image
-                // from the product URL (best-effort). This avoids CORS errors by falling back to
-                // a configured `productsConfig.ogProxy` if direct fetch fails.
+                // from the product URL (best-effort). If not found, try to pull the first <img> from the page.
                 if ((!product.image && !(product.images && product.images.length)) && product.url) {
                     (async function() {
                         try {
                             var og = await fetchOgImage(product.url);
                             if (og) {
                                 imgEl.src = og;
+                                return;
                             }
                         } catch (e) {
                             // ignore
                         }
+                        // If no OG image, try to pull the first <img> from the product page
+                        try {
+                            var imgUrl = await fetchFirstImageFromPage(product.url);
+                            if (imgUrl) {
+                                imgEl.src = imgUrl;
+                                return;
+                            }
+                        } catch (e) {
+                            // ignore
+                        }
+                        // Otherwise, fallback remains
                     })();
+                }
+
+                // Helper to fetch first <img> from a page (best-effort, CORS may block)
+                async function fetchFirstImageFromPage(url) {
+                    try {
+                        // Optionally use a proxy if configured
+                        var proxy = productsConfig.ogProxy;
+                        var fetchUrl = proxy ? proxy + encodeURIComponent(url) : url;
+                        var resp = await fetch(fetchUrl, { method: 'GET' });
+                        if (!resp.ok) return null;
+                        var html = await resp.text();
+                        // Parse HTML to find first <img src="...">
+                        var match = html.match(/<img[^>]+src=["']([^"'>]+)["']/i);
+                        if (match && match[1]) {
+                            // Resolve relative URLs
+                            var a = document.createElement('a');
+                            a.href = url;
+                            var base = a.protocol + '//' + a.host;
+                            var src = match[1];
+                            if (/^https?:\/\//i.test(src)) {
+                                return src;
+                            } else if (src.startsWith('/')) {
+                                return base + src;
+                            } else {
+                                // Relative to page path
+                                var path = a.pathname.replace(/\/[^/]*$/, '/');
+                                return base + path + src;
+                            }
+                        }
+                    } catch (e) {
+                        // ignore
+                    }
+                    return null;
                 }
             }
 
