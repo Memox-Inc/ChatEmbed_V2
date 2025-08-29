@@ -3,24 +3,164 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat Embed Production Test</title>
+    <title>Chat Embed</title>
 </head>
 <body>
-    
+    <!-- Production Configuration -->
     <script>
         // Production test configuration
         window.SimpleChatEmbedConfig = {
             socketUrl: "wss://hub.memox.io",
             workflowId: "a2b8ad41-9fb7-40ed-8e5d-d64cbcad8f03",
-            title: "Containerone",
-            welcomeMessage: "Welcome! This is a production test of the chat system.",
+            title: "Container Solutions",
+            welcomeMessage: "Welcome! Browse our shipping container inventory or get instant help.",
             quickQuestions: [
-                "Whats the price of a 20ft container?",
+                "What's the price of a 20ft container?",
                 "What container grades do you offer?",
-                "How long does delivery take? "
-                
+                "How long does delivery take?"
             ],
-            quickQuestionsPermanent: false, // Set to false to show only for first question
+            quickQuestionsPermanent: false,
+
+            // Backend API configuration
+            api: {
+                baseUrl: "https://hub.memox.io/api/v1",
+                token: "eedb5fc2b457815409e45f3b1dc023c276c9cedb",
+                endpoints: {
+                    products: "/products/",
+                    categories: "/categories/",
+                    visitors: "/visitors/"
+                }
+            },
+
+            // Products configuration - supports multiple data sources
+            products: {
+                // Option 1: Fetch from backend API
+                // endpoint: "https://hub.memox.io/api/v1/products/",
+
+                // Option 2: Inline product data (fallback)
+                // data: [],
+
+                // Option 3: Use embedded fallback data (current default)
+                useEmbeddedFallback: true,
+
+                // Product display configuration
+                displayFields: {
+                    showPrice: true,
+                    showOriginalPrice: true,
+                    showSavings: true,
+                    showDelivery: true,
+                    showPickup: true,
+                    showCategory: true,
+                    showType: true
+                },
+
+                // Sorting configuration
+                sorting: {
+                    enabled: true,
+                    defaultSort: 'price-low',
+                    options: [
+                        { id: 'price-low', label: 'Price: Low to High' },
+                        { id: 'price-high', label: 'Price: High to Low' },
+                        { id: 'size-20ft', label: 'Size: 20ft First' },
+                        { id: 'size-40ft', label: 'Size: 40ft First' },
+                        { id: 'name-asc', label: 'Name A-Z' },
+                        { id: 'delivery', label: 'Delivery Time' }
+                    ]
+                }
+            },
+
+            // Categories configuration - now configurable from HTML
+            categories: {
+                // Option 1: Fetch from backend API
+                // endpoint: "https://hub.memox.io/api/v1/categories/",
+
+                // Option 2: Inline category data
+                data: [
+                    {
+                        id: '1_trip',
+                        name: '1 Trip Containers',
+                        description: 'Single-use shipping containers',
+                        icon: '🚚',
+                        filter: { type: '1 trip' }
+                    },
+                    {
+                        id: 'cargo_worthy',
+                        name: 'Cargo Worthy',
+                        description: 'High-quality containers for cargo transport',
+                        icon: '📦',
+                        filter: { type: 'cargo worthy' }
+                    },
+                    {
+                        id: 'wind_water_tight',
+                        name: 'Wind & Water Tight',
+                        description: 'Weather-resistant containers',
+                        icon: '🛡️',
+                        filter: { type: 'wind & water tight' }
+                    },
+                    {
+                        id: 'economy_grade',
+                        name: 'Economy Grade',
+                        description: 'Budget-friendly container options',
+                        icon: '💰',
+                        filter: { type: 'economy' }
+                    },
+                    {
+                        id: 'multi_trip',
+                        name: 'Multi-Trip',
+                        description: 'Reusable containers for multiple shipments',
+                        icon: '🔄',
+                        filter: { type: 'multi-trip' }
+                    },
+                    {
+                        id: 'office_containers',
+                        name: 'Office Containers',
+                        description: 'Containers modified for office use',
+                        icon: '🏢',
+                        filter: { type: 'office' }
+                    },
+                    {
+                        id: 'accessories',
+                        name: 'Accessories',
+                        description: 'Container accessories and modifications',
+                        icon: '🔧',
+                        filter: { type: 'accessory' }
+                    }
+                ],
+
+                // Category display options
+                displayOptions: {
+                    showIcons: true,
+                    showDescriptions: true,
+                    maxColumns: 1
+                }
+            },
+
+            entryPoints: {
+                enabled: true,
+                title: "How can we help you?",
+                options: [
+                    {
+                        id: "get_info",
+                        label: "Get Information",
+                        description: "Learn about our services",
+                        requiresForm: false
+                    },
+                    {
+                        id: "browse_products",
+                        label: "Browse Products",
+                        description: "View shipping containers with sorting",
+                        requiresForm: false
+                    },
+                    {
+                        id: "book_call",
+                        label: "Book a Call",
+                        description: "Schedule a consultation",
+                        requiresForm: true,
+                        formFields: ["name", "email", "phone", "zip", "preferred_date", "preferred_time"]
+                    }
+                ]
+            },
+
             theme: {
                 primary: '#8349ff',
                 headerBg: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
@@ -28,14 +168,6 @@
                 botBubble: '#f8f9fa',
                 userText: '#fff',
                 botText: '#2d3748',
-                salesRepBubble: '#f8f9fa',   
-                salesRepText: '#2d3748',    
-                userAvatar: '#8349ff',      
-                botAvatar: '#E4E7FC',       
-                salesRepAvatar: '#E4E7FC',   
-                handoverNotificationBg: '#E4E7FC',     
-                handoverNotificationText: '#334155',   
-                handoverNotificationBorder: '#8349FF', 
                 background: '#fff',
                 border: '#e2e8f0',
                 text: '#2d3748',
@@ -44,16 +176,12 @@
                 inputText: '#2d3748',
                 sendBtnBg: '#8349ff',
                 sendBtnText: '#fff',
-                sendBtnHover: '#6b2fff',
-                borderRadius: '1rem',
-                shadow: '0 10px 30px rgba(0,0,0,0.1)'
+                sendBtnHover: '#6b2fff'
             }
         };
-
-        
-   
     </script>
-    
-    <script src="./chat-embed-min.js"></script>
+
+    <!-- Load the chat embed -->
+    <script src="./chat-embed.js"></script>
 </body>
 </html>

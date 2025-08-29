@@ -52,20 +52,113 @@ function initializeChatEmbed() {
             handoverNotificationBg: '#E4E7FC',
             handoverNotificationText: '#334155',
             handoverNotificationBorder: '#8349FF'
+        },
+
+        // API configuration
+        api: {
+            baseUrl: 'https://hub.memox.io/api/v1',
+            token: 'eedb5fc2b457815409e45f3b1dc023c276c9cedb',
+            endpoints: {
+                products: '/products/',
+                categories: '/categories/',
+                visitors: '/visitors/'
+            }
+        },
+
+        // Products configuration
+        products: {
+            endpoint: null,
+            data: [],
+            useEmbeddedFallback: true,
+            displayFields: {
+                showPrice: true,
+                showOriginalPrice: true,
+                showSavings: true,
+                showDelivery: true,
+                showPickup: true,
+                showCategory: true,
+                showType: true
+            },
+            sorting: {
+                enabled: true,
+                defaultSort: 'price-low',
+                options: [
+                    { id: 'price-low', label: 'Price: Low to High' },
+                    { id: 'price-high', label: 'Price: High to Low' },
+                    { id: 'size-20ft', label: 'Size: 20ft First' },
+                    { id: 'size-40ft', label: 'Size: 40ft First' },
+                    { id: 'name-asc', label: 'Name A-Z' },
+                    { id: 'delivery', label: 'Delivery Time' }
+                ]
+            }
+        },
+
+        // Categories configuration
+        categories: {
+            endpoint: null,
+            data: [],
+            displayOptions: {
+                showIcons: true,
+                showDescriptions: true,
+                maxColumns: 1
+            }
+        },
+
+        // Entry points configuration
+        entryPoints: {
+            enabled: true,
+            title: "How may we help you today?",
+            options: [
+                {
+                    id: "book_call",
+                    label: "Book a Call",
+                    description: "Schedule a consultation with our team",
+                    requiresForm: true,
+                    formFields: ["name", "email", "phone", "date", "time"]
+                },
+                {
+                    id: "get_info",
+                    label: "Get Information",
+                    description: "Learn about our services and pricing",
+                    requiresForm: false
+                },
+                {
+                    id: "support",
+                    label: "Receive Support",
+                    description: "Get help with your account or issues",
+                    requiresForm: true,
+                    formFields: ["name", "email", "phone", "support_type"]
+                },
+                {
+                    id: "browse_products",
+                    label: "Browse Products",
+                    description: "Explore our shipping container inventory",
+                    requiresForm: false
+                }
+            ]
         }
     };
 
     var config = window.SimpleChatEmbedConfig ? {
         ...defaultConfig,
         ...window.SimpleChatEmbedConfig,
-        theme: { ...defaultConfig.theme, ...(window.SimpleChatEmbedConfig.theme || {}) }
+        theme: { ...defaultConfig.theme, ...(window.SimpleChatEmbedConfig.theme || {}) },
+        api: { ...defaultConfig.api, ...(window.SimpleChatEmbedConfig.api || {}) },
+        products: { ...defaultConfig.products, ...(window.SimpleChatEmbedConfig.products || {}) },
+        categories: { ...defaultConfig.categories, ...(window.SimpleChatEmbedConfig.categories || {}) }
     } : defaultConfig;
 
     var theme = config.theme;
-    var apiUrl = config.apiUrl;
+    // normalized values
     var welcomeMessage = config.welcomeMessage || null;
     var workflowId = config.workflowId;
-    var socketUrl = config.socketUrl + "/ws/chat/";
+    // normalize socketUrl: guard against missing config and strip trailing slashes
+    var socketBase = config.socketUrl ? String(config.socketUrl).replace(/\/+$/g, '') : '';
+    var socketUrl = socketBase + "/ws/chat/";
+    var entryPoints = config.entryPoints;
+    var apiConfig = config.api;
+    var productsConfig = config.products;
+    var categoriesConfig = config.categories;
 
     var currentSocket = null;
     var isWebSocketConnected = false;
@@ -81,12 +174,14 @@ function initializeChatEmbed() {
             refreshBtn.style.cursor = 'not-allowed';
             clearSessionBtn.style.opacity = '0.5';
             clearSessionBtn.style.cursor = 'not-allowed';
+            backBtn.style.display = 'flex'; // Show back button when forms are showing
         } else {
             // Enable appearance when form is not showing
             refreshBtn.style.opacity = '1';
             refreshBtn.style.cursor = 'pointer';
             clearSessionBtn.style.opacity = '1';
             clearSessionBtn.style.cursor = 'pointer';
+            backBtn.style.display = 'none'; // Hide back button when not on forms
         }
     }
 
@@ -187,6 +282,62 @@ function initializeChatEmbed() {
     var headerActions = document.createElement('div');
     headerActions.style.display = 'flex';
     headerActions.style.gap = '0.25rem';
+
+    // Back button (appears when forms are showing)
+    var backBtn = document.createElement('button');
+    backBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>';
+    backBtn.title = 'Back to options';
+    backBtn.style.background = 'transparent';
+    backBtn.style.color = theme.headerText;
+    backBtn.style.border = 'none';
+    backBtn.style.padding = '0.5rem';
+    backBtn.style.cursor = 'pointer';
+    backBtn.style.borderRadius = '0.375rem';
+    backBtn.style.display = 'none'; // Hidden by default
+    backBtn.style.alignItems = 'center';
+    backBtn.style.justifyContent = 'center';
+    backBtn.style.transition = 'background-color 0.2s ease-in-out';
+    backBtn.onmouseover = function () {
+        backBtn.style.backgroundColor = 'rgba(255,255,255,0.1)';
+    };
+    backBtn.onmouseout = function () {
+        backBtn.style.backgroundColor = 'transparent';
+    };
+    backBtn.onclick = function () {
+        // Go back to entry points
+        showEntryPoints(function(result) {
+            isFormShowing = false;
+            updateButtonStates();
+
+            if (result.entryPoint === 'get_info') {
+                window.__simpleChatEmbedLeadCaptured = true;
+                setupChatInput();
+                if (welcomeMessage) {
+                    saveMessage(welcomeMessage, 'bot', 'welcomeMessage');
+                }
+                loadMessages();
+            } else {
+                showLeadCaptureInChat(function (lead) {
+                    isFormShowing = false;
+                    updateButtonStates();
+                    window.__simpleChatEmbedLeadCaptured = true;
+                    if (lead) {
+                        window.SimpleChatEmbedLead = lead;
+                        lead.entryPoint = result.entryPoint;
+                        if (result.formData) {
+                            lead.entryPointData = result.formData;
+                        }
+                    }
+                    setupChatInput();
+                    var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
+                    if (welcomeMessage) {
+                        saveMessage(welcomeMessage, 'bot', 'welcomeMessage');
+                    }
+                    loadMessages();
+                });
+            }
+        });
+    };
 
     var refreshBtn = document.createElement('button');
     refreshBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="m21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg>';
@@ -294,22 +445,46 @@ function initializeChatEmbed() {
             isWebSocketConnected = false;
         }
         
-        // Show lead capture form again
+        // Show entry points instead of lead capture form
         inputContainer.style.display = 'none';
-        showLeadCaptureInChat(function (lead) {
+        showEntryPoints(function(result) {
             isFormShowing = false;
-            updateButtonStates(); // Update button appearance
-            window.__simpleChatEmbedLeadCaptured = true;
-            if (lead) {
-                window.SimpleChatEmbedLead = lead;
-            }
-            setupChatInput();
+            updateButtonStates();
 
-            // Show welcome message if set
-            if (welcomeMessage) {
-                saveMessage(welcomeMessage, 'bot', 'welcomeMessage');
+            if (result.entryPoint === 'get_info') {
+                // Go directly to chat for "Get Information"
+                window.__simpleChatEmbedLeadCaptured = true;
+                setupChatInput();
+
+                // Show welcome message if set
+                if (welcomeMessage) {
+                    saveMessage(welcomeMessage, 'bot', 'welcomeMessage');
+                }
+                loadMessages();
+            } else {
+                // For other entry points, show lead capture first
+                showLeadCaptureInChat(function (lead) {
+                    isFormShowing = false;
+                    updateButtonStates();
+                    window.__simpleChatEmbedLeadCaptured = true;
+                    if (lead) {
+                        window.SimpleChatEmbedLead = lead;
+                        // Add entry point info to lead data
+                        lead.entryPoint = result.entryPoint;
+                        if (result.formData) {
+                            lead.entryPointData = result.formData;
+                        }
+                    }
+                    setupChatInput();
+
+                    // Show welcome message if set and no previous messages
+                    var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
+                    if (welcomeMessage) {
+                        saveMessage(welcomeMessage, 'bot', 'welcomeMessage');
+                    }
+                    loadMessages();
+                });
             }
-            loadMessages();
         });
     };
 
@@ -331,6 +506,7 @@ function initializeChatEmbed() {
 
     var chatCloseBtn = closeBtn;
 
+    headerActions.appendChild(backBtn);
     headerActions.appendChild(refreshBtn);
     headerActions.appendChild(clearSessionBtn);
     headerActions.appendChild(closeBtn);
@@ -996,7 +1172,13 @@ function initializeChatEmbed() {
             }
         }
 
-        var wsUrl = `${socketUrl}${chatID}/?workflow_id=${wsParams.hashed_workflow_id}&hash=${wsParams.hash}&visitorInfo=${JSON.stringify(visitorInfo)}`;
+    // Ensure visitorInfo is safely URL-encoded when appended to query string
+    var encodedVisitorInfo = visitorInfo ? encodeURIComponent(JSON.stringify(visitorInfo)) : 'null';
+    var wsUrl = `${socketUrl}${chatID}/?workflow_id=${wsParams.hashed_workflow_id}&hash=${wsParams.hash}&visitorInfo=${encodedVisitorInfo}`;
+        // Debug logging for connection params
+        console.log('[DEBUG] WebSocket URL:', wsUrl);
+        console.log('[DEBUG] visitorInfo:', visitorInfo);
+        console.log('[DEBUG] chatID:', chatID, 'workflow_id:', workflow_id, 'wsParams:', wsParams);
         try {
             currentSocket = new WebSocket(wsUrl);
             currentSocket.onopen = function () {
@@ -1220,6 +1402,1271 @@ function initializeChatEmbed() {
         if (e.key === 'Enter') sendMessage();
     });
 
+    // Entry points selection UI
+    function showEntryPoints(onComplete) {
+        isFormShowing = false; // Not showing a form, showing entry points
+        updateButtonStates();
+        messages.innerHTML = '';
+
+        var wrapper = document.createElement('div');
+        wrapper.style.display = 'flex';
+        wrapper.style.flexDirection = 'column';
+        wrapper.style.alignItems = 'center';
+        wrapper.style.justifyContent = 'center';
+        wrapper.style.height = '100%';
+        wrapper.style.width = '100%';
+        wrapper.style.gap = '1.5rem';
+        wrapper.style.padding = '1rem';
+
+        // Title
+        var title = document.createElement('h2');
+        title.innerText = entryPoints.title;
+        title.style.fontSize = '1.25rem';
+        title.style.fontWeight = '600';
+        title.style.color = theme.text;
+        title.style.textAlign = 'center';
+        title.style.margin = '0';
+        wrapper.appendChild(title);
+
+        // Options container
+        var optionsContainer = document.createElement('div');
+        optionsContainer.style.display = 'flex';
+        optionsContainer.style.flexDirection = 'column';
+        optionsContainer.style.gap = '0.75rem';
+        optionsContainer.style.width = '100%';
+        optionsContainer.style.maxWidth = '320px';
+        optionsContainer.style.alignItems = 'center'; // Center the buttons
+
+        // Create option buttons
+        entryPoints.options.forEach(function(option) {
+            var button = document.createElement('button');
+            button.innerHTML = `
+                <div style="font-weight: 600; font-size: 0.875rem; margin-bottom: 0.25rem; text-align: center;">${option.label}</div>
+                <div style="font-size: 0.75rem; color: #6b7280; text-align: center;">${option.description}</div>
+            `;
+            button.style.width = '100%';
+            button.style.maxWidth = '280px'; // Slightly smaller for better centering
+            button.style.padding = '1rem';
+            button.style.background = '#ffffff';
+            button.style.border = '1px solid #d1d5db';
+            button.style.borderRadius = '0.5rem';
+            button.style.cursor = 'pointer';
+            button.style.textAlign = 'center'; // Center text inside buttons
+            button.style.transition = 'all 0.2s ease-in-out';
+            button.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.1)';
+
+            button.addEventListener('mouseover', function() {
+                button.style.background = '#f8f9fa';
+                button.style.borderColor = theme.primary;
+                button.style.transform = 'translateY(-1px)';
+                button.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
+            });
+
+            button.addEventListener('mouseout', function() {
+                button.style.background = '#ffffff';
+                button.style.borderColor = '#d1d5db';
+                button.style.transform = 'translateY(0)';
+                button.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.1)';
+            });
+
+            button.addEventListener('click', function() {
+                if (option.requiresForm) {
+                    showCustomForm(option, onComplete);
+                } else if (option.id === 'browse_products') {
+                    showProductCategories(onComplete);
+                } else {
+                    // Go directly to chat
+                    onComplete({ entryPoint: option.id });
+                }
+            });
+
+            optionsContainer.appendChild(button);
+        });
+
+        wrapper.appendChild(optionsContainer);
+        messages.appendChild(wrapper);
+    }
+
+    // Custom form for entry points that require additional info
+    function showCustomForm(entryPointOption, onComplete) {
+        messages.innerHTML = '';
+
+        var wrapper = document.createElement('div');
+        wrapper.style.display = 'flex';
+        wrapper.style.flexDirection = 'column';
+        wrapper.style.alignItems = 'center';
+        wrapper.style.justifyContent = 'center';
+        wrapper.style.height = '100%';
+        wrapper.style.width = '100%';
+        wrapper.style.gap = '1.5rem';
+        wrapper.style.padding = '1rem';
+
+        // Title
+        var title = document.createElement('h2');
+        title.innerText = entryPointOption.label;
+        title.style.fontSize = '1.25rem';
+        title.style.fontWeight = '600';
+        title.style.color = theme.text;
+        title.style.textAlign = 'center';
+        title.style.margin = '0';
+        wrapper.appendChild(title);
+
+        var formContainer = document.createElement('div');
+        formContainer.style.width = '100%';
+        formContainer.style.maxWidth = '300px';
+        formContainer.style.display = 'flex';
+        formContainer.style.flexDirection = 'column';
+        formContainer.style.gap = '1rem';
+
+        var formData = {};
+
+        // Create form fields based on entryPointOption.formFields
+        entryPointOption.formFields.forEach(function(field) {
+            var fieldContainer = document.createElement('div');
+            fieldContainer.style.display = 'flex';
+            fieldContainer.style.flexDirection = 'column';
+            fieldContainer.style.gap = '0.5rem';
+
+            var label = document.createElement('label');
+            label.style.fontSize = '0.875rem';
+            label.style.fontWeight = '500';
+            label.style.color = theme.text;
+
+            var input;
+            if (field === 'name') {
+                label.innerText = 'Full Name*';
+                input = document.createElement('input');
+                input.type = 'text';
+                input.placeholder = 'Enter your full name';
+            } else if (field === 'email') {
+                label.innerText = 'Email*';
+                input = document.createElement('input');
+                input.type = 'email';
+                input.placeholder = 'Enter your email';
+            } else if (field === 'phone') {
+                label.innerText = 'Phone*';
+                input = document.createElement('input');
+                input.type = 'tel';
+                input.placeholder = 'Enter your phone number';
+            } else if (field === 'preferred_date') {
+                label.innerText = 'Preferred Date*';
+                input = document.createElement('input');
+                input.type = 'date';
+                input.min = new Date().toISOString().split('T')[0];
+            } else if (field === 'preferred_time') {
+                label.innerText = 'Preferred Time*';
+                input = document.createElement('input');
+                input.type = 'time';
+                input.min = '09:00';
+                input.max = '17:00';
+            } else if (field === 'support_type') {
+                label.innerText = 'Support Issue*';
+                input = document.createElement('select');
+                var options = [
+                    { value: '', text: 'Select an issue' },
+                    { value: 'technical', text: 'Technical Issue' },
+                    { value: 'billing', text: 'Billing Question' },
+                    { value: 'account', text: 'Account Access' },
+                    { value: 'other', text: 'Other' }
+                ];
+                options.forEach(function(opt) {
+                    var optionEl = document.createElement('option');
+                    optionEl.value = opt.value;
+                    optionEl.text = opt.text;
+                    input.appendChild(optionEl);
+                });
+            }
+
+            if (input) {
+                input.style.padding = '0.75rem';
+                input.style.border = '1px solid #d1d5db';
+                input.style.borderRadius = '0.375rem';
+                input.style.fontSize = '0.875rem';
+                input.style.outline = 'none';
+                input.style.transition = 'border-color 0.2s ease-in-out';
+
+                input.addEventListener('focus', function() {
+                    input.style.borderColor = theme.primary;
+                });
+                input.addEventListener('blur', function() {
+                    input.style.borderColor = '#d1d5db';
+                });
+                input.addEventListener('input', function() {
+                    formData[field] = input.value;
+                });
+
+                fieldContainer.appendChild(label);
+                fieldContainer.appendChild(input);
+                formContainer.appendChild(fieldContainer);
+            }
+        });
+
+        // Submit button
+        var submitBtn = document.createElement('button');
+        submitBtn.innerText = 'Continue to Chat';
+        submitBtn.style.width = '100%';
+        submitBtn.style.padding = '0.75rem 1.5rem';
+        submitBtn.style.background = theme.sendBtnBg || '#16a34a';
+        submitBtn.style.color = '#ffffff';
+        submitBtn.style.border = 'none';
+        submitBtn.style.borderRadius = '0.375rem';
+        submitBtn.style.cursor = 'pointer';
+        submitBtn.style.fontWeight = '600';
+        submitBtn.style.fontSize = '0.875rem';
+        submitBtn.style.transition = 'background-color 0.2s ease-in-out';
+
+        submitBtn.addEventListener('mouseover', function() {
+            submitBtn.style.backgroundColor = theme.sendBtnHover || '#15803d';
+        });
+        submitBtn.addEventListener('mouseout', function() {
+            submitBtn.style.backgroundColor = theme.sendBtnBg || '#16a34a';
+        });
+
+        submitBtn.addEventListener('click', function() {
+            // Validate required fields
+            var hasErrors = false;
+            entryPointOption.formFields.forEach(function(field) {
+                if (!formData[field] || formData[field].trim() === '') {
+                    hasErrors = true;
+                }
+            });
+
+            if (hasErrors) {
+                alert('Please fill in all required fields.');
+                return;
+            }
+
+            // Complete with form data
+            onComplete({
+                entryPoint: entryPointOption.id,
+                formData: formData
+            });
+        });
+
+        // Back button
+        var backBtn = document.createElement('button');
+        backBtn.innerText = '← Back';
+        backBtn.style.width = '100%';
+        backBtn.style.padding = '0.5rem 1rem';
+        backBtn.style.background = 'transparent';
+        backBtn.style.color = theme.primary;
+        backBtn.style.border = '1px solid ' + theme.primary;
+        backBtn.style.borderRadius = '0.375rem';
+        backBtn.style.cursor = 'pointer';
+        backBtn.style.fontSize = '0.875rem';
+        backBtn.style.transition = 'all 0.2s ease-in-out';
+
+        backBtn.addEventListener('mouseover', function() {
+            backBtn.style.background = theme.primary;
+            backBtn.style.color = '#ffffff';
+        });
+        backBtn.addEventListener('mouseout', function() {
+            backBtn.style.background = 'transparent';
+            backBtn.style.color = theme.primary;
+        });
+
+        backBtn.addEventListener('click', function() {
+            showEntryPoints(onComplete);
+        });
+
+        formContainer.appendChild(submitBtn);
+        formContainer.appendChild(backBtn);
+        wrapper.appendChild(formContainer);
+        messages.appendChild(wrapper);
+    }
+
+    // Product catalog display function
+    function showProductCategories(onComplete) {
+        messages.innerHTML = '';
+
+        var wrapper = document.createElement('div');
+        wrapper.style.display = 'flex';
+        wrapper.style.flexDirection = 'column';
+        wrapper.style.alignItems = 'center';
+        wrapper.style.justifyContent = 'flex-start';
+        wrapper.style.height = '100%';
+        wrapper.style.width = '100%';
+        wrapper.style.gap = '1rem';
+        wrapper.style.padding = '1rem';
+        wrapper.style.overflowY = 'auto';
+
+        // Title
+        var title = document.createElement('h2');
+        title.innerText = 'Choose a Category';
+        title.style.fontSize = '1.25rem';
+        title.style.fontWeight = '600';
+        title.style.color = theme.text;
+        title.style.textAlign = 'center';
+        title.style.margin = '0';
+        wrapper.appendChild(title);
+
+        // Categories container
+        var categoriesContainer = document.createElement('div');
+        categoriesContainer.style.display = 'flex';
+        categoriesContainer.style.flexDirection = 'column';
+        categoriesContainer.style.gap = '1rem';
+        categoriesContainer.style.width = '100%';
+        categoriesContainer.style.maxWidth = '400px';
+
+        // Load categories from configuration
+        async function loadCategories() {
+            var categories = [];
+
+            try {
+                // Check if we're running from file:// protocol
+                var isFileProtocol = window.location.protocol === 'file:';
+
+                // Try to fetch from backend endpoint first (only if not file protocol)
+                if (categoriesConfig.endpoint && !isFileProtocol) {
+                    console.log('Fetching categories from:', categoriesConfig.endpoint);
+                    var response = await fetch(categoriesConfig.endpoint, {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        }
+                    });
+
+                    if (response.ok) {
+                        var data = await response.json();
+                        categories = Array.isArray(data) ? data : data.categories || [];
+                        console.log('Loaded', categories.length, 'categories from backend');
+                    } else {
+                        console.warn('Failed to fetch categories from backend:', response.status);
+                        throw new Error('Backend fetch failed');
+                    }
+                } else {
+                    // Use inline category data from config
+                    categories = categoriesConfig.data || [];
+                    console.log('Using configured category data:', categories.length, 'categories');
+                }
+            } catch (error) {
+                console.log('Error loading categories, using fallback:', error.message);
+                // Fallback to embedded categories if config fails
+                categories = [
+                    {
+                        id: '1_trip',
+                        name: '1 Trip Containers',
+                        description: 'Single-use shipping containers',
+                        icon: '🚚',
+                        filter: { type: '1 trip' }
+                    },
+                    {
+                        id: 'cargo_worthy',
+                        name: 'Cargo Worthy',
+                        description: 'High-quality containers for cargo transport',
+                        icon: '📦',
+                        filter: { type: 'cargo worthy' }
+                    },
+                    {
+                        id: 'wind_water_tight',
+                        name: 'Wind & Water Tight',
+                        description: 'Weather-resistant containers',
+                        icon: '🛡️',
+                        filter: { type: 'wind & water tight' }
+                    },
+                    {
+                        id: 'economy_grade',
+                        name: 'Economy Grade',
+                        description: 'Budget-friendly container options',
+                        icon: '💰',
+                        filter: { type: 'economy' }
+                    },
+                    {
+                        id: 'multi_trip',
+                        name: 'Multi-Trip',
+                        description: 'Reusable containers for multiple shipments',
+                        icon: '🔄',
+                        filter: { type: 'multi-trip' }
+                    },
+                    {
+                        id: 'office_containers',
+                        name: 'Office Containers',
+                        description: 'Containers modified for office use',
+                        icon: '🏢',
+                        filter: { type: 'office' }
+                    },
+                    {
+                        id: 'accessories',
+                        name: 'Accessories',
+                        description: 'Container accessories and modifications',
+                        icon: '🔧',
+                        filter: { type: 'accessory' }
+                    }
+                ];
+            }
+
+            return categories;
+        }
+
+        function createCategoryCard(category) {
+            var categoryCard = document.createElement('div');
+            categoryCard.style.background = '#ffffff';
+            categoryCard.style.border = '1px solid #e2e8f0';
+            categoryCard.style.borderRadius = '0.5rem';
+            categoryCard.style.padding = '1.5rem';
+            categoryCard.style.cursor = 'pointer';
+            categoryCard.style.transition = 'all 0.2s ease-in-out';
+            categoryCard.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.1)';
+            categoryCard.style.display = 'flex';
+            categoryCard.style.alignItems = 'center';
+            categoryCard.style.gap = '1rem';
+
+            categoryCard.addEventListener('mouseover', function() {
+                categoryCard.style.transform = 'translateY(-2px)';
+                categoryCard.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
+                categoryCard.style.borderColor = theme.primary;
+            });
+
+            categoryCard.addEventListener('mouseout', function() {
+                categoryCard.style.transform = 'translateY(0)';
+                categoryCard.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.1)';
+                categoryCard.style.borderColor = '#e2e8f0';
+            });
+
+            categoryCard.addEventListener('click', function() {
+                showProductCatalog(onComplete, category.id);
+            });
+
+            // Icon (only if enabled in config)
+            if (categoriesConfig.displayOptions.showIcons && category.icon) {
+                var iconDiv = document.createElement('div');
+                iconDiv.innerText = category.icon;
+                iconDiv.style.fontSize = '2rem';
+                iconDiv.style.flexShrink = '0';
+                categoryCard.appendChild(iconDiv);
+            }
+
+            // Content
+            var contentDiv = document.createElement('div');
+            contentDiv.style.flex = '1';
+
+            var categoryName = document.createElement('h3');
+            categoryName.innerText = category.name;
+            categoryName.style.fontSize = '1rem';
+            categoryName.style.fontWeight = '600';
+            categoryName.style.color = theme.text;
+            categoryName.style.margin = '0 0 0.25rem 0';
+
+            var categoryDesc = document.createElement('p');
+            categoryDesc.innerText = category.description;
+            categoryDesc.style.fontSize = '0.875rem';
+            categoryDesc.style.color = '#6b7280';
+            categoryDesc.style.margin = '0';
+
+            contentDiv.appendChild(categoryName);
+            if (categoriesConfig.displayOptions.showDescriptions) {
+                contentDiv.appendChild(categoryDesc);
+            }
+
+            // Arrow
+            var arrowDiv = document.createElement('div');
+            arrowDiv.innerText = '→';
+            arrowDiv.style.fontSize = '1.25rem';
+            arrowDiv.style.color = theme.primary;
+            arrowDiv.style.fontWeight = '600';
+            arrowDiv.style.flexShrink = '0';
+
+            categoryCard.appendChild(contentDiv);
+            categoryCard.appendChild(arrowDiv);
+
+            return categoryCard;
+        }
+
+        // Load categories and display them
+        loadCategories().then(function(categories) {
+            // Add all category cards
+            categories.forEach(function(category) {
+                var categoryCard = createCategoryCard(category);
+                categoriesContainer.appendChild(categoryCard);
+            });
+
+            // Back button
+            var backBtn = document.createElement('button');
+            backBtn.innerText = '← Back to Options';
+            backBtn.style.width = '100%';
+            backBtn.style.maxWidth = '300px';
+            backBtn.style.padding = '0.75rem 1rem';
+            backBtn.style.background = 'transparent';
+            backBtn.style.color = theme.primary;
+            backBtn.style.border = '1px solid ' + theme.primary;
+            backBtn.style.borderRadius = '0.375rem';
+            backBtn.style.cursor = 'pointer';
+            backBtn.style.fontSize = '0.875rem';
+            backBtn.style.transition = 'all 0.2s ease-in-out';
+            backBtn.style.marginTop = '1rem';
+
+            backBtn.addEventListener('mouseover', function() {
+                backBtn.style.background = theme.primary;
+                backBtn.style.color = '#ffffff';
+            });
+
+            backBtn.addEventListener('mouseout', function() {
+                backBtn.style.background = 'transparent';
+                backBtn.style.color = theme.primary;
+            });
+
+            backBtn.addEventListener('click', function() {
+                showEntryPoints(onComplete);
+            });
+
+            wrapper.appendChild(categoriesContainer);
+            wrapper.appendChild(backBtn);
+            messages.appendChild(wrapper);
+        });
+    }
+
+    // Helper function to get category display name
+    function getCategoryDisplayName(categoryId) {
+        var categoryNames = {
+            '1_trip': '1 Trip',
+            'cargo_worthy': 'Cargo Worthy',
+            'wind_water_tight': 'Wind & Water Tight',
+            'economy_grade': 'Economy Grade',
+            'multi_trip': 'Multi-Trip',
+            'office_containers': 'Office Containers',
+            'accessories': 'Accessories'
+        };
+        return categoryNames[categoryId] || 'Products';
+    }
+
+    function showProductCatalog(onComplete, selectedCategory) {
+        messages.innerHTML = '';
+
+        var wrapper = document.createElement('div');
+        wrapper.style.display = 'flex';
+        wrapper.style.flexDirection = 'column';
+        wrapper.style.alignItems = 'center';
+        wrapper.style.justifyContent = 'flex-start';
+        wrapper.style.height = '100%';
+        wrapper.style.width = '100%';
+        wrapper.style.gap = '1rem';
+        wrapper.style.padding = '1rem';
+        wrapper.style.overflowY = 'auto';
+
+        // Title
+        var title = document.createElement('h2');
+        title.innerText = getCategoryDisplayName(selectedCategory) + ' Products';
+        title.style.fontSize = '1.25rem';
+        title.style.fontWeight = '600';
+        title.style.color = theme.text;
+        title.style.textAlign = 'center';
+        title.style.margin = '0';
+        wrapper.appendChild(title);
+
+        // Category breadcrumb
+        var breadcrumb = document.createElement('div');
+        breadcrumb.innerText = '← Back to Categories';
+        breadcrumb.style.fontSize = '0.875rem';
+        breadcrumb.style.color = theme.primary;
+        breadcrumb.style.cursor = 'pointer';
+        breadcrumb.style.textDecoration = 'underline';
+        breadcrumb.style.marginBottom = '0.5rem';
+        breadcrumb.style.textAlign = 'center';
+
+        breadcrumb.addEventListener('click', function() {
+            showProductCategories(onComplete);
+        });
+        wrapper.appendChild(breadcrumb);
+
+        // Declare variables at function scope level
+        var currentSort = 'price-low';
+        var sortControls = null;
+        var filteredProducts = [];
+        var productsContainer = null;
+
+        // Load products from backend or use fallback data
+        async function loadProducts() {
+            var products = [];
+
+            // Show loading state
+            var loadingDiv = document.createElement('div');
+            loadingDiv.innerText = 'Loading products...';
+            loadingDiv.style.textAlign = 'center';
+            loadingDiv.style.padding = '2rem';
+            loadingDiv.style.color = theme.text;
+            wrapper.appendChild(loadingDiv);
+
+            try {
+                // Check if we're running from file:// protocol
+                var isFileProtocol = window.location.protocol === 'file:';
+
+                // Try to fetch from backend endpoint first (only if not file protocol)
+                if (productsConfig.endpoint && !isFileProtocol) {
+                    console.log('Fetching products from:', productsConfig.endpoint);
+                    var response = await fetch(productsConfig.endpoint, {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': apiConfig.token ? `Token ${apiConfig.token}` : undefined
+                        }
+                    });
+
+                    if (response.ok) {
+                        var data = await response.json();
+                        products = Array.isArray(data) ? data : data.products || [];
+                        console.log('Loaded', products.length, 'products from backend');
+                    } else {
+                        console.warn('Failed to fetch products from backend:', response.status);
+                        throw new Error('Backend fetch failed');
+                    }
+                } else if (productsConfig.data && productsConfig.data.length > 0) {
+                    // Use inline product data from config
+                    products = productsConfig.data;
+                    console.log('Using configured product data:', products.length, 'products');
+                } else {
+                    // Load from local JSON file (skip if file protocol to avoid CORS)
+                    if (!isFileProtocol) {
+                        console.log('Loading products from local JSON file');
+                        try {
+                            var response = await fetch('./products.json');
+                            if (response.ok) {
+                                var data = await response.json();
+                                products = data.products || [];
+                                console.log('Loaded', products.length, 'products from local JSON');
+                            } else {
+                                throw new Error('Local JSON fetch failed');
+                            }
+                        } catch (fetchError) {
+                            console.log('Local JSON fetch failed, will use fallback data:', fetchError.message);
+                            throw new Error('Local JSON fetch failed');
+                        }
+                    } else {
+                        console.log('Running from file:// protocol, skipping local JSON fetch to avoid CORS');
+                        throw new Error('File protocol - use fallback data');
+                    }
+                }
+            } catch (error) {
+                console.log('Using fallback product data:', error.message);
+                // Use embedded fallback data only if enabled in config
+                if (productsConfig.useEmbeddedFallback) {
+                    products = [
+                        {
+                            "title": "20ft Shipping Container Standard 1 Trip with Doors at Both Ends",
+                            "price": 5462,
+                            "url": "https://containerone.net/products/20ft-shipping-container-standard-1-trip-with-doors-at-both-ends-20stdd1trip?zip_code=13082",
+                            "deliveryTimeline": "Check",
+                            "url_label": "View details here",
+                            "salePrice": 5356,
+                            "pickupPrice": 3816,
+                            "category": "20ft",
+                            "type": "Standard 1 Trip",
+                            "condition": "New",
+                            "features": ["Wind Tight", "Water Tight", "Cargo Worthy"]
+                        },
+                        {
+                            "title": "20ft Standard 1 Trip Modified Shipping Container With Man Door",
+                            "price": 7851,
+                            "url": "https://containerone.net/products/20ft-standard-1-trip-modified-shipping-container-with-man-door-20mod1trip?zip_code=13082",
+                            "deliveryTimeline": "Contact a product specialist for a delivery timeline for this item",
+                            "url_label": "View details here",
+                            "salePrice": 7745,
+                            "pickupPrice": 6205,
+                            "category": "20ft",
+                            "type": "Modified 1 Trip",
+                            "condition": "Modified",
+                            "features": ["Man Door", "Wind Tight", "Water Tight"]
+                        },
+                        {
+                            "title": "20ft Standard 1 Trip Shipping Container",
+                            "price": 4561,
+                            "url": "https://containerone.net/products/20ft-standard-1-trip-shipping-container-20st1trip?zip_code=13082",
+                            "deliveryTimeline": "Tan 5-10",
+                            "url_label": "View details here",
+                            "salePrice": 4455,
+                            "pickupPrice": 2915,
+                            "category": "20ft",
+                            "type": "Standard 1 Trip",
+                            "condition": "New",
+                            "features": ["Wind Tight", "Water Tight", "Cargo Worthy"]
+                        },
+                        {
+                            "title": "40ft High Cube Shipping Container - Wind & Water Tight",
+                            "price": 8950,
+                            "url": "https://containerone.net/products/40ft-high-cube-wind-water-tight?zip_code=13082",
+                            "deliveryTimeline": "5-10",
+                            "url_label": "View details here",
+                            "salePrice": 8750,
+                            "pickupPrice": 7200,
+                            "category": "40ft",
+                            "type": "Wind & Water Tight",
+                            "condition": "Used",
+                            "features": ["Wind Tight", "Water Tight", "High Cube"]
+                        },
+                        {
+                            "title": "40ft Cargo Worthy Shipping Container",
+                            "price": 7200,
+                            "url": "https://containerone.net/products/40ft-cargo-worthy-container?zip_code=13082",
+                            "deliveryTimeline": "5-10",
+                            "url_label": "View details here",
+                            "salePrice": 6950,
+                            "pickupPrice": 5800,
+                            "category": "40ft",
+                            "type": "Cargo Worthy",
+                            "condition": "Used",
+                            "features": ["Cargo Worthy", "Wind Tight", "Water Tight"]
+                        },
+                        {
+                            "title": "20ft Economy Grade Container",
+                            "price": 3200,
+                            "url": "https://containerone.net/products/20ft-economy-container?zip_code=13082",
+                            "deliveryTimeline": "Check",
+                            "url_label": "View details here",
+                            "salePrice": 3100,
+                            "pickupPrice": 2200,
+                            "category": "20ft",
+                            "type": "Economy Grade",
+                            "condition": "Used",
+                            "features": ["Basic Condition"]
+                        },
+                        {
+                            "title": "40ft Multi-Trip Shipping Container",
+                            "price": 6500,
+                            "url": "https://containerone.net/products/40ft-multi-trip-container?zip_code=13082",
+                            "deliveryTimeline": "5-10",
+                            "url_label": "View details here",
+                            "salePrice": 6300,
+                            "pickupPrice": 5200,
+                            "category": "40ft",
+                            "type": "Multi-Trip",
+                            "condition": "Used",
+                            "features": ["Multi-Trip", "Wind Tight", "Water Tight"]
+                        },
+                        {
+                            "title": "20ft Office Container with Windows and Door",
+                            "price": 12500,
+                            "url": "https://containerone.net/products/20ft-office-container?zip_code=13082",
+                            "deliveryTimeline": "Contact",
+                            "url_label": "View details here",
+                            "salePrice": 12200,
+                            "pickupPrice": 9800,
+                            "category": "20ft",
+                            "type": "Office Container",
+                            "condition": "Modified",
+                            "features": ["Office Setup", "Windows", "Insulation", "Electrical"]
+                        },
+                        {
+                            "title": "Container Lock Box Security System",
+                            "price": 450,
+                            "url": "https://containerone.net/products/container-lock-box?zip_code=13082",
+                            "deliveryTimeline": "5-10",
+                            "url_label": "View details here",
+                            "salePrice": 425,
+                            "pickupPrice": 400,
+                            "category": "Accessories",
+                            "type": "Security Accessory",
+                            "condition": "New",
+                            "features": ["Security", "Lock System"]
+                        },
+                        {
+                            "title": "Container Ventilation System",
+                            "price": 280,
+                            "url": "https://containerone.net/products/container-ventilation?zip_code=13082",
+                            "deliveryTimeline": "5-10",
+                            "url_label": "View details here",
+                            "salePrice": 260,
+                            "pickupPrice": 240,
+                            "category": "Accessories",
+                            "type": "Ventilation Accessory",
+                            "condition": "New",
+                            "features": ["Ventilation", "Air Flow"]
+                        },
+                        {
+                            "title": "20ft Cargo Worthy Container - Single Trip",
+                            "price": 4200,
+                            "url": "https://containerone.net/products/20ft-cargo-worthy-single-trip?zip_code=13082",
+                            "deliveryTimeline": "5-10",
+                            "url_label": "View details here",
+                            "salePrice": 4100,
+                            "pickupPrice": 3500,
+                            "category": "20ft",
+                            "type": "Cargo Worthy",
+                            "condition": "Used",
+                            "features": ["Cargo Worthy", "Wind Tight", "Water Tight"]
+                        },
+                        {
+                            "title": "40ft Economy Grade Container",
+                            "price": 4800,
+                            "url": "https://containerone.net/products/40ft-economy-container?zip_code=13082",
+                            "deliveryTimeline": "Check",
+                            "url_label": "View details here",
+                            "salePrice": 4650,
+                            "pickupPrice": 3800,
+                            "category": "40ft",
+                            "type": "Economy Grade",
+                            "condition": "Used",
+                            "features": ["Basic Condition"]
+                        },
+                        {
+                            "title": "20ft Multi-Trip Container",
+                            "price": 5800,
+                            "url": "https://containerone.net/products/20ft-multi-trip-container?zip_code=13082",
+                            "deliveryTimeline": "5-10",
+                            "url_label": "View details here",
+                            "salePrice": 5650,
+                            "pickupPrice": 4800,
+                            "category": "20ft",
+                            "type": "Multi-Trip",
+                            "condition": "Used",
+                            "features": ["Multi-Trip", "Wind Tight", "Water Tight"]
+                        },
+                        {
+                            "title": "40ft Office Container with Full Setup",
+                            "price": 18500,
+                            "url": "https://containerone.net/products/40ft-office-container-full?zip_code=13082",
+                            "deliveryTimeline": "Contact",
+                            "url_label": "View details here",
+                            "salePrice": 18200,
+                            "pickupPrice": 16500,
+                            "category": "40ft",
+                            "type": "Office Container",
+                            "condition": "Modified",
+                            "features": ["Office Setup", "Windows", "Insulation", "Electrical", "HVAC"]
+                        },
+                        {
+                            "title": "Container Door Hardware Kit",
+                            "price": 180,
+                            "url": "https://containerone.net/products/container-door-hardware?zip_code=13082",
+                            "deliveryTimeline": "5-10",
+                            "url_label": "View details here",
+                            "salePrice": 165,
+                            "pickupPrice": 150,
+                            "category": "Accessories",
+                            "type": "Hardware Accessory",
+                            "condition": "New",
+                            "features": ["Hardware", "Door Components"]
+                        },
+                        {
+                            "title": "Container Insulation Kit",
+                            "price": 320,
+                            "url": "https://containerone.net/products/container-insulation-kit?zip_code=13082",
+                            "deliveryTimeline": "5-10",
+                            "url_label": "View details here",
+                            "salePrice": 300,
+                            "pickupPrice": 280,
+                            "category": "Accessories",
+                            "type": "Insulation Accessory",
+                            "condition": "New",
+                            "features": ["Insulation", "Temperature Control"]
+                        }
+                    ];
+                } else {
+                    console.log('Embedded fallback disabled in config');
+                }
+            }
+
+            // Remove loading state
+            if (loadingDiv.parentNode) {
+                loadingDiv.parentNode.removeChild(loadingDiv);
+            }
+
+            return products;
+        }
+
+        // Filter products by category
+        function filterProductsByCategory(products, categoryId) {
+            if (!categoryId || categoryId === 'all') {
+                return products;
+            }
+
+            // Load categories to get filter configuration
+            var categories = categoriesConfig.data || [];
+
+            // Find the category configuration
+            var categoryConfig = categories.find(function(cat) {
+                return cat.id === categoryId;
+            });
+
+            if (!categoryConfig || !categoryConfig.filter) {
+                // Fallback to legacy filtering if no config found
+                return products.filter(function(product) {
+                    // Map category IDs to product properties (legacy logic)
+                    var categoryMappings = {
+                        '1_trip': function(p) { return p.type && p.type.toLowerCase().includes('1 trip'); },
+                        'cargo_worthy': function(p) { return p.type && p.type.toLowerCase().includes('cargo worthy'); },
+                        'wind_water_tight': function(p) { return p.type && p.type.toLowerCase().includes('wind') && p.type.toLowerCase().includes('water'); },
+                        'economy_grade': function(p) { return p.type && p.type.toLowerCase().includes('economy'); },
+                        'multi_trip': function(p) { return p.type && p.type.toLowerCase().includes('multi-trip'); },
+                        'office_containers': function(p) { return p.type && p.type.toLowerCase().includes('office'); },
+                        'accessories': function(p) { return p.type && p.type.toLowerCase().includes('accessory'); }
+                    };
+
+                    var filterFn = categoryMappings[categoryId];
+                    return filterFn ? filterFn(product) : true;
+                });
+            }
+
+            // Use configurable filter
+            return products.filter(function(product) {
+                var filter = categoryConfig.filter;
+
+                // Apply filter based on filter type
+                if (filter.type) {
+                    // Filter by product type
+                    if (!product.type || !product.type.toLowerCase().includes(filter.type.toLowerCase())) {
+                        return false;
+                    }
+                }
+
+                if (filter.category) {
+                    // Filter by product category
+                    if (!product.category || !product.category.toLowerCase().includes(filter.category.toLowerCase())) {
+                        return false;
+                    }
+                }
+
+                if (filter.condition) {
+                    // Filter by product condition
+                    if (!product.condition || !product.condition.toLowerCase().includes(filter.condition.toLowerCase())) {
+                        return false;
+                    }
+                }
+
+                if (filter.features && filter.features.length > 0) {
+                    // Filter by required features
+                    if (!product.features || !Array.isArray(product.features)) {
+                        return false;
+                    }
+
+                    // Check if product has all required features
+                    for (var i = 0; i < filter.features.length; i++) {
+                        var requiredFeature = filter.features[i].toLowerCase();
+                        var hasFeature = product.features.some(function(feature) {
+                            return feature.toLowerCase().includes(requiredFeature);
+                        });
+
+                        if (!hasFeature) {
+                            return false;
+                        }
+                    }
+                }
+
+                return true;
+            });
+        }
+
+        // Load products and then set up the catalog
+        loadProducts().then(function(products) {
+            // Filter products by selected category
+            filteredProducts = filterProductsByCategory(products, selectedCategory);
+
+            // Set default sort from config
+            currentSort = productsConfig.sorting ? productsConfig.sorting.defaultSort : 'price-low';
+
+            // Sort controls container (only if sorting is enabled)
+            if (productsConfig.sorting && productsConfig.sorting.enabled) {
+                sortControls = document.createElement('div');
+                sortControls.style.display = 'flex';
+                sortControls.style.flexWrap = 'wrap';
+                sortControls.style.gap = '0.5rem';
+                sortControls.style.marginBottom = '1rem';
+                sortControls.style.padding = '0.5rem';
+                sortControls.style.background = '#f9fafb';
+                sortControls.style.borderRadius = '0.5rem';
+                sortControls.style.border = '1px solid #e5e7eb';
+
+                function createSortButton(label, sortType) {
+                    var button = document.createElement('button');
+                    button.innerText = label;
+                    button.style.padding = '0.5rem 1rem';
+                    button.style.background = currentSort === sortType ? theme.primary : '#f3f4f6';
+                    button.style.color = currentSort === sortType ? '#ffffff' : '#374151';
+                    button.style.border = '1px solid #d1d5db';
+                    button.style.borderRadius = '0.375rem';
+                    button.style.cursor = 'pointer';
+                    button.style.fontSize = '0.75rem';
+                    button.style.fontWeight = '500';
+                    button.style.transition = 'all 0.2s ease-in-out';
+
+                    button.addEventListener('mouseover', function() {
+                        if (currentSort !== sortType) {
+                            button.style.background = '#e5e7eb';
+                        }
+                    });
+
+                    button.addEventListener('mouseout', function() {
+                        if (currentSort !== sortType) {
+                            button.style.background = '#f3f4f6';
+                        }
+                    });
+
+                    button.addEventListener('click', function() {
+                        currentSort = sortType;
+                        updateSortButtons();
+                        sortAndDisplayProducts();
+                    });
+
+                    return button;
+                }
+
+                var sortButtons = [];
+                var sortOptions = productsConfig.sorting.options || [
+                    { id: 'price-low', label: 'Price: Low to High' },
+                    { id: 'price-high', label: 'Price: High to Low' },
+                    { id: 'size-20ft', label: 'Size: 20ft First' },
+                    { id: 'size-40ft', label: 'Size: 40ft First' },
+                    { id: 'name-asc', label: 'Name A-Z' },
+                    { id: 'delivery', label: 'Delivery Time' }
+                ];
+
+                sortOptions.forEach(function(option) {
+                    sortButtons.push(createSortButton(option.label, option.id));
+                });
+
+                sortButtons.forEach(function(button) {
+                    sortControls.appendChild(button);
+                });
+
+                function updateSortButtons() {
+                    sortButtons.forEach(function(button, index) {
+                        var sortType = sortOptions[index].id;
+                        if (currentSort === sortType) {
+                            button.style.background = theme.primary;
+                            button.style.color = '#ffffff';
+                        } else {
+                            button.style.background = '#f3f4f6';
+                            button.style.color = '#374151';
+                        }
+                    });
+                }
+            }
+
+        // Products container
+        productsContainer = document.createElement('div');
+        productsContainer.style.display = 'flex';
+        productsContainer.style.flexDirection = 'column';
+        productsContainer.style.gap = '1rem';
+        productsContainer.style.width = '100%';
+        productsContainer.style.maxWidth = '400px';
+
+        function sortProducts(productsArray, sortType) {
+            var sorted = [...productsArray];
+
+            switch (sortType) {
+                case 'price-low':
+                    return sorted.sort((a, b) => a.salePrice - b.salePrice);
+                case 'price-high':
+                    return sorted.sort((a, b) => b.salePrice - a.salePrice);
+                case 'size-20ft':
+                    return sorted.sort((a, b) => {
+                        if (a.category === '20ft' && b.category !== '20ft') return -1;
+                        if (a.category !== '20ft' && b.category === '20ft') return 1;
+                        return a.salePrice - b.salePrice;
+                    });
+                case 'size-40ft':
+                    return sorted.sort((a, b) => {
+                        if (a.category === '40ft' && b.category !== '40ft') return -1;
+                        if (a.category !== '40ft' && b.category === '40ft') return 1;
+                        return a.salePrice - b.salePrice;
+                    });
+                case 'name-asc':
+                    return sorted.sort((a, b) => a.title.localeCompare(b.title));
+                case 'delivery':
+                    return sorted.sort((a, b) => {
+                        var deliveryOrder = {
+                            '5-10': 1,
+                            'Tan 5-10': 2,
+                            'Check': 3
+                        };
+                        var aOrder = deliveryOrder[a.deliveryTimeline] || 4;
+                        var bOrder = deliveryOrder[b.deliveryTimeline] || 4;
+                        if (aOrder !== bOrder) return aOrder - bOrder;
+                        return a.salePrice - b.salePrice;
+                    });
+                default:
+                    return sorted;
+            }
+        }
+
+        function createProductCard(product) {
+            var productCard = document.createElement('div');
+            productCard.style.background = '#ffffff';
+            productCard.style.border = '1px solid #e2e8f0';
+            productCard.style.borderRadius = '0.5rem';
+            productCard.style.padding = '1rem';
+            productCard.style.cursor = 'pointer';
+            productCard.style.transition = 'all 0.2s ease-in-out';
+            productCard.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.1)';
+
+            productCard.addEventListener('mouseover', function() {
+                productCard.style.transform = 'translateY(-2px)';
+                productCard.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
+            });
+
+            productCard.addEventListener('mouseout', function() {
+                productCard.style.transform = 'translateY(0)';
+                productCard.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.1)';
+            });
+
+            productCard.addEventListener('click', function() {
+                window.open(product.url, '_blank');
+            });
+
+            var productTitle = document.createElement('h3');
+            productTitle.innerText = product.title;
+            productTitle.style.fontSize = '0.875rem';
+            productTitle.style.fontWeight = '600';
+            productTitle.style.color = theme.text;
+            productTitle.style.margin = '0 0 0.5rem 0';
+            productTitle.style.lineHeight = '1.3';
+
+            productCard.appendChild(productTitle);
+
+            // Category and Type badge (configurable)
+            if (productsConfig.displayFields.showCategory || productsConfig.displayFields.showType) {
+                var categoryBadge = document.createElement('div');
+                var badgeText = '';
+                if (productsConfig.displayFields.showCategory && product.category) {
+                    badgeText += product.category;
+                }
+                if (productsConfig.displayFields.showType && product.type) {
+                    if (badgeText) badgeText += ' • ';
+                    badgeText += product.type;
+                }
+
+                if (badgeText) {
+                    categoryBadge.innerText = badgeText;
+                    categoryBadge.style.fontSize = '0.75rem';
+                    categoryBadge.style.color = theme.primary;
+                    categoryBadge.style.fontWeight = '500';
+                    categoryBadge.style.marginBottom = '0.5rem';
+                    productCard.appendChild(categoryBadge);
+                }
+            }
+
+            // Price container (configurable)
+            if (productsConfig.displayFields.showPrice) {
+                var priceContainer = document.createElement('div');
+                priceContainer.style.display = 'flex';
+                priceContainer.style.alignItems = 'center';
+                priceContainer.style.gap = '0.5rem';
+                priceContainer.style.marginBottom = '0.5rem';
+
+                var salePrice = document.createElement('span');
+                salePrice.innerText = '$' + product.salePrice.toLocaleString();
+                salePrice.style.fontSize = '1.125rem';
+                salePrice.style.fontWeight = '700';
+                salePrice.style.color = '#059669';
+
+                priceContainer.appendChild(salePrice);
+
+                // Original price and savings (configurable)
+                if (productsConfig.displayFields.showOriginalPrice && product.price && product.price > product.salePrice) {
+                    var originalPrice = document.createElement('span');
+                    originalPrice.innerText = '$' + product.price.toLocaleString();
+                    originalPrice.style.fontSize = '0.875rem';
+                    originalPrice.style.textDecoration = 'line-through';
+                    originalPrice.style.color = '#9ca3af';
+                    priceContainer.appendChild(originalPrice);
+                }
+
+                if (productsConfig.displayFields.showSavings && product.price && product.price > product.salePrice) {
+                    var savings = document.createElement('span');
+                    savings.innerText = 'Save $' + (product.price - product.salePrice).toLocaleString();
+                    savings.style.fontSize = '0.75rem';
+                    savings.style.color = '#059669';
+                    savings.style.fontWeight = '500';
+                    priceContainer.appendChild(savings);
+                }
+
+                productCard.appendChild(priceContainer);
+            }
+
+            // Delivery info (configurable)
+            if (productsConfig.displayFields.showDelivery && product.deliveryTimeline) {
+                var deliveryInfo = document.createElement('div');
+                deliveryInfo.style.fontSize = '0.75rem';
+                deliveryInfo.style.color = '#6b7280';
+                deliveryInfo.style.marginBottom = '0.5rem';
+
+                if (product.deliveryTimeline === '5-10' || product.deliveryTimeline === 'Tan 5-10') {
+                    deliveryInfo.innerHTML = '🚚 <strong>Delivery:</strong> 5-10 days';
+                } else if (product.deliveryTimeline.includes('Contact')) {
+                    deliveryInfo.innerHTML = '📞 <strong>Delivery:</strong> Contact for timeline';
+                } else if (product.deliveryTimeline === 'Check') {
+                    deliveryInfo.innerHTML = '🔍 <strong>Delivery:</strong> Check availability';
+                } else {
+                    deliveryInfo.innerHTML = '🚚 <strong>Delivery:</strong> ' + product.deliveryTimeline;
+                }
+
+                productCard.appendChild(deliveryInfo);
+            }
+
+            // Pickup info (configurable)
+            if (productsConfig.displayFields.showPickup && product.pickupPrice) {
+                var pickupInfo = document.createElement('div');
+                pickupInfo.innerHTML = '🏢 <strong>Pickup Price:</strong> $' + product.pickupPrice.toLocaleString();
+                pickupInfo.style.fontSize = '0.75rem';
+                pickupInfo.style.color = '#6b7280';
+                pickupInfo.style.marginBottom = '0.5rem';
+                productCard.appendChild(pickupInfo);
+            }
+
+            // View details link
+            var viewButton = document.createElement('div');
+            viewButton.innerHTML = '🔗 ' + (product.url_label || 'View details');
+            viewButton.style.fontSize = '0.75rem';
+            viewButton.style.color = theme.primary || '#3b82f6';
+            viewButton.style.fontWeight = '500';
+            viewButton.style.textDecoration = 'underline';
+
+            productCard.appendChild(viewButton);
+
+            return productCard;
+        }
+
+        function sortAndDisplayProducts() {
+            var sortedProducts = sortProducts(filteredProducts, currentSort);
+            productsContainer.innerHTML = '';
+
+            sortedProducts.forEach(function(product) {
+                var productCard = createProductCard(product);
+                productsContainer.appendChild(productCard);
+            });
+        }
+
+        // Initial display
+        sortAndDisplayProducts();
+
+        // Back button
+        var backBtn = document.createElement('button');
+        backBtn.innerText = '← Back to Options';
+        backBtn.style.width = '100%';
+        backBtn.style.maxWidth = '300px';
+        backBtn.style.padding = '0.75rem 1rem';
+        backBtn.style.background = 'transparent';
+        backBtn.style.color = theme.primary;
+        backBtn.style.border = '1px solid ' + theme.primary;
+        backBtn.style.borderRadius = '0.375rem';
+        backBtn.style.cursor = 'pointer';
+        backBtn.style.fontSize = '0.875rem';
+        backBtn.style.transition = 'all 0.2s ease-in-out';
+        backBtn.style.marginTop = '1rem';
+
+        backBtn.addEventListener('mouseover', function() {
+            backBtn.style.background = theme.primary;
+            backBtn.style.color = '#ffffff';
+        });
+
+        backBtn.addEventListener('mouseout', function() {
+            backBtn.style.background = 'transparent';
+            backBtn.style.color = theme.primary;
+        });
+
+        backBtn.addEventListener('click', function() {
+            showEntryPoints(onComplete);
+        });
+
+        // Add sort controls to wrapper if they exist
+        if (sortControls) {
+            wrapper.appendChild(sortControls);
+        }
+        wrapper.appendChild(productsContainer);
+        wrapper.appendChild(backBtn);
+        messages.appendChild(wrapper);
+        });
+    }
+
+    // Custom form for lead capture
     function showLeadCaptureInChat(onComplete) {
         isFormShowing = true; // Set flag to prevent reset during form display
         updateButtonStates(); // Update button appearance
@@ -1451,9 +2898,9 @@ function initializeChatEmbed() {
         formContainer.appendChild(phoneFieldContainer);
         formContainer.appendChild(zipFieldContainer);
 
-        // Start Chat button
-        var confirmBtn = document.createElement('button');
-        confirmBtn.innerText = 'Start Chat';
+    // Submit button (previously Start Chat)
+    var confirmBtn = document.createElement('button');
+    confirmBtn.innerText = 'Submit';
         confirmBtn.style.width = '100%';
         confirmBtn.style.maxWidth = '300px';
         confirmBtn.style.padding = '0.75rem 1.5rem';
@@ -1491,8 +2938,6 @@ function initializeChatEmbed() {
             // Validate name (required)
 
             var zipVal = zipInput.value.trim();
-            var hasErrors = false;
-
             // Reset all error states
             nameInput.style.borderColor = '#d1d5db';
             emailInput.style.borderColor = '#d1d5db';
@@ -1615,7 +3060,49 @@ function initializeChatEmbed() {
             localStorage.setItem('simple-chat-leads', JSON.stringify(leads));
 
             onComplete(leadData);
-            sendMessage(`${nameInput.value} ${emailInput.value} ${phoneInput.value} ${zipInput.value}`);  
+
+            // After lead submission, hide chat input and quick buttons and show only the entry points/options menu
+            // User must choose what to do next; we'll only show chat or products after they pick an option
+            try {
+                inputContainer.style.display = 'none';
+                quickButtonsContainer.style.display = 'none';
+            } catch (e) {
+                // ignore
+            }
+
+            showEntryPoints(function(result) {
+                isFormShowing = false;
+                updateButtonStates();
+                window.__simpleChatEmbedLeadCaptured = true;
+
+                // Attach entry point info to the saved lead for later use
+                if (leadData) {
+                    window.SimpleChatEmbedLead = leadData;
+                    if (result && result.entryPoint) {
+                        window.SimpleChatEmbedLead.entryPoint = result.entryPoint;
+                    }
+                    if (result && result.formData) {
+                        window.SimpleChatEmbedLead.entryPointData = result.formData;
+                    }
+                }
+
+                // Only show chat input if the user explicitly selected a chat/info entry
+                if (result && result.entryPoint === 'get_info') {
+                    setupChatInput();
+                    if (welcomeMessage) {
+                        saveMessage(welcomeMessage, 'bot', 'welcomeMessage');
+                    }
+                    loadMessages();
+                } else if (result && result.entryPoint === 'browse_products') {
+                    // Show product categories/catalog
+                    showProductCategories(function() {
+                        // Once product browsing is done, you may choose to open chat input explicitly
+                    });
+                } else {
+                    // For other entry points (book_call, support, etc.) we keep the menu-focused UX and
+                    // only open the chat if a follow-up action requires it.
+                }
+            });
 
         };
 
@@ -1639,7 +3126,7 @@ function initializeChatEmbed() {
         messages.appendChild(wrapper);
 
         // Focus the first field
-    nameInput.focus();
+        nameInput.focus();
     }
 
     // On load, show lead capture inside chat window
@@ -1648,43 +3135,12 @@ function initializeChatEmbed() {
         var existingMessages = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
         var storedSession = localStorage.getItem('simple-chat-session');
 
-        // If we have messages and session data, skip the form
-        if (existingMessages.length > 0 && storedSession) {
-            window.__simpleChatEmbedLeadCaptured = true;
-
-            // Load stored session data and check for handover flag
-            try {
-                var sessionData = JSON.parse(storedSession);
-                visitorInfo = sessionData.visitorInfo;
-
-                // Check if handover occurred in this session
-                if (sessionData.handoverOccurred === true) {
-                    isHandoverActive = true;
-                }
-            } catch (error) {
-                console.log('Error parsing session data:', error);
-            }
-
-            // Show chat input immediately
-            setupChatInput();
-            loadMessages();
-
-            // Ensure auto-scroll to bottom after loading existing messages with robust scroll
-            setTimeout(function () {
-                forceScrollToBottom();
-            }, 200);
-
-            // Automatically establish WebSocket connection with stored session data
-            connectWebSocket();
-            return;
-        }
-
-        // Only show lead capture form if we don't have messages or haven't captured lead yet
+        // Always show lead capture form first if not already captured
         if (!window.__simpleChatEmbedLeadCaptured) {
             inputContainer.style.display = 'none';
             showLeadCaptureInChat(function (lead) {
-                isFormShowing = false; // Reset flag when form is completed
-                updateButtonStates(); // Update button appearance
+                isFormShowing = false;
+                updateButtonStates();
                 window.__simpleChatEmbedLeadCaptured = true;
                 if (lead) {
                     window.SimpleChatEmbedLead = lead;
@@ -1697,10 +3153,47 @@ function initializeChatEmbed() {
                     saveMessage(welcomeMessage, 'bot', 'welcomeMessage');
                 }
                 loadMessages();
+                // After lead capture, ensure session is set and visitorInfo is present before connecting
+                setTimeout(function() {
+                    var storedSession = localStorage.getItem('simple-chat-session');
+                    if (storedSession) {
+                        try {
+                            var sessionData = JSON.parse(storedSession);
+                            if (sessionData.chatID && sessionData.workflowId && sessionData.hashedWorkflowId && sessionData.hash && sessionData.visitorInfo && sessionData.visitorInfo.id) {
+                                connectWebSocket();
+                            }
+                        } catch (e) {}
+                    }
+                }, 200);
             });
-        } else {
+            return;
+        }
+
+        // If we have messages and session data, skip the form
+        if (existingMessages.length > 0 && storedSession) {
+            window.__simpleChatEmbedLeadCaptured = true;
+            let validSession = false;
+            try {
+                var sessionData = JSON.parse(storedSession);
+                visitorInfo = sessionData.visitorInfo;
+                if (sessionData.handoverOccurred === true) {
+                    isHandoverActive = true;
+                }
+                if (sessionData.chatID && sessionData.workflowId && sessionData.hashedWorkflowId && sessionData.hash && sessionData.visitorInfo) {
+                    validSession = true;
+                }
+            } catch (error) {
+                console.log('Error parsing session data:', error);
+            }
             setupChatInput();
             loadMessages();
+            setTimeout(function () {
+                forceScrollToBottom();
+            }, 200);
+            if (validSession && visitorInfo && visitorInfo.id) {
+                connectWebSocket();
+            }
+            return;
         }
     }
 
@@ -1765,69 +3258,117 @@ function initializeChatEmbed() {
         });
     }
 
-    // Create chat toggle button
-    var chatToggle = document.createElement('button');
-    chatToggle.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-message-circle-icon lucide-message-circle"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>';
-    chatToggle.style.position = 'fixed';
-    chatToggle.style.bottom = '20px';
-    chatToggle.style.right = '20px';
-    chatToggle.style.width = '80px';
-    chatToggle.style.height = '80px';
-    chatToggle.style.borderRadius = '50%';
-    chatToggle.style.backgroundColor = theme.sendBtnBg || '#16a34a';
-    chatToggle.style.color = '#ffffff';
-    chatToggle.style.border = 'none';
-    chatToggle.style.cursor = 'pointer';
-    chatToggle.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
-    chatToggle.style.display = 'flex';
-    chatToggle.style.alignItems = 'center';
-    chatToggle.style.justifyContent = 'center';
-    chatToggle.style.transition = 'all 0.3s ease';
-    chatToggle.style.zIndex = theme.zIndex - 1;
+    // Create chat toggle button (safe: wrapped with try/catch and normalized zIndex)
+    var chatToggle;
+    try {
+        chatToggle = document.createElement('button');
+        chatToggle.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-message-circle-icon lucide-message-circle"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>';
+        chatToggle.style.position = 'fixed';
+        chatToggle.style.bottom = '20px';
+        chatToggle.style.right = '20px';
+        chatToggle.style.width = '80px';
+        chatToggle.style.height = '80px';
+        chatToggle.style.borderRadius = '50%';
+        chatToggle.style.backgroundColor = theme.sendBtnBg || '#16a34a';
+        chatToggle.style.color = '#ffffff';
+        chatToggle.style.border = 'none';
+        chatToggle.style.cursor = 'pointer';
+        chatToggle.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
+        chatToggle.style.display = 'flex';
+        chatToggle.style.alignItems = 'center';
+        chatToggle.style.justifyContent = 'center';
+        chatToggle.style.transition = 'all 0.3s ease';
 
-    // Responsive positioning for mobile
-    function setToggleResponsive() {
-        if (window.innerWidth < 768) {
+        // Normalize zIndex: ensure it's a number and fallback to a safe default
+        var safeZ = Number(theme && theme.zIndex);
+        if (!isFinite(safeZ)) safeZ = 9999;
+        chatToggle.style.zIndex = String(safeZ - 1);
+    } catch (err) {
+        console.error('Failed to create chat toggle button:', err);
+        // Fallback: create a minimal placeholder so rest of script can proceed
+        try {
+            chatToggle = document.createElement('button');
+            chatToggle.innerText = 'Chat';
+            chatToggle.style.position = 'fixed';
             chatToggle.style.bottom = '20px';
             chatToggle.style.right = '20px';
-        } else {
-            chatToggle.style.bottom = '20px';
-            chatToggle.style.right = '20px';
+            chatToggle.style.zIndex = '9998';
+        } catch (err2) {
+            console.error('Failed to create fallback chat toggle:', err2);
+            chatToggle = null;
         }
     }
-    setToggleResponsive();
-    window.addEventListener('resize', setToggleResponsive);
+
+    // Responsive positioning and toggle wiring for chat toggle button
+    function setToggleResponsive() {
+        try {
+            if (!chatToggle) return;
+            // both branches same but kept for future customization
+            chatToggle.style.bottom = '20px';
+            chatToggle.style.right = '20px';
+        } catch (e) {
+            console.error('Error in setToggleResponsive:', e);
+        }
+    }
 
     // Initially hide the chat container
     chatContainer.style.display = 'none';
 
     // Toggle functionality
     var chatOpen = false;
-    chatToggle.addEventListener('click', function () {
-        chatOpen = !chatOpen;
-        if (chatOpen) {
-            chatContainer.style.display = 'flex';
-            chatToggle.style.display = 'none';
 
-            // Auto-scroll to bottom when chat opens with robust scroll function
-            setTimeout(function () {
-                forceScrollToBottom();
-            }, 150);
-        } else {
-            chatContainer.style.display = 'none';
-            chatToggle.style.display = 'flex';
+    if (chatToggle) {
+        try {
+            setToggleResponsive();
+            window.addEventListener('resize', setToggleResponsive);
+
+            chatToggle.addEventListener('click', function () {
+                try {
+                    chatOpen = !chatOpen;
+                    if (chatOpen) {
+                        chatContainer.style.display = 'flex';
+                        chatToggle.style.display = 'none';
+
+                        // Auto-scroll to bottom when chat opens with robust scroll function
+                        setTimeout(function () {
+                            forceScrollToBottom();
+                        }, 150);
+                    } else {
+                        chatContainer.style.display = 'none';
+                        chatToggle.style.display = 'flex';
+                    }
+                } catch (err) {
+                    console.error('Error handling chatToggle click:', err);
+                }
+            });
+
+            // Close button functionality from header
+            chatCloseBtn.onclick = function () {
+                try {
+                    chatOpen = false;
+                    chatContainer.style.display = 'none';
+                    if (chatToggle) chatToggle.style.display = 'flex';
+                } catch (err) {
+                    console.error('Error in chatCloseBtn.onclick:', err);
+                }
+            };
+
+            // Add the toggle button to body
+            try {
+                document.body.appendChild(chatToggle);
+            } catch (err) {
+                console.error('Failed to append chatToggle to body:', err);
+            }
+        } catch (outerErr) {
+            console.error('Failed to initialize chat toggle:', outerErr);
         }
-    });
-
-    // Close button functionality from header
-    chatCloseBtn.onclick = function () {
-        chatOpen = false;
-        chatContainer.style.display = 'none';
-        chatToggle.style.display = 'flex';
-    };
-
-    // Add both toggle button and chat container to body
-    document.body.appendChild(chatToggle);
+    } else {
+        // If chatToggle could not be created, still wire close button safely
+        chatCloseBtn.onclick = function () {
+            chatOpen = false;
+            chatContainer.style.display = 'none';
+        };
+    }
 
     // Expose functions globally for testing
     window.saveMessage = saveMessage;
@@ -1839,22 +3380,19 @@ function initializeChatEmbed() {
     // Helper function to create visitor
     const createVisitor = async (name, email, phone, zip) => {
         try {
-            var baseUrl = null
-            var token = null
-            if (config.socketUrl === "wss://hub.memox.io") {
-                baseUrl = "https://hub.memox.io/api/v1/"
-                token = "eedb5fc2b457815409e45f3b1dc023c276c9cedb"
-            }
-            else {
-                baseUrl = "http://localhost:8000/api/v1/"
-                token = "cbacbe059689c3dec8173c05d806c7266b50176e"
-            }
+            var baseUrl = apiConfig.baseUrl;
+            var token = apiConfig.token;
+            var visitorsEndpoint = apiConfig.endpoints.visitors;
 
-            const getVisitor = await fetch(`${baseUrl}visitors/?email=${email}`, {
+        // Normalize base and endpoint to avoid accidental double-slashes
+        var base = String(baseUrl || '').replace(/\/+$/g, '');
+        var endpoint = String(visitorsEndpoint || '').replace(/^\/+|\/+$/g, '');
+
+        const getVisitor = await fetch(`${base}/${endpoint}/?email=${encodeURIComponent(email)}`, {
                 method: "GET",
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Token ${token} `,
+            'Authorization': `Token ${token}`,
                 }
             })
 
@@ -1862,11 +3400,11 @@ function initializeChatEmbed() {
 
             if (getVisitorJson.detail === "Not found." || !getVisitorJson.length) {
                 // If visitor does not exist, create a new one
-                const visitor = await fetch(`${baseUrl}visitors/`, {
+        const visitor = await fetch(`${base}/${endpoint}/`, {
                     method: "POST",
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Token ${token} `,
+            'Authorization': `Token ${token}`,
                     },
                     body: JSON.stringify({
                         name,
