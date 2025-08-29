@@ -127,7 +127,7 @@ function initializeChatEmbed() {
                     label: "Receive Support",
                     description: "Get help with your account or issues",
                     requiresForm: true,
-                    formFields: ["name", "email", "phone", "support_type"]
+                    formFields: ["support_type"]
                 },
                 {
                     id: "browse_products",
@@ -1601,9 +1601,40 @@ function initializeChatEmbed() {
             }
         });
 
+        // Add support-specific textarea when needed
+        if (entryPointOption.id === 'support') {
+            var issueContainer = document.createElement('div');
+            issueContainer.style.display = 'flex';
+            issueContainer.style.flexDirection = 'column';
+            issueContainer.style.gap = '0.5rem';
+
+            var issueLabel = document.createElement('label');
+            issueLabel.innerText = 'Describe your problem please*';
+            issueLabel.style.fontSize = '0.875rem';
+            issueLabel.style.fontWeight = '500';
+            issueLabel.style.color = theme.text;
+
+            var issueInput = document.createElement('textarea');
+            issueInput.placeholder = 'Describe your problem please';
+            issueInput.rows = 4;
+            issueInput.style.padding = '0.75rem';
+            issueInput.style.border = '1px solid #d1d5db';
+            issueInput.style.borderRadius = '0.375rem';
+            issueInput.style.fontSize = '0.875rem';
+            issueInput.style.outline = 'none';
+            issueInput.style.transition = 'border-color 0.2s ease-in-out';
+            issueInput.addEventListener('focus', function() { issueInput.style.borderColor = theme.primary; });
+            issueInput.addEventListener('blur', function() { issueInput.style.borderColor = '#d1d5db'; });
+            issueInput.addEventListener('input', function() { formData['issue'] = issueInput.value; });
+
+            issueContainer.appendChild(issueLabel);
+            issueContainer.appendChild(issueInput);
+            formContainer.appendChild(issueContainer);
+        }
+
         // Submit button
         var submitBtn = document.createElement('button');
-        submitBtn.innerText = 'Continue to Chat';
+        submitBtn.innerText = entryPointOption.id === 'support' ? 'Talk to Support' : 'Continue to Chat';
         submitBtn.style.width = '100%';
         submitBtn.style.padding = '0.75rem 1.5rem';
         submitBtn.style.background = theme.sendBtnBg || '#16a34a';
@@ -1630,6 +1661,13 @@ function initializeChatEmbed() {
                     hasErrors = true;
                 }
             });
+
+            // Support-specific required issue textarea
+            if (entryPointOption.id === 'support') {
+                if (!formData['issue'] || formData['issue'].trim() === '') {
+                    hasErrors = true;
+                }
+            }
 
             if (hasErrors) {
                 alert('Please fill in all required fields.');
