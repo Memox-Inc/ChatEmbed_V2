@@ -6,189 +6,729 @@
     <title>Chat Embed</title>
 </head>
 <body>
-    <!-- Production Configuration -->
+    <!-- Dynamic Backend-Driven Configuration -->
     <script>
-        // Production test configuration
+        // Mock Django-style configuration
         window.SimpleChatEmbedConfig = {
-            socketUrl: "wss://hub.memox.io",
-            workflowId: "a2b8ad41-9fb7-40ed-8e5d-d64cbcad8f03",
             title: "Container Solutions",
-            welcomeMessage: "Welcome! Browse our shipping container inventory or get instant help.",
+            welcomeMessage: "Hi! I'm here to help you with any questions about our container solutions. What would you like to know?",
             quickQuestions: [
-                "What's the price of a 20ft container?",
-                "What container grades do you offer?",
-                "How long does delivery take?"
+                "What sizes do you offer?",
+                "How much does shipping cost?",
+                "Can you modify containers?"
             ],
-            quickQuestionsPermanent: false,
-
-            // Backend API configuration
-            api: {
-                baseUrl: "https://hub.memox.io/api/v1",
-                token: "eedb5fc2b457815409e45f3b1dc023c276c9cedb",
-                endpoints: {
-                    products: "/products/",
-                    categories: "/categories/",
-                    visitors: "/visitors/"
-                }
+            
+            // Theme configuration
+            theme: {
+                primary: "#8349ff",
+                headerBg: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                userBubble: "#8349ff",
+                botBubble: "#f8f9fa",
+                userText: "#fff",
+                botText: "#2d3748",
+                background: "#fff",
+                border: "#e2e8f0",
+                text: "#2d3748",
+                headerText: "#fff",
+                inputBg: "#fff",
+                inputText: "#2d3748",
+                sendBtnBg: "#8349ff",
+                sendBtnText: "#fff",
+                sendBtnHover: "#6b2fff"
             },
 
-            // Products configuration - supports multiple data sources
-            products: {
-                // Option 1: Fetch from backend API
-                // endpoint: "https://hub.memox.io/api/v1/products/",
-
-                // Option 2: Inline product data (fallback)
-                // data: [],
-
-                // Option 3: Use embedded fallback data (current default)
-                useEmbeddedFallback: true,
-
-                // Product display configuration
-                displayFields: {
-                    showPrice: true,
-                    showOriginalPrice: true,
-                    showSavings: true,
-                    showDelivery: true,
-                    showPickup: true,
-                    showCategory: true,
-                    showType: true
+            // Entry points configuration
+            entryPointsTitle: "How can we help you?",
+            entryPoints: [
+                { 
+                    id: "get_info", 
+                    label: "Get Information", 
+                    next: "info_screen" 
                 },
+                { 
+                    id: "browse_products", 
+                    label: "Browse Products", 
+                    next: "category_select" 
+                },
+                { 
+                    id: "book_call", 
+                    label: "Schedule a Call", 
+                    next: "call_booking_form" 
+                },
+                { 
+                    id: "support", 
+                    label: "Technical Support", 
+                    next: "support_form" 
+                },
+                {
+                    id: "services",
+                    label: "Our Services",
+                    next: "services_info"
+                },
+            ],
 
-                // Sorting configuration
-                sorting: {
-                    enabled: true,
-                    defaultSort: 'price-low',
-                    options: [
-                        { id: 'price-low', label: 'Price: Low to High' },
-                        { id: 'price-high', label: 'Price: High to Low' },
-                        { id: 'size-20ft', label: 'Size: 20ft First' },
-                        { id: 'size-40ft', label: 'Size: 40ft First' },
-                        { id: 'name-asc', label: 'Name A-Z' },
-                        { id: 'delivery', label: 'Delivery Time' }
+            // Screens configuration
+            screens: {
+                services_info: {
+                    type: "info",
+                    title: "Disability Benefits Help",
+                    content: "We help people get the Social Security Disability benefits they deserve. Our team guides you through the entire process - and you only pay if we win your case.",
+                    buttons: [
+                        {
+                            label: "Check If I Qualify",
+                            action: "disability_step1_age"
+                        },
+                        {
+                            label: "Learn More",
+                            action: "services_details"
+                        }
+                    ]
+                },
+                services_details: {
+                    type: "info",
+                    title: "How We Help You",
+                    content: "✓ Free consultation and case review\n✓ Help with all paperwork\n✓ Represent you at hearings\n✓ Get your medical records\n✓ No fees unless we win\n\nWe've helped thousands of people get their benefits approved."
+                },
+                disability_step1_age: {
+                    type: "info",
+                    title: "Step 1: Your Age",
+                    content: "Age is important for disability benefits. People over 50 have an easier time qualifying. How old are you?",
+                    buttons: [
+                        {
+                            label: "Under 50 years old",
+                            action: "disability_step2_work_under50"
+                        },
+                        {
+                            label: "50 to 54 years old",
+                            action: "disability_step2_work_50plus"
+                        },
+                        {
+                            label: "55 to 59 years old",
+                            action: "disability_step2_work_50plus"
+                        },
+                        {
+                            label: "60 years or older",
+                            action: "disability_step2_work_60plus"
+                        }
+                    ]
+                },
+                disability_step2_work_under50: {
+                    type: "info",
+                    title: "Step 2: Work History",
+                    content: "For people under 50, we need to know about your work history. Have you worked recently?",
+                    buttons: [
+                        {
+                            label: "Yes, I worked in the last 5 years",
+                            action: "disability_step3_condition"
+                        },
+                        {
+                            label: "No, I haven't worked much",
+                            action: "disability_step3_condition_nowork"
+                        }
+                    ]
+                },
+                disability_step2_work_50plus: {
+                    type: "info",
+                    title: "Step 2: Work History",
+                    content: "Good news! Being over 50 helps your case. Have you worked before, even if not recently?",
+                    buttons: [
+                        {
+                            label: "Yes, I have worked before",
+                            action: "disability_step3_condition"
+                        },
+                        {
+                            label: "No, I haven't worked much",
+                            action: "disability_step3_condition_nowork"
+                        }
+                    ]
+                },
+                disability_step2_work_60plus: {
+                    type: "info",
+                    title: "Step 2: Work History",
+                    content: "Great! Being 60+ gives you the best chance for approval. Any work history helps your case.",
+                    buttons: [
+                        {
+                            label: "Yes, I have worked before",
+                            action: "disability_step3_condition"
+                        },
+                        {
+                            label: "No, I haven't worked much",
+                            action: "disability_step3_condition_nowork"
+                        }
+                    ]
+                },
+                disability_step3_condition: {
+                    type: "info",
+                    title: "Step 3: Your Main Health Problem",
+                    content: "What is the main health problem that prevents you from working? Choose the one that affects you most:",
+                    buttons: [
+                        {
+                            label: "Back, Neck, or Joint Pain",
+                            action: "disability_step4_duration"
+                        },
+                        {
+                            label: "Depression, Anxiety, or Mental Health",
+                            action: "disability_step4_duration"
+                        },
+                        {
+                            label: "Heart Problems",
+                            action: "disability_step4_duration"
+                        },
+                        {
+                            label: "Diabetes Complications",
+                            action: "disability_step4_duration"
+                        },
+                        {
+                            label: "Lung or Breathing Problems",
+                            action: "disability_step4_duration"
+                        },
+                        {
+                            label: "Other Serious Condition",
+                            action: "disability_step4_duration"
+                        }
+                    ]
+                },
+                disability_step3_condition_nowork: {
+                    type: "info",
+                    title: "Step 3: Your Health Condition",
+                    content: "Even without much work history, you may qualify for SSI benefits. What is your main health problem?",
+                    buttons: [
+                        {
+                            label: "Back, Neck, or Joint Pain",
+                            action: "disability_step4_duration"
+                        },
+                        {
+                            label: "Depression, Anxiety, or Mental Health",
+                            action: "disability_step4_duration"
+                        },
+                        {
+                            label: "Heart Problems",
+                            action: "disability_step4_duration"
+                        },
+                        {
+                            label: "Diabetes Complications",
+                            action: "disability_step4_duration"
+                        },
+                        {
+                            label: "Lung or Breathing Problems",
+                            action: "disability_step4_duration"
+                        },
+                        {
+                            label: "Other Serious Condition",
+                            action: "disability_step4_duration"
+                        }
+                    ]
+                },
+                disability_step4_duration: {
+                    type: "info",
+                    title: "Step 4: How Long Have You Been Sick?",
+                    content: "To qualify for disability, your condition must last (or be expected to last) at least 12 months. How long have you had this problem?",
+                    buttons: [
+                        {
+                            label: "12 months or longer",
+                            action: "disability_step5_work_impact"
+                        },
+                        {
+                            label: "Less than 12 months, but it's getting worse",
+                            action: "disability_step5_work_impact"
+                        },
+                        {
+                            label: "Just a few months and may get better",
+                            action: "disability_result_too_short"
+                        }
+                    ]
+                },
+                disability_step5_work_impact: {
+                    type: "info",
+                    title: "Step 5: Can You Work?",
+                    content: "This is the most important question. Does your health condition prevent you from working any job for at least 8 hours a day?",
+                    buttons: [
+                        {
+                            label: "No, I cannot work at all",
+                            action: "disability_step6_doctor"
+                        },
+                        {
+                            label: "I can only work a few hours",
+                            action: "disability_step6_doctor"
+                        },
+                        {
+                            label: "I can work but with some limits",
+                            action: "disability_result_might_qualify"
+                        },
+                        {
+                            label: "I can work most jobs",
+                            action: "disability_result_unlikely"
+                        }
+                    ]
+                },
+                disability_step6_doctor: {
+                    type: "info",
+                    title: "Step 6: Medical Treatment",
+                    content: "Are you seeing a doctor or getting medical treatment for your condition? Medical records are very important for your case.",
+                    buttons: [
+                        {
+                            label: "Yes, I see doctors regularly",
+                            action: "disability_step7_income"
+                        },
+                        {
+                            label: "Sometimes, when I can afford it",
+                            action: "disability_step7_income"
+                        },
+                        {
+                            label: "No, I can't afford doctors",
+                            action: "disability_step7_income_notreatment"
+                        }
+                    ]
+                },
+                disability_step7_income: {
+                    type: "info",
+                    title: "Step 7: Current Income",
+                    content: "Do you currently earn more than $1,550 per month from working? This is important because earning too much can disqualify you.",
+                    buttons: [
+                        {
+                            label: "No, I earn less than $1,550/month",
+                            action: "disability_result_likely"
+                        },
+                        {
+                            label: "Yes, I earn more than $1,550/month",
+                            action: "disability_result_income_too_high"
+                        },
+                        {
+                            label: "I'm not working at all",
+                            action: "disability_result_likely"
+                        }
+                    ]
+                },
+                disability_step7_income_notreatment: {
+                    type: "info",
+                    title: "Step 7: Income & Treatment",
+                    content: "We can help you get medical treatment and build your case. Do you earn more than $1,550 per month from working?",
+                    buttons: [
+                        {
+                            label: "No, I earn less than $1,550/month",
+                            action: "disability_result_likely_needtreatment"
+                        },
+                        {
+                            label: "Yes, I earn more than $1,550/month",
+                            action: "disability_result_income_too_high"
+                        },
+                        {
+                            label: "I'm not working at all",
+                            action: "disability_result_likely_needtreatment"
+                        }
+                    ]
+                },
+                disability_result_likely: {
+                    type: "info",
+                    title: "Good News! You May Qualify",
+                    content: "Based on your answers, you have a good chance of getting disability benefits approved. We'd like to review your case for free and help you apply.",
+                    buttons: [
+                        {
+                            label: "Get My Free Case Review",
+                            action: "disability_contact_form"
+                        },
+                        {
+                            label: "I Have More Questions",
+                            action: "disability_questions_form"
+                        }
+                    ]
+                },
+                disability_result_likely_needtreatment: {
+                    type: "info",
+                    title: "You May Qualify - Let's Get You Help",
+                    content: "You have a good chance of getting benefits, but you'll need medical treatment to strengthen your case. We can help you find affordable medical care and build a strong application.",
+                    buttons: [
+                        {
+                            label: "Help Me Get Started",
+                            action: "disability_contact_form"
+                        },
+                        {
+                            label: "I Have Questions",
+                            action: "disability_questions_form"
+                        }
+                    ]
+                },
+                disability_result_might_qualify: {
+                    type: "info",
+                    title: "You Might Qualify",
+                    content: "Your case could go either way. Much depends on the details of your condition and how it affects your daily activities. A free consultation can help determine your best options.",
+                    buttons: [
+                        {
+                            label: "Get Free Consultation",
+                            action: "disability_contact_form"
+                        },
+                        {
+                            label: "Learn About Other Options",
+                            action: "disability_questions_form"
+                        }
+                    ]
+                },
+                disability_result_unlikely: {
+                    type: "info",
+                    title: "Disability May Not Be Right for You",
+                    content: "Based on your answers, it may be difficult to get disability benefits approved right now. However, if your condition gets worse, you may qualify in the future.",
+                    buttons: [
+                        {
+                            label: "Discuss My Situation",
+                            action: "disability_questions_form"
+                        },
+                        {
+                            label: "Learn About Other Programs",
+                            action: "services_details"
+                        }
+                    ]
+                },
+                disability_result_too_short: {
+                    type: "info",
+                    title: "Too Early to Apply",
+                    content: "Your condition needs to last at least 12 months to qualify for disability. If your condition doesn't improve, contact us after you've been sick for 12 months.",
+                    buttons: [
+                        {
+                            label: "Contact Me in the Future",
+                            action: "disability_contact_form"
+                        },
+                        {
+                            label: "Learn About Other Help",
+                            action: "services_details"
+                        }
+                    ]
+                },
+                disability_result_income_too_high: {
+                    type: "info",
+                    title: "Income Too High Right Now",
+                    content: "You're earning too much to qualify for disability benefits. If your condition forces you to stop working or reduce your hours significantly, contact us then.",
+                    buttons: [
+                        {
+                            label: "Contact Me if Things Change",
+                            action: "disability_contact_form"
+                        },
+                        {
+                            label: "Learn About Work Accommodations",
+                            action: "disability_questions_form"
+                        }
+                    ]
+                },
+                disability_contact_form: {
+                    type: "form",
+                    title: "Get Your Free Case Review",
+                    description: "We'll review your case for free and let you know your options. This takes just 2 minutes.",
+                    fields: [
+                        {
+                            name: "name",
+                            label: "Your Name",
+                            type: "text",
+                            required: true,
+                            placeholder: "First and Last Name"
+                        },
+                        {
+                            name: "phone",
+                            label: "Phone Number",
+                            type: "tel",
+                            required: true,
+                            placeholder: "Best number to reach you"
+                        },
+                        {
+                            name: "email",
+                            label: "Email Address",
+                            type: "email",
+                            required: false,
+                            placeholder: "Optional - for case updates"
+                        },
+                        {
+                            name: "best_time",
+                            label: "Best time to call you",
+                            type: "select",
+                            required: true,
+                            options: [
+                                { value: "", label: "When should we call?" },
+                                { value: "morning", label: "Morning (9 AM - 12 PM)" },
+                                { value: "afternoon", label: "Afternoon (12 PM - 5 PM)" },
+                                { value: "evening", label: "Evening (5 PM - 8 PM)" }
+                            ]
+                        }
+                    ],
+                    submitLabel: "Get My Free Review",
+                    onSubmit: { action: "submit_disability_contact" }
+                },
+                disability_questions_form: {
+                    type: "form",
+                    title: "Ask Us Your Questions",
+                    description: "Have questions about disability or need other help? Tell us what you'd like to know.",
+                    fields: [
+                        {
+                            name: "name",
+                            label: "Your Name",
+                            type: "text",
+                            required: true,
+                            placeholder: "First and Last Name"
+                        },
+                        {
+                            name: "phone",
+                            label: "Phone Number",
+                            type: "tel",
+                            required: true,
+                            placeholder: "Best number to reach you"
+                        },
+                        {
+                            name: "questions",
+                            label: "Your Questions",
+                            type: "textarea",
+                            required: true,
+                            placeholder: "What would you like to know about disability benefits or other programs?"
+                        }
+                    ],
+                    submitLabel: "Send My Questions",
+                    onSubmit: { action: "submit_disability_questions" }
+                },
+                info_screen: { 
+                    type: "info", 
+                    content: "Welcome to Container Solutions! We offer high-quality shipping containers for storage, shipping, and custom modifications. Our team is here to help you find the perfect solution for your needs." 
+                },
+                category_select: {
+                    type: "category_list",
+                    title: "Choose a Container Category",
+                    categories: [
+                        { id: "20ft", name: "20ft Containers" },
+                        { id: "40ft", name: "40ft Containers" },
+                        { id: "accessories", name: "Accessories & Parts" }
+                    ],
+                    onSelect: { action: "show_products", params: ["categoryId"] }
+                },
+                lead_form: {
+                    type: "form",
+                    title: "Contact Information",
+                    fields: [
+                        { name: "name", label: "Full Name", type: "text", required: true, placeholder: "Enter your full name" },
+                        { name: "email", label: "Email", type: "email", required: true, placeholder: "Enter your email" },
+                        { name: "phone", label: "Phone", type: "tel", required: true, placeholder: "Enter your phone number" },
+                        { name: "zipcode", label: "Zip Code", type: "text", required: true, placeholder: "Enter your zip code" },
+                        { name: "message", label: "Message", type: "textarea", required: false, placeholder: "Tell us about your container needs" }
+                    ],
+                    submitLabel: "Submit",
+                    onSubmit: { action: "submit_lead" }
+                },
+                call_booking_form: {
+                    type: "form",
+                    title: "Schedule a Call",
+                    fields: [
+                        { 
+                            name: "preferred_date", 
+                            label: "Preferred Date", 
+                            type: "date", 
+                            required: true, 
+                            min: new Date().toISOString().split('T')[0]
+                        },
+                        { 
+                            name: "preferred_time", 
+                            label: "Preferred Time", 
+                            type: "select", 
+                            required: true,
+                            options: [
+                                { value: "", label: "Select a time" },
+                                { value: "09:00", label: "9:00 AM" },
+                                { value: "10:00", label: "10:00 AM" },
+                                { value: "11:00", label: "11:00 AM" },
+                                { value: "14:00", label: "2:00 PM" },
+                                { value: "15:00", label: "3:00 PM" },
+                                { value: "16:00", label: "4:00 PM" }
+                            ]
+                        },
+                        { name: "call_topic", label: "Call Topic", type: "textarea", required: false, placeholder: "What would you like to discuss?" }
+                    ],
+                    submitLabel: "Schedule Call",
+                    onSubmit: { action: "schedule_call" }
+                },
+                support_form: {
+                    type: "form",
+                    title: "Technical Support",
+                    fields: [
+                        { 
+                            name: "issue_type", 
+                            label: "Issue Type", 
+                            type: "select", 
+                            required: true,
+                            options: [
+                                { value: "", label: "Select issue type" },
+                                { value: "delivery", label: "Delivery Issue" },
+                                { value: "damage", label: "Container Damage" },
+                                { value: "modification", label: "Modification Problem" },
+                                { value: "documentation", label: "Documentation Issue" },
+                                { value: "other", label: "Other" }
+                            ]
+                        },
+                        { name: "order_number", label: "Order Number", type: "text", required: false, placeholder: "If applicable" },
+                        { name: "issue_description", label: "Description", type: "textarea", required: true, placeholder: "Please describe your issue in detail" },
+                        { 
+                            name: "urgency", 
+                            label: "Urgency Level", 
+                            type: "select", 
+                            required: true,
+                            options: [
+                                { value: "", label: "Select urgency" },
+                                { value: "low", label: "Low - Can wait a few days" },
+                                { value: "medium", label: "Medium - Need response within 24 hours" },
+                                { value: "high", label: "High - Urgent, need immediate attention" }
+                            ]
+                        }
+                    ],
+                    submitLabel: "Submit Support Request",
+                    onSubmit: { action: "submit_support" }
+                },
+                product_list_20ft: {
+                    type: "product_list",
+                    title: "20ft Containers",
+                    products: [
+                        {
+                            title: "20ft Standard 1 Trip Shipping Container",
+                            price: 4455,
+                            originalPrice: 4999,
+                            category: "20ft",
+                            image: "https://containerone.net/cdn/shop/files/20ft-shipping-container-standard-1-trip.jpg?v=1693420074&width=500",
+                            deliveryTime: "2-5 business days",
+                            description: "Like-new condition, used only once for shipping",
+                            features: ["Wind & Water Tight", "CSC Certified", "Like New Condition"],
+                            url: "https://containerone.net/products/20ft-standard-1-trip-shipping-container"
+                        },
+                        {
+                            title: "20ft Modified Container with Man Door",
+                            price: 7745,
+                            category: "20ft",
+                            image: "https://containerone.net/cdn/shop/files/20ft-container-with-man-door.jpg?v=1693420074&width=500",
+                            deliveryTime: "7-14 business days",
+                            description: "Standard container modified with personnel door",
+                            features: ["Personnel Door", "Interior Lighting", "Custom Modifications Available"],
+                            url: "https://containerone.net/products/20ft-modified-container-man-door"
+                        },
+                        {
+                            title: "20ft Economy Grade Container",
+                            price: 3100,
+                            category: "20ft",
+                            image: "https://containerone.net/cdn/shop/files/20ft-economy-container.jpg?v=1693420074&width=500",
+                            deliveryTime: "1-3 business days",
+                            description: "Great for storage, shows normal wear from shipping use",
+                            features: ["Wind & Water Tight", "Budget Friendly", "Perfect for Storage"],
+                            url: "https://containerone.net/products/20ft-economy-container"
+                        }
+                    ]
+                },
+                product_list_40ft: {
+                    type: "product_list",
+                    title: "40ft Containers",
+                    products: [
+                        {
+                            title: "40ft High Cube Wind & Water Tight",
+                            price: 8750,
+                            originalPrice: 9500,
+                            category: "40ft",
+                            image: "https://containerone.net/cdn/shop/files/40ft-high-cube-container.jpg?v=1693420074&width=500",
+                            deliveryTime: "3-7 business days",
+                            description: "Extra height for maximum storage capacity",
+                            features: ["9.5ft Height", "Wind & Water Tight", "Double Door Access"],
+                            url: "https://containerone.net/products/40ft-high-cube-wind-water-tight"
+                        },
+                        {
+                            title: "40ft Cargo Worthy Container",
+                            price: 6950,
+                            category: "40ft",
+                            image: "https://containerone.net/cdn/shop/files/40ft-cargo-worthy.jpg?v=1693420074&width=500",
+                            deliveryTime: "2-5 business days",
+                            description: "Certified for international shipping",
+                            features: ["CSC Certified", "Cargo Worthy", "International Shipping Ready"],
+                            url: "https://containerone.net/products/40ft-cargo-worthy-container"
+                        },
+                        {
+                            title: "40ft Office Container Full Setup",
+                            price: 18200,
+                            category: "40ft",
+                            image: "https://containerone.net/cdn/shop/files/40ft-office-container.jpg?v=1693420074&width=500",
+                            deliveryTime: "14-21 business days",
+                            description: "Complete office setup with electrical and HVAC",
+                            features: ["Electrical Setup", "HVAC System", "Insulated", "Office Ready"],
+                            url: "https://containerone.net/products/40ft-office-container-full"
+                        }
+                    ]
+                },
+                product_list_accessories: {
+                    type: "product_list",
+                    title: "Container Accessories",
+                    products: [
+                        {
+                            title: "Container Lock Box Security System",
+                            price: 425,
+                            category: "Accessories",
+                            image: "https://containerone.net/cdn/shop/files/container-lock-box.jpg?v=1693420074&width=500",
+                            deliveryTime: "1-2 business days",
+                            description: "Heavy-duty security lock box for container protection",
+                            features: ["Weather Resistant", "Heavy Duty Steel", "Universal Fit"],
+                            url: "https://containerone.net/products/container-lock-box"
+                        },
+                        {
+                            title: "Container Ventilation System",
+                            price: 260,
+                            category: "Accessories",
+                            image: "https://containerone.net/cdn/shop/files/container-ventilation.jpg?v=1693420074&width=500",
+                            deliveryTime: "1-2 business days",
+                            description: "Professional ventilation system for air circulation",
+                            features: ["Passive Ventilation", "Weather Sealed", "Easy Installation"],
+                            url: "https://containerone.net/products/container-ventilation"
+                        },
+                        {
+                            title: "Container Insulation Kit",
+                            price: 300,
+                            category: "Accessories",
+                            image: "https://containerone.net/cdn/shop/files/container-insulation.jpg?v=1693420074&width=500",
+                            deliveryTime: "2-3 business days",
+                            description: "Complete insulation kit for temperature control",
+                            features: ["R-13 Insulation", "Moisture Barrier", "DIY Friendly"],
+                            url: "https://containerone.net/products/container-insulation-kit"
+                        }
                     ]
                 }
             },
 
-            // Categories configuration - now configurable from HTML
-            categories: {
-                // Option 1: Fetch from backend API
-                // endpoint: "https://hub.memox.io/api/v1/categories/",
-
-                // Option 2: Inline category data
-                data: [
-                    {
-                        id: '1_trip',
-                        name: '1 Trip Containers',
-                        description: 'Single-use shipping containers',
-                        icon: '🚚',
-                        filter: { type: '1 trip' }
-                    },
-                    {
-                        id: 'cargo_worthy',
-                        name: 'Cargo Worthy',
-                        description: 'High-quality containers for cargo transport',
-                        icon: '📦',
-                        filter: { type: 'cargo worthy' }
-                    },
-                    {
-                        id: 'wind_water_tight',
-                        name: 'Wind & Water Tight',
-                        description: 'Weather-resistant containers',
-                        icon: '🛡️',
-                        filter: { type: 'wind & water tight' }
-                    },
-                    {
-                        id: 'economy_grade',
-                        name: 'Economy Grade',
-                        description: 'Budget-friendly container options',
-                        icon: '💰',
-                        filter: { type: 'economy' }
-                    },
-                    {
-                        id: 'multi_trip',
-                        name: 'Multi-Trip',
-                        description: 'Reusable containers for multiple shipments',
-                        icon: '🔄',
-                        filter: { type: 'multi-trip' }
-                    },
-                    {
-                        id: 'office_containers',
-                        name: 'Office Containers',
-                        description: 'Containers modified for office use',
-                        icon: '🏢',
-                        filter: { type: 'office' }
-                    },
-                    {
-                        id: 'accessories',
-                        name: 'Accessories',
-                        description: 'Container accessories and modifications',
-                        icon: '🔧',
-                        filter: { type: 'accessory' }
-                    }
-                ],
-
-                // Category display options
-                displayOptions: {
-                    showIcons: true,
-                    showDescriptions: true,
-                    maxColumns: 1
+            // Actions configuration (API endpoints)
+            actions: {
+                show_products: { 
+                    endpoint: "/api/products", 
+                    method: "GET" 
+                },
+                submit_lead: { 
+                    endpoint: "/api/leads", 
+                    method: "POST" 
+                },
+                schedule_call: { 
+                    endpoint: "/api/schedule-call", 
+                    method: "POST" 
+                },
+                submit_support: { 
+                    endpoint: "/api/support", 
+                    method: "POST" 
+                },
+                get_quote: { 
+                    endpoint: "/api/quotes", 
+                    method: "POST" 
+                },
+                disability_step1_age: {
+                    endpoint: "/api/disability-step1",
+                    method: "GET"
+                },
+                services_details: {
+                    endpoint: "/api/services-details", 
+                    method: "GET"
+                },
+                submit_disability_contact: {
+                    endpoint: "/api/disability-contact",
+                    method: "POST"
+                },
+                submit_disability_questions: {
+                    endpoint: "/api/disability-questions",
+                    method: "POST"
                 }
-            },
-
-            entryPoints: {
-                enabled: true,
-                title: "How can we help you?",
-                options: [
-                    {
-                        id: "get_info",
-                        label: "Get Information",
-                        description: "Learn about our services",
-                        requiresForm: false
-                    },
-                    {
-                        id: "browse_products",
-                        label: "Browse Products",
-                        description: "View shipping containers with sorting",
-                        requiresForm: false
-                    },
-                    {
-                        id: "book_call",
-                        label: "Book a Call",
-                        description: "Schedule a consultation",
-                        requiresForm: true,
-                        formFields: ["name", "email", "phone", "zip", "preferred_date", "preferred_time"]
-                    },
-                    {
-                        id: "support",
-                        label: "Receive Support",
-                        description: "Get help with your account or issues",
-                        requiresForm: true,
-                        formFields: ["support_type"]
-                    }
-                ]
-            },
-
-            theme: {
-                primary: '#8349ff',
-                headerBg: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                userBubble: '#8349ff',
-                botBubble: '#f8f9fa',
-                userText: '#fff',
-                botText: '#2d3748',
-                background: '#fff',
-                border: '#e2e8f0',
-                text: '#2d3748',
-                headerText: '#fff',
-                inputBg: '#fff',
-                inputText: '#2d3748',
-                sendBtnBg: '#8349ff',
-                sendBtnText: '#fff',
-                sendBtnHover: '#6b2fff'
             }
         };
     </script>
 
-    <!-- Load the chat embed -->
-    <script src="./chat-embed.js"></script>
+    <!-- Load the dynamic chat embed -->
+    <script src="./chat-embed-dynamic.js"></script>
 </body>
 </html>

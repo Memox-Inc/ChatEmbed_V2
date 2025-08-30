@@ -27,102 +27,136 @@ function initializeChatEmbed() {
             botBubble: '#f1f1f1',
             userText: '#22223b',
             botText: '#4a4e69',
-            background: '#fff',
-            border: '#ccc',
-            text: '#222',
-            width: '100%',
-            maxWidth: '350px',
-            minWidth: '220px',
-            borderRadius: '8px',
-            fontFamily: 'sans-serif',
-            zIndex: 9999,
-            headerText: '#fff',
-            headerBg: 'rgba(34, 34, 59, 0.95)',
-            inputBg: '#fff',
-            inputText: '#222',
-            sendBtnBg: '#0078d4',
-            sendBtnText: '#fff',
-            sendBtnHover: '#005fa3',
-            shadow: '0 2px 8px rgba(0,0,0,0.15)',
-            salesRepBubble: '#f1f5f9',
-            salesRepText: '#475569',
-            salesRepAvatar: '#E4E7FC',
-            userAvatar: '#8349ff',
-            botAvatar: '#E4E7FC',
-            handoverNotificationBg: '#E4E7FC',
-            handoverNotificationText: '#334155',
-            handoverNotificationBorder: '#8349FF'
-        },
 
-        // API configuration
-        api: {
-            baseUrl: 'https://hub.memox.io/api/v1',
-            token: 'eedb5fc2b457815409e45f3b1dc023c276c9cedb',
-            endpoints: {
-                products: '/products/',
-                categories: '/categories/',
-                visitors: '/visitors/'
-            }
-        },
+            (function () {
+                // --- Dynamic Chat Embed: Backend-driven config support ---
+                function initChatEmbed(config) {
+                    // Root container
+                    var container = document.getElementById('chat-messages') || document.body;
+                    container.innerHTML = '';
 
-        // Products configuration
-        products: {
-            endpoint: null,
-            data: [],
-            useEmbeddedFallback: true,
-            displayFields: {
-                showPrice: true,
-                showOriginalPrice: true,
-                showSavings: true,
-                showDelivery: true,
-                showPickup: true,
-                showCategory: true,
-                showType: true
-            },
-            sorting: {
-                enabled: true,
-                defaultSort: 'price-low',
-                options: [
-                    { id: 'price-low', label: 'Price: Low to High' },
-                    { id: 'price-high', label: 'Price: High to Low' },
-                    { id: 'size-20ft', label: 'Size: 20ft First' },
-                    { id: 'size-40ft', label: 'Size: 40ft First' },
-                    { id: 'name-asc', label: 'Name A-Z' },
-                    { id: 'delivery', label: 'Delivery Time' }
-                ]
-            }
-        },
+                    // Render entry points
+                    function renderEntryPoints() {
+                        container.innerHTML = '';
+                        var wrapper = document.createElement('div');
+                        wrapper.style.display = 'flex';
+                        wrapper.style.flexDirection = 'column';
+                        wrapper.style.alignItems = 'center';
+                        wrapper.style.justifyContent = 'center';
+                        wrapper.style.height = '100%';
+                        wrapper.style.width = '100%';
+                        wrapper.style.gap = '1.5rem';
+                        wrapper.style.padding = '1rem';
 
-        // Categories configuration
-        categories: {
-            endpoint: null,
-            data: [],
-            displayOptions: {
-                showIcons: true,
-                showDescriptions: true,
-                maxColumns: 1
-            }
-        },
+                        var title = document.createElement('h2');
+                        title.innerText = config.entryPointsTitle || 'How can we help you?';
+                        title.style.fontSize = '1.25rem';
+                        title.style.fontWeight = '600';
+                        title.style.textAlign = 'center';
+                        title.style.margin = '0';
+                        wrapper.appendChild(title);
 
-        // Entry points configuration
-        entryPoints: {
-            enabled: true,
-            title: "How may we help you today?",
-            options: [
-                {
-                    id: "book_call",
-                    label: "Book a Call",
-                    description: "Schedule a consultation with our team",
-                    requiresForm: true,
-                    formFields: ["name", "email", "phone", "date", "time"]
-                },
-                {
-                    id: "get_info",
-                    label: "Get Information",
-                    description: "Learn about our services and pricing",
-                    requiresForm: false
-                },
-                {
+                        var optionsContainer = document.createElement('div');
+                        optionsContainer.style.display = 'flex';
+                        optionsContainer.style.flexDirection = 'column';
+                        optionsContainer.style.gap = '0.75rem';
+                        optionsContainer.style.width = '100%';
+                        optionsContainer.style.maxWidth = '320px';
+                        optionsContainer.style.alignItems = 'center';
+
+                        (config.entryPoints || []).forEach(function(option) {
+                            var btn = document.createElement('button');
+                            btn.innerText = option.label;
+                            btn.style.width = '100%';
+                            btn.style.padding = '0.75rem 1.5rem';
+                            btn.style.background = config.theme?.primary || '#8349ff';
+                            btn.style.color = '#fff';
+                            btn.style.border = 'none';
+                            btn.style.borderRadius = '0.375rem';
+                            btn.style.cursor = 'pointer';
+                            btn.style.fontWeight = '600';
+                            btn.style.fontSize = '0.875rem';
+                            btn.style.transition = 'background-color 0.2s ease-in-out';
+                            btn.onclick = function() {
+                                renderScreen(option.next);
+                            };
+                            optionsContainer.appendChild(btn);
+                        });
+
+                        wrapper.appendChild(optionsContainer);
+                        container.appendChild(wrapper);
+                    }
+
+                    // Render a screen by id
+                    function renderScreen(screenId) {
+                        var screen = config.screens?.[screenId];
+                        if (!screen) {
+                            container.innerHTML = '<div style="color:red">Screen not found: ' + screenId + '</div>';
+                            return;
+                        }
+                        container.innerHTML = '';
+                        if (screen.type === 'info') {
+                            var infoDiv = document.createElement('div');
+                            infoDiv.innerText = screen.content;
+                            infoDiv.style.padding = '2rem';
+                            infoDiv.style.textAlign = 'center';
+                            container.appendChild(infoDiv);
+                        } else if (screen.type === 'category_list') {
+                            var catDiv = document.createElement('div');
+                            catDiv.style.display = 'flex';
+                            catDiv.style.flexDirection = 'column';
+                            catDiv.style.gap = '1rem';
+                            catDiv.style.alignItems = 'center';
+                            (screen.categories || []).forEach(function(cat) {
+                                var btn = document.createElement('button');
+                                btn.innerText = cat.name;
+                                btn.style.padding = '0.75rem 1.5rem';
+                                btn.style.background = config.theme?.primary || '#8349ff';
+                                btn.style.color = '#fff';
+                                btn.style.border = 'none';
+                                btn.style.borderRadius = '0.375rem';
+                                btn.style.cursor = 'pointer';
+                                btn.style.fontWeight = '600';
+                                btn.style.fontSize = '0.875rem';
+                                btn.onclick = function() {
+                                    // Simulate action trigger
+                                    if (screen.onSelect && screen.onSelect.action) {
+                                        triggerAction(screen.onSelect.action, { categoryId: cat.id });
+                                    }
+                                };
+                                catDiv.appendChild(btn);
+                            });
+                            container.appendChild(catDiv);
+                        } else {
+                            container.innerHTML = '<div style="color:red">Unknown screen type: ' + screen.type + '</div>';
+                        }
+                    }
+
+                    // Generic action trigger (mocked for now)
+                    function triggerAction(actionName, payload) {
+                        var action = config.actions?.[actionName];
+                        if (!action) {
+                            alert('Unknown action: ' + actionName);
+                            return;
+                        }
+                        // For testing, just log the action and payload
+                        alert('Triggering action: ' + actionName + '\nEndpoint: ' + action.endpoint + '\nPayload: ' + JSON.stringify(payload));
+                        // In real use, would POST/GET to action.endpoint with payload
+                    }
+
+                    // Start with entry points
+                    renderEntryPoints();
+                }
+
+                // Auto-init if config is present
+                if (window.SimpleChatEmbedConfig) {
+                    initChatEmbed(window.SimpleChatEmbedConfig);
+                }
+
+                // Expose for manual init
+                window.SimpleChatEmbed = { init: initChatEmbed };
+
+            })();
                     id: "support",
                     label: "Receive Support",
                     description: "Get help with your account or issues",
@@ -668,7 +702,7 @@ function initializeChatEmbed() {
     var input = document.createElement('input');
     input.type = 'text';
     input.placeholder = 'Type your message...';
-    input.style.padding = '0.75rem 1rem';
+    input.style.padding = '0.6rem 1rem';
     input.style.border = '1px solid #d1d5db';
     input.style.borderRadius = '0.375rem';
     input.style.background = '#ffffff';
