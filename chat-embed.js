@@ -1571,21 +1571,6 @@ function initializeChatEmbed() {
                 sanitize(zipInput.value)
             );
 
-            // Generate and store chat session data
-            var chatID = generateChatId();
-            var workflow_id = workflowId;
-            var wsParams = await generateSecureWsParams(workflow_id);
-
-            // Store chat session data in localStorage
-            var chatSessionData = {
-                chatID: chatID,
-                workflowId: workflow_id,
-                hashedWorkflowId: wsParams.hashed_workflow_id,
-                hash: wsParams.hash,
-                visitorInfo: visitorInfo,
-                timestamp: new Date().toISOString()
-            };
-            localStorage.setItem('simple-chat-session', JSON.stringify(chatSessionData));
 
             // Collect environment info
             var userAgent = navigator.userAgent;
