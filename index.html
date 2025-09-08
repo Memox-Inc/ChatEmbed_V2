@@ -1,16 +1,19 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chat Embed Production Test</title>
 </head>
+
 <body>
-    
+
     <script>
         // Production test configuration
         window.SimpleChatEmbedConfig = {
-            socketUrl: "wss://hub.memox.io",
+            socketUrl: "ws://localhost:8000",
+            // socketUrl: "wss://hub.memox.io",
             workflowId: "a2b8ad41-9fb7-40ed-8e5d-d64cbcad8f03",
             title: "Containerone",
             welcomeMessage: "Welcome! This is a production test of the chat system.",
@@ -18,7 +21,7 @@
                 "Whats the price of a 20ft container?",
                 "What container grades do you offer?",
                 "How long does delivery take? "
-                
+
             ],
             quickQuestionsPermanent: false, // Set to false to show only for first question
             theme: {
@@ -28,14 +31,14 @@
                 botBubble: '#f8f9fa',
                 userText: '#fff',
                 botText: '#2d3748',
-                salesRepBubble: '#f8f9fa',   
-                salesRepText: '#2d3748',    
-                userAvatar: '#8349ff',      
-                botAvatar: '#E4E7FC',       
-                salesRepAvatar: '#E4E7FC',   
-                handoverNotificationBg: '#E4E7FC',     
-                handoverNotificationText: '#334155',   
-                handoverNotificationBorder: '#8349FF', 
+                salesRepBubble: '#f8f9fa',
+                salesRepText: '#2d3748',
+                userAvatar: '#8349ff',
+                botAvatar: '#E4E7FC',
+                salesRepAvatar: '#E4E7FC',
+                handoverNotificationBg: '#E4E7FC',
+                handoverNotificationText: '#334155',
+                handoverNotificationBorder: '#8349FF',
                 background: '#fff',
                 border: '#e2e8f0',
                 text: '#2d3748',
@@ -50,10 +53,11 @@
             }
         };
 
-        
-   
+
+
     </script>
-    
-    <script src="./chat-embed-min.js"></script>
+
+    <script src="./chat-embed.js"></script>
 </body>
+
 </html>
