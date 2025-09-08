@@ -1824,15 +1824,12 @@ function initializeChatEmbed() {
     // Helper function to create visitor
     const createVisitor = async (name, email, phone, zip) => {
         try {
-            var baseUrl = null
-            var token = null
-            if (config.socketUrl === "wss://hub.memox.io") {
-                baseUrl = "https://hub.memox.io/api/v1/"
-                token = "eedb5fc2b457815409e45f3b1dc023c276c9cedb"
-            }
-            else {
-                baseUrl = "http://localhost:8000/api/v1/"
-                token = "cbacbe059689c3dec8173c05d806c7266b50176e"
+            var baseUrl = config.baseUrl;
+            var token = config.token;
+            
+            if (!baseUrl || !token) {
+                console.error('baseUrl and token must be provided in SimpleChatEmbedConfig');
+                throw new Error('Missing required configuration: baseUrl and token');
             }
 
             const getVisitor = await fetch(`${baseUrl}visitors/?email=${email}`, {
