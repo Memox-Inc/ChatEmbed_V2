@@ -1009,6 +1009,9 @@ function initializeChatEmbed() {
                 if (msgData?.message_type === "unread_message") {
                     return;
                 }
+                if (msgData?.message_type === "handover_requested") {
+                    return;
+                }
 
                 if (msgData?.message_type === "handover_message") {
 
