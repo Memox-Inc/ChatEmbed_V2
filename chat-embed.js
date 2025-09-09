@@ -72,6 +72,90 @@ function initializeChatEmbed() {
     var visitorInfo = null;
     var isHandoverActive = false;
     var isFormShowing = false;
+    
+    // Enhanced presence tracking variables
+    var heartbeatInterval = null;
+    var lastActivity = Date.now();
+    var isTabVisible = !document.hidden;
+    var activityThreshold = 2000; // 2 seconds
+
+    // Enhanced presence tracking functions
+    function updateActivity(activityType) {
+        activityType = activityType || 'interaction';
+        var now = Date.now();
+        lastActivity = now;
+
+        // Send activity update to server
+        if (isWebSocketConnected && currentSocket && currentSocket.readyState === WebSocket.OPEN) {
+            try {
+                currentSocket.send(JSON.stringify({
+                    message_type: 'activity',
+                    activity_type: activityType,
+                    timestamp: now
+                }));
+            } catch (error) {
+                console.warn('Error sending activity update:', error);
+            }
+        }
+    }
+
+    function sendHeartbeat() {
+        if (isWebSocketConnected && currentSocket && currentSocket.readyState === WebSocket.OPEN) {
+            try {
+                currentSocket.send(JSON.stringify({
+                    message_type: 'heartbeat',
+                    timestamp: Date.now()
+                }));
+            } catch (error) {
+                console.warn('Error sending heartbeat:', error);
+            }
+        }
+    }
+
+    function startHeartbeat() {
+        // Clear any existing heartbeat
+        if (heartbeatInterval) {
+            clearInterval(heartbeatInterval);
+        }
+
+        // Send initial heartbeat
+        sendHeartbeat();
+
+        // Set up periodic heartbeat
+        var interval = isTabVisible ? 30000 : 60000; // 30s active, 60s hidden
+        heartbeatInterval = setInterval(sendHeartbeat, interval);
+    }
+
+    function stopHeartbeat() {
+        if (heartbeatInterval) {
+            clearInterval(heartbeatInterval);
+            heartbeatInterval = null;
+        }
+    }
+
+    // Handle visibility changes
+    function handleVisibilityChange() {
+        isTabVisible = !document.hidden;
+        
+        if (isTabVisible) {
+            // Tab became visible - update activity
+            updateActivity('visibility_change');
+        }
+        
+        // Restart heartbeat with new interval
+        if (isWebSocketConnected) {
+            startHeartbeat();
+        }
+    }
+
+    // Track user activity
+    function handleActivity() {
+        var now = Date.now();
+        // Throttle activity updates
+        if (now - lastActivity > activityThreshold) {
+            updateActivity('interaction');
+        }
+    }
 
     // Function to update button states based on form visibility
     function updateButtonStates() {
@@ -1001,9 +1085,18 @@ function initializeChatEmbed() {
             currentSocket = new WebSocket(wsUrl);
             currentSocket.onopen = function () {
                 isWebSocketConnected = true;
+                // Start enhanced presence tracking
+                startHeartbeat();
+                updateActivity('connection');
             };
             currentSocket.onmessage = function (event) {
                 var msgData = JSON.parse(event.data);
+
+                // Handle heartbeat responses
+                if (msgData?.type === "heartbeat_response") {
+                    // Heartbeat acknowledged - no further action needed
+                    return;
+                }
 
                 // Skip unread messages but allow broadcast messages
                 if (msgData?.message_type === "unread_message") {
@@ -1122,11 +1215,15 @@ function initializeChatEmbed() {
                 console.error('WebSocket connection closed unexpectedly...');
                 isWebSocketConnected = false;
                 currentSocket = null;
+                // Stop enhanced presence tracking
+                stopHeartbeat();
             };
             currentSocket.onerror = function (error) {
                 console.error('WebSocket error:', error);
                 isWebSocketConnected = false;
                 currentSocket = null;
+                // Stop enhanced presence tracking
+                stopHeartbeat();
             };
         } catch (error) {
             console.error('Failed to create WebSocket connection:', error);
@@ -1915,6 +2012,24 @@ function initializeChatEmbed() {
             }
         }
     }
+
+    // Initialize enhanced presence tracking
+    function initializeEnhancedPresence() {
+        // Add visibility change listener
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
+        // Add activity tracking listeners
+        var activityEvents = ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart'];
+        activityEvents.forEach(function(event) {
+            document.addEventListener(event, handleActivity, { passive: true });
+        });
+
+        // Initial activity update
+        updateActivity('initialization');
+    }
+
+    // Initialize enhanced presence system
+    initializeEnhancedPresence();
 
     // Initial load
     maybeShowLeadCapture();
