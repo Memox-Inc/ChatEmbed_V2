@@ -278,7 +278,7 @@ function initializeChatEmbed() {
     header.style.borderTopLeftRadius = '0.75rem';
     header.style.borderTopRightRadius = '0.75rem';
     header.style.fontWeight = '600';
-    header.style.fontSize = '1.125rem';
+    header.style.fontSize = '1.25rem !important';
     header.style.lineHeight = '1.75rem';
 
     var headerTitle = document.createElement('div');
@@ -598,8 +598,8 @@ function initializeChatEmbed() {
     input.style.borderRadius = '0.375rem';
     input.style.background = '#ffffff';
     input.style.color = '#374151';
-    input.style.fontSize = '0.875rem';
-    input.style.lineHeight = '1.25rem';
+    input.style.fontSize = '1rem !important';
+    input.style.lineHeight = '1.5rem !important';
     input.style.outline = 'none';
     input.style.transition = 'border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out';
 
@@ -886,8 +886,8 @@ function initializeChatEmbed() {
             var msgDiv = document.createElement('div');
             msgDiv.style.padding = '0.75rem 1rem';
             msgDiv.style.wordBreak = 'break-word';
-            msgDiv.style.fontSize = '0.875rem';
-            msgDiv.style.lineHeight = '1.25rem';
+            msgDiv.style.fontSize = '1rem !important';
+            msgDiv.style.lineHeight = '1.5rem !important';
             msgDiv.style.position = 'relative';
 
             if (msg.sender === 'user') {
@@ -1382,7 +1382,7 @@ function initializeChatEmbed() {
         nameInput.style.padding = '0.75rem 1rem';
         nameInput.style.border = '1px solid #d1d5db';
         nameInput.style.borderRadius = '0.375rem';
-        nameInput.style.fontSize = '0.875rem';
+        nameInput.style.fontSize = '1rem !important';
         nameInput.style.outline = 'none';
         nameInput.style.transition = 'border-color 0.2s ease-in-out';
 
@@ -1433,7 +1433,7 @@ function initializeChatEmbed() {
         emailInput.style.padding = '0.75rem 1rem';
         emailInput.style.border = '1px solid #d1d5db';
         emailInput.style.borderRadius = '0.375rem';
-        emailInput.style.fontSize = '0.875rem';
+        emailInput.style.fontSize = '1rem !important';
         emailInput.style.outline = 'none';
         emailInput.style.transition = 'border-color 0.2s ease-in-out';
 
@@ -1485,7 +1485,7 @@ function initializeChatEmbed() {
         phoneInput.style.padding = '0.75rem 1rem';
         phoneInput.style.border = '1px solid #d1d5db';
         phoneInput.style.borderRadius = '0.375rem';
-        phoneInput.style.fontSize = '0.875rem';
+        phoneInput.style.fontSize = '1rem !important';
         phoneInput.style.outline = 'none';
         phoneInput.style.transition = 'border-color 0.2s ease-in-out';
 
@@ -1536,7 +1536,7 @@ function initializeChatEmbed() {
         zipInput.style.padding = '0.75rem 1rem';
         zipInput.style.border = '1px solid #d1d5db';
         zipInput.style.borderRadius = '0.375rem';
-        zipInput.style.fontSize = '0.875rem';
+        zipInput.style.fontSize = '1rem !important';
         zipInput.style.outline = 'none';
         zipInput.style.transition = 'border-color 0.2s ease-in-out';
 
