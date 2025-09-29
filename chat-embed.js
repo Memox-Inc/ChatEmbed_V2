@@ -209,7 +209,16 @@ function initializeChatEmbed() {
     chatContainer.id = 'simple-chat-embed';
     chatContainer.style.position = 'fixed';
     chatContainer.style.bottom = '20px';
-    chatContainer.style.right = '20px';
+    
+    // Set horizontal position based on config
+    if (config.position === 'left') {
+        chatContainer.style.left = '20px';
+        chatContainer.style.right = 'auto';
+    } else {
+        chatContainer.style.right = '20px';
+        chatContainer.style.left = 'auto';
+    }
+    
     chatContainer.style.width = '384px';
     chatContainer.style.height = '80vh';
     chatContainer.style.maxHeight = '600px';
@@ -239,8 +248,16 @@ function initializeChatEmbed() {
         } else {
             chatContainer.style.position = 'fixed';
             chatContainer.style.top = 'auto';
-            chatContainer.style.left = 'auto';
-            chatContainer.style.right = '20px';
+            
+            // Set horizontal position based on config
+            if (config.position === 'left') {
+                chatContainer.style.left = '20px';
+                chatContainer.style.right = 'auto';
+            } else {
+                chatContainer.style.left = 'auto';
+                chatContainer.style.right = '20px';
+            }
+            
             chatContainer.style.bottom = '20px';
             chatContainer.style.width = '384px';
             chatContainer.style.height = '80vh';
@@ -1855,7 +1872,16 @@ function initializeChatEmbed() {
     chatToggle.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-message-circle-icon lucide-message-circle"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>';
     chatToggle.style.position = 'fixed';
     chatToggle.style.bottom = '20px';
-    chatToggle.style.right = '20px';
+    
+    // Set horizontal position based on config
+    if (config.position === 'left') {
+        chatToggle.style.left = '20px';
+        chatToggle.style.right = 'auto';
+    } else {
+        chatToggle.style.right = '20px';
+        chatToggle.style.left = 'auto';
+    }
+    
     chatToggle.style.width = '80px';
     chatToggle.style.height = '80px';
     chatToggle.style.borderRadius = '50%';
@@ -1874,10 +1900,26 @@ function initializeChatEmbed() {
     function setToggleResponsive() {
         if (window.innerWidth < 768) {
             chatToggle.style.bottom = '20px';
-            chatToggle.style.right = '20px';
+            
+            // Set horizontal position based on config (mobile)
+            if (config.position === 'left') {
+                chatToggle.style.left = '20px';
+                chatToggle.style.right = 'auto';
+            } else {
+                chatToggle.style.right = '20px';
+                chatToggle.style.left = 'auto';
+            }
         } else {
             chatToggle.style.bottom = '20px';
-            chatToggle.style.right = '20px';
+            
+            // Set horizontal position based on config (desktop)
+            if (config.position === 'left') {
+                chatToggle.style.left = '20px';
+                chatToggle.style.right = 'auto';
+            } else {
+                chatToggle.style.right = '20px';
+                chatToggle.style.left = 'auto';
+            }
         }
     }
     setToggleResponsive();
