@@ -1942,7 +1942,8 @@ function initializeChatEmbed() {
 
             const getVisitorJson = await getVisitor.json();
 
-            if (getVisitorJson.detail === "Not found." || !getVisitorJson.length) {
+
+            if (getVisitorJson.detail === "Not found." || !getVisitorJson.results?.length) {
                 // If visitor does not exist, create a new one
                 const visitor = await fetch(`${baseUrl}visitors/`, {
                     method: "POST",
