@@ -65,98 +65,14 @@ function initializeChatEmbed() {
     var apiUrl = config.apiUrl;
     var welcomeMessage = config.welcomeMessage || null;
     var workflowId = config.workflowId;
-    var socketUrl = config.socketUrl + "/ws/chat/";
+    var socketUrl = config.socketUrl + "/ws/app/";
 
     var currentSocket = null;
     var isWebSocketConnected = false;
     var visitorInfo = null;
     var isHandoverActive = false;
     var isFormShowing = false;
-    
-    // Enhanced presence tracking variables
-    var heartbeatInterval = null;
-    var lastActivity = Date.now();
-    var isTabVisible = !document.hidden;
-    var activityThreshold = 2000; // 2 seconds
-
-    // Enhanced presence tracking functions
-    function updateActivity(activityType) {
-        activityType = activityType || 'interaction';
-        var now = Date.now();
-        lastActivity = now;
-
-        // Send activity update to server
-        if (isWebSocketConnected && currentSocket && currentSocket.readyState === WebSocket.OPEN) {
-            try {
-                currentSocket.send(JSON.stringify({
-                    message_type: 'activity',
-                    activity_type: activityType,
-                    timestamp: now
-                }));
-            } catch (error) {
-                console.warn('Error sending activity update:', error);
-            }
-        }
-    }
-
-    function sendHeartbeat() {
-        if (isWebSocketConnected && currentSocket && currentSocket.readyState === WebSocket.OPEN) {
-            try {
-                currentSocket.send(JSON.stringify({
-                    message_type: 'heartbeat',
-                    timestamp: Date.now()
-                }));
-            } catch (error) {
-                console.warn('Error sending heartbeat:', error);
-            }
-        }
-    }
-
-    function startHeartbeat() {
-        // Clear any existing heartbeat
-        if (heartbeatInterval) {
-            clearInterval(heartbeatInterval);
-        }
-
-        // Send initial heartbeat
-        sendHeartbeat();
-
-        // Set up periodic heartbeat
-        var interval = isTabVisible ? 30000 : 60000; // 30s active, 60s hidden
-        heartbeatInterval = setInterval(sendHeartbeat, interval);
-    }
-
-    function stopHeartbeat() {
-        if (heartbeatInterval) {
-            clearInterval(heartbeatInterval);
-            heartbeatInterval = null;
-        }
-    }
-
-    // Handle visibility changes
-    function handleVisibilityChange() {
-        isTabVisible = !document.hidden;
-        
-        if (isTabVisible) {
-            // Tab became visible - update activity
-            updateActivity('visibility_change');
-        }
-        
-        // Restart heartbeat with new interval
-        if (isWebSocketConnected) {
-            startHeartbeat();
-        }
-    }
-
-    // Track user activity
-    function handleActivity() {
-        var now = Date.now();
-        // Throttle activity updates
-        if (now - lastActivity > activityThreshold) {
-            updateActivity('interaction');
-        }
-    }
-
+    var chatID = null
     // Function to update button states based on form visibility
     function updateButtonStates() {
         if (isFormShowing) {
@@ -1047,7 +963,7 @@ function initializeChatEmbed() {
 
         // Try to get stored session data first
         var storedSession = localStorage.getItem('simple-chat-session');
-        var chatID, workflow_id, wsParams;
+        var workflow_id, wsParams;
 
         if (storedSession) {
             try {
@@ -1097,23 +1013,15 @@ function initializeChatEmbed() {
             }
         }
 
-        var wsUrl = `${socketUrl}${chatID}/?workflow_id=${wsParams.hashed_workflow_id}&hash=${wsParams.hash}&visitorInfo=${JSON.stringify(visitorInfo)}`;
+        var wsUrl = `${socketUrl}${config.org_id}/?agent_id=${config.agent_id}&visitor_info=${JSON.stringify(visitorInfo)}`;
         try {
             currentSocket = new WebSocket(wsUrl);
             currentSocket.onopen = function () {
                 isWebSocketConnected = true;
-                // Start enhanced presence tracking
-                startHeartbeat();
-                updateActivity('connection');
             };
             currentSocket.onmessage = function (event) {
                 var msgData = JSON.parse(event.data);
 
-                // Handle heartbeat responses
-                if (msgData?.type === "heartbeat_response") {
-                    // Heartbeat acknowledged - no further action needed
-                    return;
-                }
 
                 // Skip unread messages but allow broadcast messages
                 if (msgData?.message_type === "unread_message") {
@@ -1143,7 +1051,7 @@ function initializeChatEmbed() {
                     // Store handover message in localStorage like other messages
                     var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
                     msgs.push({
-                        text: msgData.sender + ' has entered the chat',
+                        text: msgData.sender?.name + ' has entered the chat',
                         sender: 'system',
                         isWelcomeMessage: false,
                         isSystemNotification: true,
@@ -1233,14 +1141,12 @@ function initializeChatEmbed() {
                 isWebSocketConnected = false;
                 currentSocket = null;
                 // Stop enhanced presence tracking
-                stopHeartbeat();
             };
             currentSocket.onerror = function (error) {
                 console.error('WebSocket error:', error);
                 isWebSocketConnected = false;
                 currentSocket = null;
                 // Stop enhanced presence tracking
-                stopHeartbeat();
             };
         } catch (error) {
             console.error('Failed to create WebSocket connection:', error);
@@ -1285,7 +1191,8 @@ function initializeChatEmbed() {
                 if (currentSocket && currentSocket.readyState === WebSocket.OPEN) {
                     currentSocket.send(JSON.stringify({
                         'message': val,
-                        'message_type': "text"
+                        'message_type': "text",
+                        "room_name": chatID
                     }));
                 } else if (currentSocket && currentSocket.readyState === WebSocket.CONNECTING) {
                     // Still connecting, wait a bit more
@@ -1312,7 +1219,8 @@ function initializeChatEmbed() {
             try {
                 currentSocket.send(JSON.stringify({
                     'message': val,
-                    'message_type': "text"
+                    'message_type': "text",
+                    room_name: chatID
                 }));
             } catch (error) {
                 console.error('Error sending message:', error);
@@ -2014,8 +1922,8 @@ function initializeChatEmbed() {
             }
             else {
                 visitorInfo = {
-                    "id": getVisitorJson[0].id,
-                    "name": getVisitorJson[0].name
+                    "id": getVisitorJson?.results[0].id,
+                    "name": getVisitorJson?.results[0].name
                 };
             }
         } catch (error) {
@@ -2055,24 +1963,6 @@ function initializeChatEmbed() {
             }
         }
     }
-
-    // Initialize enhanced presence tracking
-    function initializeEnhancedPresence() {
-        // Add visibility change listener
-        document.addEventListener('visibilitychange', handleVisibilityChange);
-
-        // Add activity tracking listeners
-        var activityEvents = ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart'];
-        activityEvents.forEach(function(event) {
-            document.addEventListener(event, handleActivity, { passive: true });
-        });
-
-        // Initial activity update
-        updateActivity('initialization');
-    }
-
-    // Initialize enhanced presence system
-    initializeEnhancedPresence();
 
     // Initial load
     maybeShowLeadCapture();
