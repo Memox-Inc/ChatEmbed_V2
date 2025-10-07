@@ -1906,7 +1906,7 @@ function initializeChatEmbed() {
                         email,
                         phone_number: phone,
                         zip_code: zip,
-                        workflow_id: workflowId
+                        organization: config.org_id
                     })
                 })
 
