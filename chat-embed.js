@@ -1013,7 +1013,7 @@ function initializeChatEmbed() {
             }
         }
 
-        var wsUrl = `${socketUrl}${config.org_id}/?agent_id=${config.agent_id}&visitor_info=${JSON.stringify(visitorInfo)}`;
+        var wsUrl = `${socketUrl}${config.org_id}/?visitor_info=${JSON.stringify(visitorInfo)}`;
         try {
             currentSocket = new WebSocket(wsUrl);
             currentSocket.onopen = function () {
@@ -1116,7 +1116,7 @@ function initializeChatEmbed() {
                         localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
                         loadMessages(); // Use immediate loading for streaming
                     }
-                } else if (msgData.sender_type === "sales_rep" || msgData.sender === "sales_rep") {
+                } else if ((msgData.sender_type === "sales_rep" || msgData.sender === "sales_rep") && msgData.room_name === chatID) {
                     var content = msgData.content || '';
 
                     // Ignore empty sales_rep messages completely - these should not create typing indicators
