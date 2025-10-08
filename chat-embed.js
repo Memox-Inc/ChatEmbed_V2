@@ -65,98 +65,14 @@ function initializeChatEmbed() {
     var apiUrl = config.apiUrl;
     var welcomeMessage = config.welcomeMessage || null;
     var workflowId = config.workflowId;
-    var socketUrl = config.socketUrl + "/ws/chat/";
+    var socketUrl = config.socketUrl + "/ws/app/";
 
     var currentSocket = null;
     var isWebSocketConnected = false;
     var visitorInfo = null;
     var isHandoverActive = false;
     var isFormShowing = false;
-    
-    // Enhanced presence tracking variables
-    var heartbeatInterval = null;
-    var lastActivity = Date.now();
-    var isTabVisible = !document.hidden;
-    var activityThreshold = 2000; // 2 seconds
-
-    // Enhanced presence tracking functions
-    function updateActivity(activityType) {
-        activityType = activityType || 'interaction';
-        var now = Date.now();
-        lastActivity = now;
-
-        // Send activity update to server
-        if (isWebSocketConnected && currentSocket && currentSocket.readyState === WebSocket.OPEN) {
-            try {
-                currentSocket.send(JSON.stringify({
-                    message_type: 'activity',
-                    activity_type: activityType,
-                    timestamp: now
-                }));
-            } catch (error) {
-                console.warn('Error sending activity update:', error);
-            }
-        }
-    }
-
-    function sendHeartbeat() {
-        if (isWebSocketConnected && currentSocket && currentSocket.readyState === WebSocket.OPEN) {
-            try {
-                currentSocket.send(JSON.stringify({
-                    message_type: 'heartbeat',
-                    timestamp: Date.now()
-                }));
-            } catch (error) {
-                console.warn('Error sending heartbeat:', error);
-            }
-        }
-    }
-
-    function startHeartbeat() {
-        // Clear any existing heartbeat
-        if (heartbeatInterval) {
-            clearInterval(heartbeatInterval);
-        }
-
-        // Send initial heartbeat
-        sendHeartbeat();
-
-        // Set up periodic heartbeat
-        var interval = isTabVisible ? 30000 : 60000; // 30s active, 60s hidden
-        heartbeatInterval = setInterval(sendHeartbeat, interval);
-    }
-
-    function stopHeartbeat() {
-        if (heartbeatInterval) {
-            clearInterval(heartbeatInterval);
-            heartbeatInterval = null;
-        }
-    }
-
-    // Handle visibility changes
-    function handleVisibilityChange() {
-        isTabVisible = !document.hidden;
-        
-        if (isTabVisible) {
-            // Tab became visible - update activity
-            updateActivity('visibility_change');
-        }
-        
-        // Restart heartbeat with new interval
-        if (isWebSocketConnected) {
-            startHeartbeat();
-        }
-    }
-
-    // Track user activity
-    function handleActivity() {
-        var now = Date.now();
-        // Throttle activity updates
-        if (now - lastActivity > activityThreshold) {
-            updateActivity('interaction');
-        }
-    }
-
+    var chatID = null
     // Function to update button states based on form visibility
     function updateButtonStates() {
         if (isFormShowing) {
@@ -209,7 +125,16 @@ function initializeChatEmbed() {
     chatContainer.id = 'simple-chat-embed';
     chatContainer.style.position = 'fixed';
     chatContainer.style.bottom = '20px';
-    chatContainer.style.right = '20px';
+    
+    // Set horizontal position based on config
+    if (config.position === 'left') {
+        chatContainer.style.left = '20px';
+        chatContainer.style.right = 'auto';
+    } else {
+        chatContainer.style.right = '20px';
+        chatContainer.style.left = 'auto';
+    }
+    
     chatContainer.style.width = '384px';
     chatContainer.style.height = '80vh';
     chatContainer.style.maxHeight = '600px';
@@ -239,8 +164,16 @@ function initializeChatEmbed() {
         } else {
             chatContainer.style.position = 'fixed';
             chatContainer.style.top = 'auto';
-            chatContainer.style.left = 'auto';
-            chatContainer.style.right = '20px';
+            
+            // Set horizontal position based on config
+            if (config.position === 'left') {
+                chatContainer.style.left = '20px';
+                chatContainer.style.right = 'auto';
+            } else {
+                chatContainer.style.left = 'auto';
+                chatContainer.style.right = '20px';
+            }
+            
             chatContainer.style.bottom = '20px';
             chatContainer.style.width = '384px';
             chatContainer.style.height = '80vh';
@@ -1030,7 +963,7 @@ function initializeChatEmbed() {
 
         // Try to get stored session data first
         var storedSession = localStorage.getItem('simple-chat-session');
-        var chatID, workflow_id, wsParams;
+        var workflow_id, wsParams;
 
         if (storedSession) {
             try {
@@ -1080,150 +1013,144 @@ function initializeChatEmbed() {
             }
         }
 
-        var wsUrl = `${socketUrl}${chatID}/?workflow_id=${wsParams.hashed_workflow_id}&hash=${wsParams.hash}&visitorInfo=${JSON.stringify(visitorInfo)}`;
+        var wsUrl = `${socketUrl}${config.org_id}/?visitor_info=${JSON.stringify(visitorInfo)}`;
         try {
             currentSocket = new WebSocket(wsUrl);
             currentSocket.onopen = function () {
                 isWebSocketConnected = true;
-                // Start enhanced presence tracking
-                startHeartbeat();
-                updateActivity('connection');
             };
             currentSocket.onmessage = function (event) {
                 var msgData = JSON.parse(event.data);
 
-                // Handle heartbeat responses
-                if (msgData?.type === "heartbeat_response") {
-                    // Heartbeat acknowledged - no further action needed
-                    return;
+                if(msgData?.room_name && msgData?.room_name === chatID){
+                    
+                                    // Skip unread messages but allow broadcast messages
+                                    if (msgData?.message_type === "unread_message") {
+                                        return;
+                                    }
+                                    if (msgData?.message_type === "handover_requested") {
+                                        return;
+                                    }
+                    
+                                    if (msgData?.message_type === "handover_message") {
+                    
+                                        // Set handover flag to stop showing typing indicators
+                                        isHandoverActive = true;
+                    
+                                        // Store handover flag in session data for persistence
+                                        var storedSession = localStorage.getItem('simple-chat-session');
+                                        if (storedSession) {
+                                            try {
+                                                var sessionData = JSON.parse(storedSession);
+                                                sessionData.handoverOccurred = true;
+                                                localStorage.setItem('simple-chat-session', JSON.stringify(sessionData));
+                                            } catch (error) {
+                                                console.log('Error updating session with handover flag:', error);
+                                            }
+                                        }
+                    
+                                        // Store handover message in localStorage like other messages
+                                        var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
+                                        msgs.push({
+                                            text: msgData.sender?.name + ' has entered the chat',
+                                            sender: 'system',
+                                            isWelcomeMessage: false,
+                                            isSystemNotification: true,
+                                            notificationType: 'joined',
+                                            created_at: formatTimeStamp(msgData.created_at || new Date().toISOString())
+                                        });
+                                        localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
+                    
+                                        // Reload messages to show the stored handover message
+                                        loadMessages();
+                                        return;
+                                    }
+                    
+                                    // Handle AI/bot messages (both streaming and regular) - only if handover is not active
+                                    if ((msgData.sender_type === 'ai' || msgData.sender === 'ai' || msgData.sender_type === 'bot' || msgData.sender === 'bot') && !isHandoverActive) {
+                    
+                                        var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
+                                        var lastMessage = msgs[msgs.length - 1];
+                    
+                                        // Remove typing indicator if present
+                                        if (lastMessage && lastMessage.text === '' && (lastMessage.sender === 'bot' || lastMessage.sender === 'ai')) {
+                                            msgs.pop();
+                                            lastMessage = msgs[msgs.length - 1] || null;
+                                        }
+                    
+                                        var content = msgData.content || msgData.message || '';
+                    
+                                        // Handle completion signal (empty content with is_complete flag)
+                                        if (msgData.is_complete === true && content === '') {
+                                            if (lastMessage && lastMessage.isStreaming) {
+                                                console.log('Stream completed');
+                                                lastMessage.isStreaming = false;
+                                                msgs[msgs.length - 1] = lastMessage;
+                                                localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
+                                                // No need to reload - already processed correctly
+                                            }
+                                            return;
+                                        }
+                    
+                                        // Handle any content from AI (treat all as streaming chunks)
+                                        if (content) {
+                                            // Check if we should append to existing message or create new one
+                                            if (lastMessage &&
+                                                (lastMessage.sender === 'bot' || lastMessage.sender === 'ai') &&
+                                                lastMessage.isStreaming === true) {
+                                                // Append to existing streaming message
+                                                lastMessage.text += content;
+                                                lastMessage.lastChunkTime = Date.now(); // Track when last chunk arrived
+                                                msgs[msgs.length - 1] = lastMessage;
+                                            } else {
+                                                // Create new streaming message
+                                                msgs.push({
+                                                    text: content,
+                                                    sender: 'bot',
+                                                    isWelcomeMessage: false,
+                                                    isStreaming: true,
+                                                    messageId: msgData.message_id,
+                                                    created_at: formatTimeStamp(msgData.created_at),
+                                                    lastChunkTime: Date.now() // Track when last chunk arrived
+                                                });
+                                            }
+                                            localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
+                                            loadMessages(); // Use immediate loading for streaming
+                                        }
+                                    } else if ((msgData.sender_type === "sales_rep" || msgData.sender === "sales_rep")) {
+                                        var content = msgData.content || '';
+                    
+                                        // Ignore empty sales_rep messages completely - these should not create typing indicators
+                                        if (!content || !content.trim()) {
+                                            return;
+                                        }
+                    
+                                        var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
+                                        msgs.push({
+                                            text: content,
+                                            sender: msgData.sender_type,
+                                            senderName: msgData.sender || msgData.sender_name || 'Sales Representative', // Capture sender name
+                                            isWelcomeMessage: false,
+                                            created_at: formatTimeStamp(msgData.created_at)
+                                        });
+                                        localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
+                                        loadMessages();
+                                    }
+                                };
+
                 }
 
-                // Skip unread messages but allow broadcast messages
-                if (msgData?.message_type === "unread_message") {
-                    return;
-                }
-                if (msgData?.message_type === "handover_requested") {
-                    return;
-                }
-
-                if (msgData?.message_type === "handover_message") {
-
-                    // Set handover flag to stop showing typing indicators
-                    isHandoverActive = true;
-
-                    // Store handover flag in session data for persistence
-                    var storedSession = localStorage.getItem('simple-chat-session');
-                    if (storedSession) {
-                        try {
-                            var sessionData = JSON.parse(storedSession);
-                            sessionData.handoverOccurred = true;
-                            localStorage.setItem('simple-chat-session', JSON.stringify(sessionData));
-                        } catch (error) {
-                            console.log('Error updating session with handover flag:', error);
-                        }
-                    }
-
-                    // Store handover message in localStorage like other messages
-                    var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
-                    msgs.push({
-                        text: msgData.sender + ' has entered the chat',
-                        sender: 'system',
-                        isWelcomeMessage: false,
-                        isSystemNotification: true,
-                        notificationType: 'joined',
-                        created_at: formatTimeStamp(msgData.created_at || new Date().toISOString())
-                    });
-                    localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
-
-                    // Reload messages to show the stored handover message
-                    loadMessages();
-                    return;
-                }
-
-                // Handle AI/bot messages (both streaming and regular) - only if handover is not active
-                if ((msgData.sender_type === 'ai' || msgData.sender === 'ai' || msgData.sender_type === 'bot' || msgData.sender === 'bot') && !isHandoverActive) {
-
-                    var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
-                    var lastMessage = msgs[msgs.length - 1];
-
-                    // Remove typing indicator if present
-                    if (lastMessage && lastMessage.text === '' && (lastMessage.sender === 'bot' || lastMessage.sender === 'ai')) {
-                        msgs.pop();
-                        lastMessage = msgs[msgs.length - 1] || null;
-                    }
-
-                    var content = msgData.content || msgData.message || '';
-
-                    // Handle completion signal (empty content with is_complete flag)
-                    if (msgData.is_complete === true && content === '') {
-                        if (lastMessage && lastMessage.isStreaming) {
-                            console.log('Stream completed');
-                            lastMessage.isStreaming = false;
-                            msgs[msgs.length - 1] = lastMessage;
-                            localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
-                            // No need to reload - already processed correctly
-                        }
-                        return;
-                    }
-
-                    // Handle any content from AI (treat all as streaming chunks)
-                    if (content) {
-                        // Check if we should append to existing message or create new one
-                        if (lastMessage &&
-                            (lastMessage.sender === 'bot' || lastMessage.sender === 'ai') &&
-                            lastMessage.isStreaming === true) {
-                            // Append to existing streaming message
-                            lastMessage.text += content;
-                            lastMessage.lastChunkTime = Date.now(); // Track when last chunk arrived
-                            msgs[msgs.length - 1] = lastMessage;
-                        } else {
-                            // Create new streaming message
-                            msgs.push({
-                                text: content,
-                                sender: 'bot',
-                                isWelcomeMessage: false,
-                                isStreaming: true,
-                                messageId: msgData.message_id,
-                                created_at: formatTimeStamp(msgData.created_at),
-                                lastChunkTime: Date.now() // Track when last chunk arrived
-                            });
-                        }
-                        localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
-                        loadMessages(); // Use immediate loading for streaming
-                    }
-                } else if (msgData.sender_type === "sales_rep" || msgData.sender === "sales_rep") {
-                    var content = msgData.content || '';
-
-                    // Ignore empty sales_rep messages completely - these should not create typing indicators
-                    if (!content || !content.trim()) {
-                        return;
-                    }
-
-                    var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
-                    msgs.push({
-                        text: content,
-                        sender: msgData.sender_type,
-                        senderName: msgData.sender || msgData.sender_name || 'Sales Representative', // Capture sender name
-                        isWelcomeMessage: false,
-                        created_at: formatTimeStamp(msgData.created_at)
-                    });
-                    localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
-                    loadMessages();
-                }
-            };
             currentSocket.onclose = function () {
                 console.error('WebSocket connection closed unexpectedly...');
                 isWebSocketConnected = false;
                 currentSocket = null;
                 // Stop enhanced presence tracking
-                stopHeartbeat();
             };
             currentSocket.onerror = function (error) {
                 console.error('WebSocket error:', error);
                 isWebSocketConnected = false;
                 currentSocket = null;
                 // Stop enhanced presence tracking
-                stopHeartbeat();
             };
         } catch (error) {
             console.error('Failed to create WebSocket connection:', error);
@@ -1268,7 +1195,8 @@ function initializeChatEmbed() {
                 if (currentSocket && currentSocket.readyState === WebSocket.OPEN) {
                     currentSocket.send(JSON.stringify({
                         'message': val,
-                        'message_type': "text"
+                        'message_type': "text",
+                        "room_name": chatID
                     }));
                 } else if (currentSocket && currentSocket.readyState === WebSocket.CONNECTING) {
                     // Still connecting, wait a bit more
@@ -1295,7 +1223,8 @@ function initializeChatEmbed() {
             try {
                 currentSocket.send(JSON.stringify({
                     'message': val,
-                    'message_type': "text"
+                    'message_type': "text",
+                    room_name: chatID
                 }));
             } catch (error) {
                 console.error('Error sending message:', error);
@@ -1855,7 +1784,16 @@ function initializeChatEmbed() {
     chatToggle.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-message-circle-icon lucide-message-circle"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>';
     chatToggle.style.position = 'fixed';
     chatToggle.style.bottom = '20px';
-    chatToggle.style.right = '20px';
+    
+    // Set horizontal position based on config
+    if (config.position === 'left') {
+        chatToggle.style.left = '20px';
+        chatToggle.style.right = 'auto';
+    } else {
+        chatToggle.style.right = '20px';
+        chatToggle.style.left = 'auto';
+    }
+    
     chatToggle.style.width = '80px';
     chatToggle.style.height = '80px';
     chatToggle.style.borderRadius = '50%';
@@ -1874,10 +1812,26 @@ function initializeChatEmbed() {
     function setToggleResponsive() {
         if (window.innerWidth < 768) {
             chatToggle.style.bottom = '20px';
-            chatToggle.style.right = '20px';
+            
+            // Set horizontal position based on config (mobile)
+            if (config.position === 'left') {
+                chatToggle.style.left = '20px';
+                chatToggle.style.right = 'auto';
+            } else {
+                chatToggle.style.right = '20px';
+                chatToggle.style.left = 'auto';
+            }
         } else {
             chatToggle.style.bottom = '20px';
-            chatToggle.style.right = '20px';
+            
+            // Set horizontal position based on config (desktop)
+            if (config.position === 'left') {
+                chatToggle.style.left = '20px';
+                chatToggle.style.right = 'auto';
+            } else {
+                chatToggle.style.right = '20px';
+                chatToggle.style.left = 'auto';
+            }
         }
     }
     setToggleResponsive();
@@ -1942,7 +1896,8 @@ function initializeChatEmbed() {
 
             const getVisitorJson = await getVisitor.json();
 
-            if (getVisitorJson.detail === "Not found." || !getVisitorJson.length) {
+
+            if (getVisitorJson.detail === "Not found." || !getVisitorJson.results?.length) {
                 // If visitor does not exist, create a new one
                 const visitor = await fetch(`${baseUrl}visitors/`, {
                     method: "POST",
@@ -1955,7 +1910,7 @@ function initializeChatEmbed() {
                         email,
                         phone_number: phone,
                         zip_code: zip,
-                        workflow_id: workflowId
+                        organization: config.org_id
                     })
                 })
 
@@ -1971,8 +1926,8 @@ function initializeChatEmbed() {
             }
             else {
                 visitorInfo = {
-                    "id": getVisitorJson[0].id,
-                    "name": getVisitorJson[0].name
+                    "id": getVisitorJson?.results[0].id,
+                    "name": getVisitorJson?.results[0].name
                 };
             }
         } catch (error) {
@@ -2012,24 +1967,6 @@ function initializeChatEmbed() {
             }
         }
     }
-
-    // Initialize enhanced presence tracking
-    function initializeEnhancedPresence() {
-        // Add visibility change listener
-        document.addEventListener('visibilitychange', handleVisibilityChange);
-
-        // Add activity tracking listeners
-        var activityEvents = ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart'];
-        activityEvents.forEach(function(event) {
-            document.addEventListener(event, handleActivity, { passive: true });
-        });
-
-        // Initial activity update
-        updateActivity('initialization');
-    }
-
-    // Initialize enhanced presence system
-    initializeEnhancedPresence();
 
     // Initial load
     maybeShowLeadCapture();
