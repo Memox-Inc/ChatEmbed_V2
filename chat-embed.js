@@ -1022,120 +1022,124 @@ function initializeChatEmbed() {
             currentSocket.onmessage = function (event) {
                 var msgData = JSON.parse(event.data);
 
+                if(msgData?.room_name && msgData?.room_name === chatID){
+                    
+                                    // Skip unread messages but allow broadcast messages
+                                    if (msgData?.message_type === "unread_message") {
+                                        return;
+                                    }
+                                    if (msgData?.message_type === "handover_requested") {
+                                        return;
+                                    }
+                    
+                                    if (msgData?.message_type === "handover_message") {
+                    
+                                        // Set handover flag to stop showing typing indicators
+                                        isHandoverActive = true;
+                    
+                                        // Store handover flag in session data for persistence
+                                        var storedSession = localStorage.getItem('simple-chat-session');
+                                        if (storedSession) {
+                                            try {
+                                                var sessionData = JSON.parse(storedSession);
+                                                sessionData.handoverOccurred = true;
+                                                localStorage.setItem('simple-chat-session', JSON.stringify(sessionData));
+                                            } catch (error) {
+                                                console.log('Error updating session with handover flag:', error);
+                                            }
+                                        }
+                    
+                                        // Store handover message in localStorage like other messages
+                                        var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
+                                        msgs.push({
+                                            text: msgData.sender?.name + ' has entered the chat',
+                                            sender: 'system',
+                                            isWelcomeMessage: false,
+                                            isSystemNotification: true,
+                                            notificationType: 'joined',
+                                            created_at: formatTimeStamp(msgData.created_at || new Date().toISOString())
+                                        });
+                                        localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
+                    
+                                        // Reload messages to show the stored handover message
+                                        loadMessages();
+                                        return;
+                                    }
+                    
+                                    // Handle AI/bot messages (both streaming and regular) - only if handover is not active
+                                    if ((msgData.sender_type === 'ai' || msgData.sender === 'ai' || msgData.sender_type === 'bot' || msgData.sender === 'bot') && !isHandoverActive) {
+                    
+                                        var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
+                                        var lastMessage = msgs[msgs.length - 1];
+                    
+                                        // Remove typing indicator if present
+                                        if (lastMessage && lastMessage.text === '' && (lastMessage.sender === 'bot' || lastMessage.sender === 'ai')) {
+                                            msgs.pop();
+                                            lastMessage = msgs[msgs.length - 1] || null;
+                                        }
+                    
+                                        var content = msgData.content || msgData.message || '';
+                    
+                                        // Handle completion signal (empty content with is_complete flag)
+                                        if (msgData.is_complete === true && content === '') {
+                                            if (lastMessage && lastMessage.isStreaming) {
+                                                console.log('Stream completed');
+                                                lastMessage.isStreaming = false;
+                                                msgs[msgs.length - 1] = lastMessage;
+                                                localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
+                                                // No need to reload - already processed correctly
+                                            }
+                                            return;
+                                        }
+                    
+                                        // Handle any content from AI (treat all as streaming chunks)
+                                        if (content) {
+                                            // Check if we should append to existing message or create new one
+                                            if (lastMessage &&
+                                                (lastMessage.sender === 'bot' || lastMessage.sender === 'ai') &&
+                                                lastMessage.isStreaming === true) {
+                                                // Append to existing streaming message
+                                                lastMessage.text += content;
+                                                lastMessage.lastChunkTime = Date.now(); // Track when last chunk arrived
+                                                msgs[msgs.length - 1] = lastMessage;
+                                            } else {
+                                                // Create new streaming message
+                                                msgs.push({
+                                                    text: content,
+                                                    sender: 'bot',
+                                                    isWelcomeMessage: false,
+                                                    isStreaming: true,
+                                                    messageId: msgData.message_id,
+                                                    created_at: formatTimeStamp(msgData.created_at),
+                                                    lastChunkTime: Date.now() // Track when last chunk arrived
+                                                });
+                                            }
+                                            localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
+                                            loadMessages(); // Use immediate loading for streaming
+                                        }
+                                    } else if ((msgData.sender_type === "sales_rep" || msgData.sender === "sales_rep")) {
+                                        var content = msgData.content || '';
+                    
+                                        // Ignore empty sales_rep messages completely - these should not create typing indicators
+                                        if (!content || !content.trim()) {
+                                            return;
+                                        }
+                    
+                                        var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
+                                        msgs.push({
+                                            text: content,
+                                            sender: msgData.sender_type,
+                                            senderName: msgData.sender || msgData.sender_name || 'Sales Representative', // Capture sender name
+                                            isWelcomeMessage: false,
+                                            created_at: formatTimeStamp(msgData.created_at)
+                                        });
+                                        localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
+                                        loadMessages();
+                                    }
+                                };
 
-                // Skip unread messages but allow broadcast messages
-                if (msgData?.message_type === "unread_message") {
-                    return;
                 }
-                if (msgData?.message_type === "handover_requested") {
-                    return;
-                }
 
-                if (msgData?.message_type === "handover_message") {
-
-                    // Set handover flag to stop showing typing indicators
-                    isHandoverActive = true;
-
-                    // Store handover flag in session data for persistence
-                    var storedSession = localStorage.getItem('simple-chat-session');
-                    if (storedSession) {
-                        try {
-                            var sessionData = JSON.parse(storedSession);
-                            sessionData.handoverOccurred = true;
-                            localStorage.setItem('simple-chat-session', JSON.stringify(sessionData));
-                        } catch (error) {
-                            console.log('Error updating session with handover flag:', error);
-                        }
-                    }
-
-                    // Store handover message in localStorage like other messages
-                    var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
-                    msgs.push({
-                        text: msgData.sender?.name + ' has entered the chat',
-                        sender: 'system',
-                        isWelcomeMessage: false,
-                        isSystemNotification: true,
-                        notificationType: 'joined',
-                        created_at: formatTimeStamp(msgData.created_at || new Date().toISOString())
-                    });
-                    localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
-
-                    // Reload messages to show the stored handover message
-                    loadMessages();
-                    return;
-                }
-
-                // Handle AI/bot messages (both streaming and regular) - only if handover is not active
-                if ((msgData.sender_type === 'ai' || msgData.sender === 'ai' || msgData.sender_type === 'bot' || msgData.sender === 'bot') && !isHandoverActive) {
-
-                    var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
-                    var lastMessage = msgs[msgs.length - 1];
-
-                    // Remove typing indicator if present
-                    if (lastMessage && lastMessage.text === '' && (lastMessage.sender === 'bot' || lastMessage.sender === 'ai')) {
-                        msgs.pop();
-                        lastMessage = msgs[msgs.length - 1] || null;
-                    }
-
-                    var content = msgData.content || msgData.message || '';
-
-                    // Handle completion signal (empty content with is_complete flag)
-                    if (msgData.is_complete === true && content === '') {
-                        if (lastMessage && lastMessage.isStreaming) {
-                            console.log('Stream completed');
-                            lastMessage.isStreaming = false;
-                            msgs[msgs.length - 1] = lastMessage;
-                            localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
-                            // No need to reload - already processed correctly
-                        }
-                        return;
-                    }
-
-                    // Handle any content from AI (treat all as streaming chunks)
-                    if (content) {
-                        // Check if we should append to existing message or create new one
-                        if (lastMessage &&
-                            (lastMessage.sender === 'bot' || lastMessage.sender === 'ai') &&
-                            lastMessage.isStreaming === true) {
-                            // Append to existing streaming message
-                            lastMessage.text += content;
-                            lastMessage.lastChunkTime = Date.now(); // Track when last chunk arrived
-                            msgs[msgs.length - 1] = lastMessage;
-                        } else {
-                            // Create new streaming message
-                            msgs.push({
-                                text: content,
-                                sender: 'bot',
-                                isWelcomeMessage: false,
-                                isStreaming: true,
-                                messageId: msgData.message_id,
-                                created_at: formatTimeStamp(msgData.created_at),
-                                lastChunkTime: Date.now() // Track when last chunk arrived
-                            });
-                        }
-                        localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
-                        loadMessages(); // Use immediate loading for streaming
-                    }
-                } else if ((msgData.sender_type === "sales_rep" || msgData.sender === "sales_rep") && msgData.room_name === chatID) {
-                    var content = msgData.content || '';
-
-                    // Ignore empty sales_rep messages completely - these should not create typing indicators
-                    if (!content || !content.trim()) {
-                        return;
-                    }
-
-                    var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
-                    msgs.push({
-                        text: content,
-                        sender: msgData.sender_type,
-                        senderName: msgData.sender || msgData.sender_name || 'Sales Representative', // Capture sender name
-                        isWelcomeMessage: false,
-                        created_at: formatTimeStamp(msgData.created_at)
-                    });
-                    localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
-                    loadMessages();
-                }
-            };
             currentSocket.onclose = function () {
                 console.error('WebSocket connection closed unexpectedly...');
                 isWebSocketConnected = false;
