@@ -68,6 +68,7 @@ function initializeChatEmbed() {
     var socketUrl = config.socketUrl + "/ws/app/";
 
     var currentSocket = null;
+    var heartBeatInterval = null;
     var isWebSocketConnected = false;
     var visitorInfo = null;
     var isHandoverActive = false;
@@ -1018,6 +1019,7 @@ function initializeChatEmbed() {
             currentSocket = new WebSocket(wsUrl);
             currentSocket.onopen = function () {
                 isWebSocketConnected = true;
+                startHeartBeat()
             };
             currentSocket.onmessage = function (event) {
                 var msgData = JSON.parse(event.data);
@@ -1144,18 +1146,38 @@ function initializeChatEmbed() {
                 console.error('WebSocket connection closed unexpectedly...');
                 isWebSocketConnected = false;
                 currentSocket = null;
+            if (heartBeatInterval) clearInterval(heartBeatInterval);
+            heartBeatInterval = null
+
                 // Stop enhanced presence tracking
             };
             currentSocket.onerror = function (error) {
                 console.error('WebSocket error:', error);
                 isWebSocketConnected = false;
                 currentSocket = null;
+            if (heartBeatInterval) clearInterval(heartBeatInterval);
+            heartBeatInterval = null
+
                 // Stop enhanced presence tracking
             };
         } catch (error) {
             console.error('Failed to create WebSocket connection:', error);
             isWebSocketConnected = false;
             currentSocket = null;
+            if (heartBeatInterval) clearInterval(heartBeatInterval);
+            heartBeatInterval = null
+        }
+    }
+
+    function startHeartBeat() {
+        if (currentSocket.readyState === WebSocket.OPEN) {
+              const heartbeatMessage = {
+          message_type: 'heartbeat',
+          timestamp: Date.now()
+        };
+            heartBeatInterval = setInterval(function () {
+                currentSocket.send(JSON.stringify(heartbeatMessage));
+            }, 2500); // Send heartbeat every 2.5 seconds
         }
     }
 
