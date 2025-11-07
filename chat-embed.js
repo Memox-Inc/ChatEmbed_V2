@@ -519,6 +519,7 @@ function initializeChatEmbed() {
     input.style.lineHeight = '20px';
     input.style.outline = 'none';
     input.style.transition = 'border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out';
+    input.style.fontFamily = 'sans-serif';
 
     input.addEventListener('focus', function () {
         input.style.borderColor = '#3b82f6';
