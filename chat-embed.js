@@ -401,7 +401,7 @@ function initializeChatEmbed() {
     scrollToBottomBtn.title = 'Scroll to bottom';
     scrollToBottomBtn.style.position = 'absolute';
     scrollToBottomBtn.style.right = '16px';
-    scrollToBottomBtn.style.bottom = '5rem';
+    scrollToBottomBtn.style.bottom = '80px';
     scrollToBottomBtn.style.width = '40px';
     scrollToBottomBtn.style.height = '40px';
     scrollToBottomBtn.style.borderRadius = '50%';
