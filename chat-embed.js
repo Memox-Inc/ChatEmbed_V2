@@ -604,6 +604,9 @@ function initializeChatEmbed() {
             
             // Post-process to add our custom styles to links
             if (typeof result === 'string') {
+                // Add custom styling to p tags for AI messages
+                result = result.replace(/<p>/g, '<p style="font-size:inherit;line-height:inherit;font-family:inherit;font-weight:inherit;margin:0;">');
+                
                 // Add custom styling to links
                 result = result.replace(/<a\s+href="([^"]*)"([^>]*)>([^<]*)<\/a>/g, function(match, href, attrs, text) {
                     return '<a href="' + href + '" target="_blank" style="font-weight:bold;color:' + (theme.botText || '#4a4e69') + ';text-decoration:underline;cursor:pointer;">' + text + '</a>';
@@ -1319,6 +1322,7 @@ function initializeChatEmbed() {
         nameInput.style.fontSize = '14px';
         nameInput.style.outline = 'none';
         nameInput.style.transition = 'border-color 0.2s ease-in-out';
+        nameInput.style.fontFamily = 'sans-serif';
 
         nameInput.addEventListener('focus', function () {
             nameInput.style.borderColor = '#3b82f6';
@@ -1370,6 +1374,8 @@ function initializeChatEmbed() {
         emailInput.style.fontSize = '14px';
         emailInput.style.outline = 'none';
         emailInput.style.transition = 'border-color 0.2s ease-in-out';
+        emailInput.style.fontFamily = 'sans-serif';
+
 
         emailInput.addEventListener('focus', function () {
             emailInput.style.borderColor = '#3b82f6';
@@ -1422,6 +1428,7 @@ function initializeChatEmbed() {
         phoneInput.style.fontSize = '14px';
         phoneInput.style.outline = 'none';
         phoneInput.style.transition = 'border-color 0.2s ease-in-out';
+        phoneInput.style.fontFamily = 'sans-serif';
 
         phoneInput.addEventListener('focus', function () {
             phoneInput.style.borderColor = '#3b82f6';
@@ -1473,6 +1480,7 @@ function initializeChatEmbed() {
         zipInput.style.fontSize = '14px';
         zipInput.style.outline = 'none';
         zipInput.style.transition = 'border-color 0.2s ease-in-out';
+        zipInput.style.fontFamily = 'sans-serif';
 
         zipInput.addEventListener('focus', function () {
             zipInput.style.borderColor = '#3b82f6';
@@ -1999,3 +2007,10 @@ function initializeChatEmbed() {
 
 })(); // End of main IIFE
 
+
+
+// font-size: inherit;
+//     line-height: inherit;
+//     font-family: inherit;
+//     font-weight: inherit;
+    
