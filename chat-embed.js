@@ -66,6 +66,7 @@ function initializeChatEmbed() {
     var welcomeMessage = config.welcomeMessage || null;
     var workflowId = config.workflowId;
     var socketUrl = config.socketUrl + "/ws/app/";
+    var leadCapture = config.leadCapture !== undefined ? config.leadCapture : true; // Default to true if not specified
 
     var currentSocket = null;
     var heartBeatInterval = null;
@@ -312,23 +313,47 @@ function initializeChatEmbed() {
             isWebSocketConnected = false;
         }
         
-        // Show lead capture form again
-        inputContainer.style.display = 'none';
-        showLeadCaptureInChat(function (lead) {
-            isFormShowing = false;
-            updateButtonStates(); // Update button appearance
+        // Clear messages display
+        messages.innerHTML = '';
+        
+        // Check leadCapture setting
+        if (!leadCapture) {
+            // Lead capture disabled - create anonymous visitor and start fresh
             window.__simpleChatEmbedLeadCaptured = true;
-            if (lead) {
-                window.SimpleChatEmbedLead = lead;
-            }
             setupChatInput();
+            
+            createVisitor(null, null, null, null).then(() => {
+                if (welcomeMessage) {
+                    saveMessage(welcomeMessage, 'bot', 'welcomeMessage');
+                }
+                loadMessages();
+                connectWebSocket();
+            }).catch((error) => {
+                console.error('Failed to create anonymous visitor:', error);
+                if (welcomeMessage) {
+                    saveMessage(welcomeMessage, 'bot', 'welcomeMessage');
+                }
+                loadMessages();
+                connectWebSocket();
+            });
+        } else {
+            // Lead capture enabled - show form again
+            inputContainer.style.display = 'none';
+            showLeadCaptureInChat(function (lead) {
+                isFormShowing = false;
+                updateButtonStates();
+                window.__simpleChatEmbedLeadCaptured = true;
+                if (lead) {
+                    window.SimpleChatEmbedLead = lead;
+                }
+                setupChatInput();
 
-            // Show welcome message if set
-            if (welcomeMessage) {
-                saveMessage(welcomeMessage, 'bot', 'welcomeMessage');
-            }
-            loadMessages();
-        });
+                if (welcomeMessage) {
+                    saveMessage(welcomeMessage, 'bot', 'welcomeMessage');
+                }
+                loadMessages();
+            });
+        }
     };
 
     var closeBtn = document.createElement('button');
@@ -977,15 +1002,24 @@ function initializeChatEmbed() {
                 var sessionAge = new Date() - new Date(sessionData.timestamp);
                 var maxAge = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
 
-                if (sessionData.chatID && sessionData.workflowId && sessionData.hashedWorkflowId &&
-                    sessionData.hash && sessionData.visitorInfo && sessionAge < maxAge) {
+                // When leadCapture is false, we don't require visitorInfo for session validity
+                var isSessionValid = sessionData.chatID && sessionData.workflowId && 
+                    sessionData.hashedWorkflowId && sessionData.hash && sessionAge < maxAge;
+                
+                if (leadCapture) {
+                    isSessionValid = isSessionValid && sessionData.visitorInfo;
+                }
+
+                if (isSessionValid) {
                     chatID = sessionData.chatID;
                     workflow_id = sessionData.workflowId;
                     wsParams = {
                         hashed_workflow_id: sessionData.hashedWorkflowId,
                         hash: sessionData.hash
                     };
-                    visitorInfo = sessionData.visitorInfo;
+                    if (sessionData.visitorInfo) {
+                        visitorInfo = sessionData.visitorInfo;
+                    }
                 } else {
                     // Session is invalid or expired, generate new data
                     throw new Error('Invalid or expired session');
@@ -1004,18 +1038,21 @@ function initializeChatEmbed() {
             workflow_id = workflowId;
             wsParams = await generateSecureWsParams(workflow_id);
 
-            // Only store if we have visitor info (from completed form)
-            if (visitorInfo) {
-                var chatSessionData = {
-                    chatID: chatID,
-                    workflowId: workflow_id,
-                    hashedWorkflowId: wsParams.hashed_workflow_id,
-                    hash: wsParams.hash,
-                    visitorInfo: visitorInfo,
-                    timestamp: new Date().toISOString()
-                };
-                localStorage.setItem('simple-chat-session', JSON.stringify(chatSessionData));
+            // Store session data (with or without visitor info based on leadCapture setting)
+            var chatSessionData = {
+                chatID: chatID,
+                workflowId: workflow_id,
+                hashedWorkflowId: wsParams.hashed_workflow_id,
+                hash: wsParams.hash,
+                timestamp: new Date().toISOString()
+            };
+            
+            // Only include visitor info if lead capture is enabled and we have the info
+            if (leadCapture && visitorInfo) {
+                chatSessionData.visitorInfo = visitorInfo;
             }
+            
+            localStorage.setItem('simple-chat-session', JSON.stringify(chatSessionData));
         }
 
         var wsUrl = `${socketUrl}${config.org_id}/?visitor_info=${JSON.stringify(visitorInfo)}`;
@@ -1624,13 +1661,20 @@ function initializeChatEmbed() {
             }
 
             messages.innerHTML = '';
-            await createVisitor(
-                sanitize(nameInput.value),
-                sanitize(emailInput.value),
-                sanitize(phoneInput.value),
-                sanitize(zipInput.value)
-            );
-
+            
+            // Create visitor - either with form data or as anonymous
+            if (leadCapture) {
+                // Create visitor with form data
+                await createVisitor(
+                    sanitize(nameInput.value),
+                    sanitize(emailInput.value),
+                    sanitize(phoneInput.value),
+                    sanitize(zipInput.value)
+                );
+            } else {
+                // Create anonymous visitor with browser metadata
+                await createVisitor(null, null, null, null);
+            }
 
             // Collect environment info
             var userAgent = navigator.userAgent;
@@ -1689,6 +1733,34 @@ function initializeChatEmbed() {
 
     // On load, show lead capture inside chat window
     function maybeShowLeadCapture() {
+        // If lead capture is disabled in config, skip the form entirely
+        if (!leadCapture) {
+            window.__simpleChatEmbedLeadCaptured = true;
+            setupChatInput();
+            
+            // Create anonymous visitor before establishing connection
+            createVisitor(null, null, null, null).then(() => {
+                // Show welcome message if set
+                if (welcomeMessage) {
+                    saveMessage(welcomeMessage, 'bot', 'welcomeMessage');
+                }
+                loadMessages();
+                
+                // Automatically establish WebSocket connection
+                connectWebSocket();
+            }).catch((error) => {
+                console.error('Failed to create anonymous visitor:', error);
+                // Still proceed with connection even if visitor creation fails
+                if (welcomeMessage) {
+                    saveMessage(welcomeMessage, 'bot', 'welcomeMessage');
+                }
+                loadMessages();
+                connectWebSocket();
+            });
+            
+            return;
+        }
+
         // Check if we have existing messages in localStorage - if yes, skip lead form
         var existingMessages = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
         var storedSession = localStorage.getItem('simple-chat-session');
@@ -1906,7 +1978,22 @@ function initializeChatEmbed() {
     window.generateSecureWsParams = generateSecureWsParams;
     window.connectWebSocket = connectWebSocket;
 
-    // Helper function to create visitor
+    // Helper function to collect browser metadata
+    const collectBrowserMetadata = () => {
+        return {
+            userAgent: navigator.userAgent,
+            platform: navigator.platform,
+            language: navigator.language,
+            referrer: document.referrer || 'direct',
+            url: window.location.href,
+            timestamp: new Date().toISOString(),
+            screenResolution: `${window.screen.width}x${window.screen.height}`,
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+            cookiesEnabled: navigator.cookieEnabled
+        };
+    };
+
+    // Helper function to create visitor (regular or anonymous)
     const createVisitor = async (name, email, phone, zip) => {
         try {
             var baseUrl = config.baseUrl;
@@ -1915,6 +2002,34 @@ function initializeChatEmbed() {
             if (!baseUrl || !token) {
                 console.error('baseUrl and token must be provided in SimpleChatEmbedConfig');
                 throw new Error('Missing required configuration: baseUrl and token');
+            }
+
+            // For anonymous visitors (when leadCapture is false), use browser fingerprint as email
+            const isAnonymous = !email;
+            const browserMetadata = collectBrowserMetadata();
+            
+            if (isAnonymous) {
+                // Create a truly unique identifier from multiple browser characteristics
+                const fingerprintData = [
+                    browserMetadata.userAgent,
+                    browserMetadata.platform,
+                    browserMetadata.language,
+                    browserMetadata.screenResolution,
+                    browserMetadata.timezone,
+                    browserMetadata.cookiesEnabled,
+                    navigator.hardwareConcurrency || 'unknown', // CPU cores
+                    navigator.maxTouchPoints || 0, // Touch support
+                    screen.colorDepth || 'unknown', // Color depth
+                    new Date().getTimezoneOffset(), // Timezone offset in minutes
+                ].join('|');
+                
+                // Create hash using a more robust approach
+                const fingerprint = btoa(fingerprintData)
+                    .replace(/[^a-zA-Z0-9]/g, '') // Remove special characters
+                    .substring(0, 40); // Use longer hash
+                
+                email = `anonymous_${fingerprint}@memox.local`;
+                name = 'Anonymous Visitor';
             }
 
             const getVisitor = await fetch(`${baseUrl}visitors/?email=${email}`, {
@@ -1930,19 +2045,25 @@ function initializeChatEmbed() {
 
             if (getVisitorJson.detail === "Not found." || !getVisitorJson.results?.length) {
                 // If visitor does not exist, create a new one
+                const visitorPayload = {
+                    name,
+                    email,
+                    phone_number: phone || '',
+                    zip_code: zip || '',
+                    organization: config.org_id,
+                    metadata: {
+                        browser_metadata: browserMetadata,
+                        anonymous: isAnonymous
+                    }
+                };
+                
                 const visitor = await fetch(`${baseUrl}visitors/`, {
                     method: "POST",
                     headers: {
                         'Content-Type': 'application/json',
                         'Authorization': `Token ${token} `,
                     },
-                    body: JSON.stringify({
-                        name,
-                        email,
-                        phone_number: phone,
-                        zip_code: zip,
-                        organization: config.org_id
-                    })
+                    body: JSON.stringify(visitorPayload)
                 })
 
                 if (!visitor.ok) {
