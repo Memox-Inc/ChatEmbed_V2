@@ -19,6 +19,7 @@ window.SimpleChatEmbedConfig = {
     workflowId: "your-workflow-id",
     title: "Your Chat Title",
     welcomeMessage: "Welcome to our chat!",
+    leadCapture: true, // Set to false to skip lead capture form
     theme: {
         primary: '#8349ff',
         headerBg: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
@@ -37,6 +38,15 @@ window.SimpleChatEmbedConfig = {
 ### Optional Settings
 - `title`: Chat header title (default: "Chat")
 - `welcomeMessage`: Initial message displayed to users
+- `leadCapture`: Boolean to enable/disable the initial lead capture form (default: `true`)
+  - Set to `false` to skip the lead capture form and start chat immediately
+    - Creates an **anonymous visitor** with browser metadata
+    - Uses a unique browser fingerprint as the visitor identifier
+    - No personal information (name, email, phone, zip) is collected or stored
+  - Set to `true` to show the form with Name, Email, Phone, and Zip Code fields
+    - Creates or updates a visitor record with the provided personal information
+    - Associates the conversation with the identified visitor
+  - **Note**: Browser metadata is **always collected** for all visitors (both anonymous and identified) and stored in the `metadata.browser_metadata` field
 
 ### Theme Customization
 
@@ -87,6 +97,116 @@ theme: {
 - ✅ **Dynamic Theming**: Fully customizable colors and styling
 - ✅ **Message Types**: Distinct styling for user, bot, and sales rep messages
 - ✅ **Reset Function**: Clear messages while preserving session
+- ✅ **Optional Lead Capture**: Configurable lead capture form that can be enabled or disabled
+
+## Lead Capture Configuration
+
+The chat widget includes an optional lead capture form that collects user information before starting the chat. This can be controlled via the `leadCapture` configuration option.
+
+### Enabling Lead Capture (Default)
+```javascript
+window.SimpleChatEmbedConfig = {
+    socketUrl: "wss://hub.memox.io",
+    workflowId: "your-workflow-id",
+    leadCapture: true, // or omit this line for default behavior
+    // ... other config
+};
+```
+
+When enabled, users will see a form requesting:
+- Full Name
+- Email Address
+- Phone Number
+- Zip Code
+
+### Disabling Lead Capture
+```javascript
+window.SimpleChatEmbedConfig = {
+    socketUrl: "wss://hub.memox.io",
+    workflowId: "your-workflow-id",
+    leadCapture: false, // Skip the form
+    // ... other config
+};
+```
+
+When disabled, users can start chatting immediately without filling out any form.
+
+### Browser Metadata Collection
+
+The chat widget **automatically collects browser metadata for ALL visitors**, regardless of whether lead capture is enabled or disabled. This metadata is stored in the `metadata.browser_metadata` field of the Visitor model.
+
+**Browser metadata collected:**
+- User Agent (browser and OS information)
+- Platform (operating system)
+- Language preference
+- Screen resolution
+- Timezone
+- Referrer URL (where the user came from)
+- Current page URL
+- Cookies enabled status
+- Timestamp
+
+### Anonymous Visitors
+
+When `leadCapture` is set to `false`, the chat widget creates an **anonymous visitor** record without collecting personal information.
+
+**Example anonymous visitor record:**
+```json
+{
+  "name": "Anonymous Visitor",
+  "email": "anonymous_SGVsbG8gV29ybGQhIFRoaXMgaXM=@memox.local",
+  "metadata": {
+    "anonymous": true,
+    "browser_metadata": {
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)...",
+      "platform": "MacIntel",
+      "language": "en-US",
+      "screenResolution": "1920x1080",
+      "timezone": "America/New_York",
+      "referrer": "https://google.com",
+      "url": "https://yourwebsite.com/page",
+      "cookiesEnabled": true,
+      "timestamp": "2025-11-08T14:20:50.000Z"
+    }
+  }
+}
+```
+
+**Example identified visitor record (with lead capture):**
+```json
+{
+  "name": "John Doe",
+  "email": "john.doe@example.com",
+  "phone_number": "+1234567890",
+  "zip_code": "10001",
+  "metadata": {
+    "anonymous": false,
+    "browser_metadata": {
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)...",
+      "platform": "MacIntel",
+      "language": "en-US",
+      "screenResolution": "1920x1080",
+      "timezone": "America/New_York",
+      "referrer": "https://google.com",
+      "url": "https://yourwebsite.com/page",
+      "cookiesEnabled": true,
+      "timestamp": "2025-11-08T14:20:50.000Z"
+    }
+  }
+}
+```
+
+### Agent-Based Configuration
+
+If you're using the Memox Hub backend, you can control lead capture through the agent's `config` field:
+
+```json
+{
+  "lead_capture": false
+}
+```
+
+The SimpleChatWidget in mmx-unified-chat will automatically fetch this setting and apply it to the chat embed.
 
 ## Example Implementation
 
