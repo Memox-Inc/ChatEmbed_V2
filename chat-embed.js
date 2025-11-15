@@ -75,6 +75,8 @@ function initializeChatEmbed() {
     var isHandoverActive = false;
     var isFormShowing = false;
     var chatID = null
+    var isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
     // Function to update button states based on form visibility
     function updateButtonStates() {
         if (isFormShowing) {
@@ -160,9 +162,11 @@ function initializeChatEmbed() {
             chatContainer.style.right = '0';
             chatContainer.style.bottom = '0';
             chatContainer.style.width = '100%';
-            chatContainer.style.height = '100vh';
+            chatContainer.style.height = '100dvh'; // Dynamic viewport height for mobile browsers
             chatContainer.style.borderRadius = '0';
-            chatContainer.style.maxHeight = '100vh';
+            // chatContainer.style.maxHeight = '100vh';
+            chatContainer.style.maxHeight = '100dvh';
+
         } else {
             chatContainer.style.position = 'fixed';
             chatContainer.style.top = 'auto';
@@ -185,6 +189,34 @@ function initializeChatEmbed() {
     }
     setResponsive();
     window.addEventListener('resize', setResponsive);
+    var originalHeight = window.innerHeight;
+    function handleMobileKeyboard() {
+        if (isMobile && window.innerWidth < 768) {
+            var currentHeight = window.innerHeight;
+            var keyboardHeight = originalHeight - currentHeight;
+            
+            // If keyboard is visible (height changed significantly)
+            if (keyboardHeight > 100) {
+                chatContainer.style.height = currentHeight + 'px';
+                chatContainer.style.maxHeight = currentHeight + 'px';
+                
+                // Scroll to show input
+                setTimeout(function() {
+                    inputContainer.scrollIntoView({ behavior: 'smooth', block: 'end' });
+                }, 100);
+            } else {
+                // Keyboard hidden, restore original size
+                chatContainer.style.height = '100vh';
+                chatContainer.style.height = '100dvh';
+                chatContainer.style.maxHeight = '100vh';
+                chatContainer.style.maxHeight = '100dvh';
+            }
+        }
+    }
+
+    window.addEventListener('resize', handleMobileKeyboard);
+    window.visualViewport && window.visualViewport.addEventListener('resize', handleMobileKeyboard);
+
 
     var header = document.createElement('div');
     header.style.display = 'flex';
@@ -198,6 +230,9 @@ function initializeChatEmbed() {
     header.style.fontWeight = '600';
     header.style.fontSize = '18px';
     header.style.lineHeight = '28px';
+    header.style.position  = "sticky";
+    header.style.top  = "0";
+    header.style.top  = "0";
 
     var headerTitle = document.createElement('div');
     headerTitle.innerText = config.title;
@@ -379,13 +414,7 @@ function initializeChatEmbed() {
     headerActions.appendChild(closeBtn);
     header.appendChild(headerActions);
 
-    var separator = document.createElement('div');
-    separator.style.height = '1px';
-    separator.style.background = '#e2e8f0';
-    separator.style.marginBottom = '16px';
-
     chatContainer.appendChild(header);
-    chatContainer.appendChild(separator);
 
     var messages = document.createElement('div');
     messages.style.flex = '1 1 0%';
@@ -393,6 +422,7 @@ function initializeChatEmbed() {
     messages.style.overflowX = 'hidden';
     messages.style.padding = '16px';
     messages.style.background = '#ffffff';
+    messages.style.webkitOverflowScrolling = 'touch'; // Smooth scrolling on iOS
     messages.id = 'chat-messages';
     messages.style.display = 'flex';
     messages.style.flexDirection = 'column';
@@ -415,6 +445,15 @@ function initializeChatEmbed() {
             margin: 16px 0; 
             color: #6b7280; 
             font-style: italic; 
+        }
+   @media (max-width: 767px) {
+            #simple-chat-embed input,
+            #simple-chat-embed textarea,
+            #simple-chat-embed button {
+                font-size: 16px !important; /* Prevents zoom on iOS */
+                -webkit-appearance: none;
+                appearance: none;
+            }
         }
     `;
     document.head.appendChild(style);
@@ -456,11 +495,6 @@ function initializeChatEmbed() {
     };
 
     chatContainer.appendChild(scrollToBottomBtn);
-
-    var inputSeparator = document.createElement('div');
-    inputSeparator.style.height = '1px';
-    inputSeparator.style.background = '#e2e8f0';
-    inputSeparator.style.marginTop = '16px';
 
     var inputContainer = document.createElement('div');
     inputContainer.style.padding = '16px';
@@ -522,7 +556,6 @@ function initializeChatEmbed() {
 
     inputContainer.appendChild(quickButtonsContainer);
 
-    chatContainer.appendChild(inputSeparator);
     chatContainer.appendChild(inputContainer);
 
     var inputForm = document.createElement('div');
@@ -1309,7 +1342,10 @@ function initializeChatEmbed() {
 
     sendBtn.onclick = sendMessage;
     input.addEventListener('keydown', function (e) {
-        if (e.key === 'Enter') sendMessage();
+        if (e.key === 'Enter') {
+            e.preventDefault(); // Prevent default to avoid issues on mobile
+            sendMessage();
+        } 
     });
 
     function showLeadCaptureInChat(onComplete) {
@@ -2128,11 +2164,3 @@ function initializeChatEmbed() {
 } // End of initializeChatEmbed function
 
 })(); // End of main IIFE
-
-
-
-// font-size: inherit;
-//     line-height: inherit;
-//     font-family: inherit;
-//     font-weight: inherit;
-    
