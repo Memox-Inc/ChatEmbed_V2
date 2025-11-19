@@ -13,18 +13,22 @@
         // Production test configuration
         window.SimpleChatEmbedConfig = {
             // Use these settings for production
-            socketUrl: "wss://hub.memox.io",
-            baseUrl: "https://hub.memox.io/api/v1/",
-            token: "eedb5fc2b457815409e45f3b1dc023c276c9cedb",
-            org_id:"2",
+            // ---
+            // socketUrl: "wss://hub.memox.io",
+            // baseUrl: "https://hub.memox.io/api/v1/",
+            // token: "eedb5fc2b457815409e45f3b1dc023c276c9cedb",
+            // org_id:"2",
+            // ---
             // Use these settings for local testing
-            // socketUrl: "ws://localhost:8000",
-            // baseUrl: "http://localhost:8000/api/v1/",
-            // token: "cbacbe059689c3dec8173c05d806c7266b50176e",
-            
-            workflowId: "a2b8ad41-9fb7-40ed-8e5d-d64cbcad8f03",
+            // ---
+            socketUrl: "ws://localhost:8000",
+            baseUrl: "http://localhost:8000/api/v1/",
+            token: "eedb5fc2b457815409e45f3b1dc023c276c9cedb",
+            org_id:"1",
+            // ---
             title: "Container One",
             welcomeMessage: "Welcome! This is a production test of the chat system.",
+            leadCapture: false, // Set to false to skip the form
             position: "left", // Options: "left" or "right"
             // quickQuestions: [
             //     "Whats the price of a 20ft container?",
@@ -57,7 +61,7 @@
                 sendBtnBg: '#8349ff',
                 sendBtnText: '#fff',
                 sendBtnHover: '#6b2fff',
-                borderRadius: '1rem',
+                borderRadius: '16px',
                 shadow: '0 10px 30px rgba(0,0,0,0.1)'
             }
         };
