@@ -66,13 +66,17 @@ function initializeChatEmbed() {
     var welcomeMessage = config.welcomeMessage || null;
     var workflowId = config.workflowId;
     var socketUrl = config.socketUrl + "/ws/app/";
+    var leadCapture = config.leadCapture !== undefined ? config.leadCapture : true; // Default to true if not specified
 
     var currentSocket = null;
+    var heartBeatInterval = null;
     var isWebSocketConnected = false;
     var visitorInfo = null;
     var isHandoverActive = false;
     var isFormShowing = false;
     var chatID = null
+    var isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
     // Function to update button states based on form visibility
     function updateButtonStates() {
         if (isFormShowing) {
@@ -140,7 +144,7 @@ function initializeChatEmbed() {
     chatContainer.style.maxHeight = '600px';
     chatContainer.style.background = '#ffffff';
     chatContainer.style.border = '1px solid #e2e8f0';
-    chatContainer.style.borderRadius = '0.75rem';
+    chatContainer.style.borderRadius = '12px';
     chatContainer.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)';
     chatContainer.style.fontFamily = theme.fontFamily + ', Inter, system-ui, sans-serif';
     chatContainer.style.zIndex = theme.zIndex;
@@ -158,9 +162,11 @@ function initializeChatEmbed() {
             chatContainer.style.right = '0';
             chatContainer.style.bottom = '0';
             chatContainer.style.width = '100%';
-            chatContainer.style.height = '100vh';
+            chatContainer.style.height = '100dvh'; // Dynamic viewport height for mobile browsers
             chatContainer.style.borderRadius = '0';
-            chatContainer.style.maxHeight = '100vh';
+            // chatContainer.style.maxHeight = '100vh';
+            chatContainer.style.maxHeight = '100dvh';
+
         } else {
             chatContainer.style.position = 'fixed';
             chatContainer.style.top = 'auto';
@@ -177,12 +183,40 @@ function initializeChatEmbed() {
             chatContainer.style.bottom = '20px';
             chatContainer.style.width = '384px';
             chatContainer.style.height = '80vh';
-            chatContainer.style.borderRadius = '0.75rem';
+            chatContainer.style.borderRadius = '12px';
             chatContainer.style.maxHeight = '600px';
         }
     }
     setResponsive();
     window.addEventListener('resize', setResponsive);
+    var originalHeight = window.innerHeight;
+    function handleMobileKeyboard() {
+        if (isMobile && window.innerWidth < 768) {
+            var currentHeight = window.innerHeight;
+            var keyboardHeight = originalHeight - currentHeight;
+            
+            // If keyboard is visible (height changed significantly)
+            if (keyboardHeight > 100) {
+                chatContainer.style.height = currentHeight + 'px';
+                chatContainer.style.maxHeight = currentHeight + 'px';
+                
+                // Scroll to show input
+                setTimeout(function() {
+                    inputContainer.scrollIntoView({ behavior: 'smooth', block: 'end' });
+                }, 100);
+            } else {
+                // Keyboard hidden, restore original size
+                chatContainer.style.height = '100vh';
+                chatContainer.style.height = '100dvh';
+                chatContainer.style.maxHeight = '100vh';
+                chatContainer.style.maxHeight = '100dvh';
+            }
+        }
+    }
+
+    window.addEventListener('resize', handleMobileKeyboard);
+    window.visualViewport && window.visualViewport.addEventListener('resize', handleMobileKeyboard);
+
 
     var header = document.createElement('div');
     header.style.display = 'flex';
@@ -190,12 +224,15 @@ function initializeChatEmbed() {
     header.style.alignItems = 'center';
     header.style.background = theme.headerBg || '#16a34a';
     header.style.color = theme.headerText;
-    header.style.padding = '2rem';
-    header.style.borderTopLeftRadius = '0.75rem';
-    header.style.borderTopRightRadius = '0.75rem';
+    header.style.padding = '32px';
+    header.style.borderTopLeftRadius = '12px';
+    header.style.borderTopRightRadius = '12px';
     header.style.fontWeight = '600';
-    header.style.fontSize = '1.125rem';
-    header.style.lineHeight = '1.75rem';
+    header.style.fontSize = '18px';
+    header.style.lineHeight = '28px';
+    header.style.position  = "sticky";
+    header.style.top  = "0";
+    header.style.top  = "0";
 
     var headerTitle = document.createElement('div');
     headerTitle.innerText = config.title;
@@ -203,7 +240,7 @@ function initializeChatEmbed() {
 
     var headerActions = document.createElement('div');
     headerActions.style.display = 'flex';
-    headerActions.style.gap = '0.25rem';
+    headerActions.style.gap = '4px';
 
     var refreshBtn = document.createElement('button');
     refreshBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="m21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg>';
@@ -211,9 +248,9 @@ function initializeChatEmbed() {
     refreshBtn.style.background = 'transparent';
     refreshBtn.style.color = theme.headerText;
     refreshBtn.style.border = 'none';
-    refreshBtn.style.padding = '0.5rem';
+    refreshBtn.style.padding = '8px';
     refreshBtn.style.cursor = 'pointer';
-    refreshBtn.style.borderRadius = '0.375rem';
+    refreshBtn.style.borderRadius = '6px';
     refreshBtn.style.display = 'flex';
     refreshBtn.style.alignItems = 'center';
     refreshBtn.style.justifyContent = 'center';
@@ -271,9 +308,9 @@ function initializeChatEmbed() {
     clearSessionBtn.style.background = 'transparent';
     clearSessionBtn.style.color = theme.headerText;
     clearSessionBtn.style.border = 'none';
-    clearSessionBtn.style.padding = '0.5rem';
+    clearSessionBtn.style.padding = '8px';
     clearSessionBtn.style.cursor = 'pointer';
-    clearSessionBtn.style.borderRadius = '0.375rem';
+    clearSessionBtn.style.borderRadius = '6px';
     clearSessionBtn.style.display = 'flex';
     clearSessionBtn.style.alignItems = 'center';
     clearSessionBtn.style.justifyContent = 'center';
@@ -311,23 +348,47 @@ function initializeChatEmbed() {
             isWebSocketConnected = false;
         }
         
-        // Show lead capture form again
-        inputContainer.style.display = 'none';
-        showLeadCaptureInChat(function (lead) {
-            isFormShowing = false;
-            updateButtonStates(); // Update button appearance
+        // Clear messages display
+        messages.innerHTML = '';
+        
+        // Check leadCapture setting
+        if (!leadCapture) {
+            // Lead capture disabled - create anonymous visitor and start fresh
             window.__simpleChatEmbedLeadCaptured = true;
-            if (lead) {
-                window.SimpleChatEmbedLead = lead;
-            }
             setupChatInput();
+            
+            createVisitor(null, null, null, null).then(() => {
+                if (welcomeMessage) {
+                    saveMessage(welcomeMessage, 'bot', 'welcomeMessage');
+                }
+                loadMessages();
+                connectWebSocket();
+            }).catch((error) => {
+                console.error('Failed to create anonymous visitor:', error);
+                if (welcomeMessage) {
+                    saveMessage(welcomeMessage, 'bot', 'welcomeMessage');
+                }
+                loadMessages();
+                connectWebSocket();
+            });
+        } else {
+            // Lead capture enabled - show form again
+            inputContainer.style.display = 'none';
+            showLeadCaptureInChat(function (lead) {
+                isFormShowing = false;
+                updateButtonStates();
+                window.__simpleChatEmbedLeadCaptured = true;
+                if (lead) {
+                    window.SimpleChatEmbedLead = lead;
+                }
+                setupChatInput();
 
-            // Show welcome message if set
-            if (welcomeMessage) {
-                saveMessage(welcomeMessage, 'bot', 'welcomeMessage');
-            }
-            loadMessages();
-        });
+                if (welcomeMessage) {
+                    saveMessage(welcomeMessage, 'bot', 'welcomeMessage');
+                }
+                loadMessages();
+            });
+        }
     };
 
     var closeBtn = document.createElement('button');
@@ -336,9 +397,9 @@ function initializeChatEmbed() {
     closeBtn.style.background = 'transparent';
     closeBtn.style.color = theme.headerText;
     closeBtn.style.border = 'none';
-    closeBtn.style.padding = '0.5rem';
+    closeBtn.style.padding = '8px';
     closeBtn.style.cursor = 'pointer';
-    closeBtn.style.borderRadius = '0.375rem';
+    closeBtn.style.borderRadius = '6px';
     closeBtn.style.display = 'flex';
     closeBtn.style.alignItems = 'center';
     closeBtn.style.justifyContent = 'center';
@@ -353,24 +414,19 @@ function initializeChatEmbed() {
     headerActions.appendChild(closeBtn);
     header.appendChild(headerActions);
 
-    var separator = document.createElement('div');
-    separator.style.height = '1px';
-    separator.style.background = '#e2e8f0';
-    separator.style.marginBottom = '1rem';
-
     chatContainer.appendChild(header);
-    chatContainer.appendChild(separator);
 
     var messages = document.createElement('div');
     messages.style.flex = '1 1 0%';
     messages.style.overflowY = 'auto';
     messages.style.overflowX = 'hidden';
-    messages.style.padding = '1rem';
+    messages.style.padding = '16px';
     messages.style.background = '#ffffff';
+    messages.style.webkitOverflowScrolling = 'touch'; // Smooth scrolling on iOS
     messages.id = 'chat-messages';
     messages.style.display = 'flex';
     messages.style.flexDirection = 'column';
-    messages.style.gap = '1rem';
+    messages.style.gap = '16px';
     messages.style.scrollBehavior = 'smooth';
     messages.style.scrollbarWidth = 'none';
     messages.style.msOverflowStyle = 'none';
@@ -385,10 +441,19 @@ function initializeChatEmbed() {
         #simple-chat-embed code { word-wrap: break-word; }
         #simple-chat-embed blockquote { 
             border-left: 4px solid #e5e7eb; 
-            padding-left: 1rem; 
-            margin: 1rem 0; 
+            padding-left: 16px; 
+            margin: 16px 0; 
             color: #6b7280; 
             font-style: italic; 
+        }
+   @media (max-width: 767px) {
+            #simple-chat-embed input,
+            #simple-chat-embed textarea,
+            #simple-chat-embed button {
+                font-size: 16px !important; /* Prevents zoom on iOS */
+                -webkit-appearance: none;
+                appearance: none;
+            }
         }
     `;
     document.head.appendChild(style);
@@ -399,8 +464,8 @@ function initializeChatEmbed() {
     scrollToBottomBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 13 5 5 5-5"/><path d="M12 18V6"/></svg>';
     scrollToBottomBtn.title = 'Scroll to bottom';
     scrollToBottomBtn.style.position = 'absolute';
-    scrollToBottomBtn.style.right = '1rem';
-    scrollToBottomBtn.style.bottom = '5rem';
+    scrollToBottomBtn.style.right = '16px';
+    scrollToBottomBtn.style.bottom = '80px';
     scrollToBottomBtn.style.width = '40px';
     scrollToBottomBtn.style.height = '40px';
     scrollToBottomBtn.style.borderRadius = '50%';
@@ -431,25 +496,20 @@ function initializeChatEmbed() {
 
     chatContainer.appendChild(scrollToBottomBtn);
 
-    var inputSeparator = document.createElement('div');
-    inputSeparator.style.height = '1px';
-    inputSeparator.style.background = '#e2e8f0';
-    inputSeparator.style.marginTop = '1rem';
-
     var inputContainer = document.createElement('div');
-    inputContainer.style.padding = '1rem';
+    inputContainer.style.padding = '16px';
     inputContainer.style.background = '#ffffff';
     inputContainer.style.display = 'flex';
     inputContainer.style.flexDirection = 'column';
-    inputContainer.style.borderBottomLeftRadius = '0.75rem';
-    inputContainer.style.borderBottomRightRadius = '0.75rem';
+    inputContainer.style.borderBottomLeftRadius = '12px';
+    inputContainer.style.borderBottomRightRadius = '12px';
 
     // Quick question buttons container
     var quickButtonsContainer = document.createElement('div');
     quickButtonsContainer.style.display = 'none'; // Initially hidden, shown when input is active
     quickButtonsContainer.style.flexDirection = 'column';
-    quickButtonsContainer.style.gap = '0.5rem';
-    quickButtonsContainer.style.marginBottom = '1rem';
+    quickButtonsContainer.style.gap = '8px';
+    quickButtonsContainer.style.marginBottom = '16px';
     quickButtonsContainer.style.width = '100%';
 
     // Create quick question buttons if configured
@@ -457,13 +517,13 @@ function initializeChatEmbed() {
         config.quickQuestions.forEach(function(question, index) {
             var quickBtn = document.createElement('button');
             quickBtn.innerText = question;
-            quickBtn.style.padding = '0.75rem 1rem';
+            quickBtn.style.padding = '12px 16px';
             quickBtn.style.background = '#f3f4f6';
             quickBtn.style.color = '#374151';
             quickBtn.style.border = '1px solid #d1d5db';
-            quickBtn.style.borderRadius = '0.5rem';
+            quickBtn.style.borderRadius = '8px';
             quickBtn.style.cursor = 'pointer';
-            quickBtn.style.fontSize = '0.875rem';
+            quickBtn.style.fontSize = '14px';
             quickBtn.style.transition = 'all 0.2s ease-in-out';
             quickBtn.style.width = '100%';
             quickBtn.style.textAlign = 'left';
@@ -496,28 +556,28 @@ function initializeChatEmbed() {
 
     inputContainer.appendChild(quickButtonsContainer);
 
-    chatContainer.appendChild(inputSeparator);
     chatContainer.appendChild(inputContainer);
 
     var inputForm = document.createElement('div');
     inputForm.style.display = 'grid';
     inputForm.style.gridTemplateColumns = '1fr auto';
-    inputForm.style.gap = '1rem';
+    inputForm.style.gap = '16px';
     inputForm.style.alignItems = 'center';
     inputForm.style.width = '100%';
 
     var input = document.createElement('input');
     input.type = 'text';
     input.placeholder = 'Type your message...';
-    input.style.padding = '0.75rem 1rem';
+    input.style.padding = '12px 16px';
     input.style.border = '1px solid #d1d5db';
-    input.style.borderRadius = '0.375rem';
+    input.style.borderRadius = '6px';
     input.style.background = '#ffffff';
     input.style.color = '#374151';
-    input.style.fontSize = '0.875rem';
-    input.style.lineHeight = '1.25rem';
+    input.style.fontSize = '14px';
+    input.style.lineHeight = '20px';
     input.style.outline = 'none';
     input.style.transition = 'border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out';
+    input.style.fontFamily = 'sans-serif';
 
     input.addEventListener('focus', function () {
         input.style.borderColor = '#3b82f6';
@@ -532,11 +592,11 @@ function initializeChatEmbed() {
     var sendBtn = document.createElement('button');
     sendBtn.title = 'Send';
     sendBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>';
-    sendBtn.style.padding = '0.75rem';
+    sendBtn.style.padding = '12px';
     sendBtn.style.background = theme.sendBtnBg || '#3b82f6';
     sendBtn.style.color = '#ffffff';
     sendBtn.style.border = 'none';
-    sendBtn.style.borderRadius = '0.375rem';
+    sendBtn.style.borderRadius = '6px';
     sendBtn.style.cursor = 'pointer';
     sendBtn.style.display = 'flex';
     sendBtn.style.alignItems = 'center';
@@ -603,6 +663,9 @@ function initializeChatEmbed() {
             
             // Post-process to add our custom styles to links
             if (typeof result === 'string') {
+                // Add custom styling to p tags for AI messages
+                result = result.replace(/<p>/g, '<p style="font-size:inherit;line-height:inherit;font-family:inherit;font-weight:inherit;margin:0;">');
+                
                 // Add custom styling to links
                 result = result.replace(/<a\s+href="([^"]*)"([^>]*)>([^<]*)<\/a>/g, function(match, href, attrs, text) {
                     return '<a href="' + href + '" target="_blank" style="font-weight:bold;color:' + (theme.botText || '#4a4e69') + ';text-decoration:underline;cursor:pointer;">' + text + '</a>';
@@ -664,19 +727,19 @@ function initializeChatEmbed() {
                 var notificationContainer = document.createElement('div');
                 notificationContainer.style.display = 'flex';
                 notificationContainer.style.justifyContent = 'center';
-                notificationContainer.style.margin = '1rem 0';
+                notificationContainer.style.margin = '16px 0';
                 notificationContainer.style.animation = 'fadeInUp 0.5s ease-out';
 
                 var notification = document.createElement('div');
                 notification.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
                 notification.style.color = '#ffffff';
-                notification.style.padding = '0.75rem 1.5rem';
+                notification.style.padding = '12px 24px';
                 notification.style.borderRadius = '20px';
-                notification.style.fontSize = '0.875rem';
+                notification.style.fontSize = '14px';
                 notification.style.fontWeight = '500';
                 notification.style.display = 'flex';
                 notification.style.alignItems = 'center';
-                notification.style.gap = '0.5rem';
+                notification.style.gap = '8px';
                 notification.style.maxWidth = '80%';
                 notification.style.textAlign = 'center';
 
@@ -690,7 +753,7 @@ function initializeChatEmbed() {
                 } else {
                     icon.innerHTML = '💬';
                 }
-                icon.style.fontSize = '1rem';
+                icon.style.fontSize = '16px';
 
                 notification.appendChild(icon);
                 notification.appendChild(document.createTextNode(msg.text));
@@ -717,12 +780,12 @@ function initializeChatEmbed() {
             var messageContainer = document.createElement('div');
             messageContainer.style.display = 'flex';
             messageContainer.style.flexDirection = 'column';
-            messageContainer.style.marginBottom = '1rem';
+            messageContainer.style.marginBottom = '16px';
 
             // Create avatar and message wrapper
             var messageWrapper = document.createElement('div');
             messageWrapper.style.display = 'flex';
-            messageWrapper.style.gap = '0.5rem';
+            messageWrapper.style.gap = '8px';
 
             // Reverse layout for user messages only (bot and sales_rep start from left)
             if (msg.sender === 'user') {
@@ -796,14 +859,14 @@ function initializeChatEmbed() {
             var contentContainer = document.createElement('div');
             contentContainer.style.display = 'flex';
             contentContainer.style.flexDirection = 'column';
-            contentContainer.style.gap = '0.5rem';
+            contentContainer.style.gap = '8px';
             contentContainer.style.maxWidth = msg.sender === 'user' ? '70%' : '70%'; // All message types now have avatars
 
             var msgDiv = document.createElement('div');
-            msgDiv.style.padding = '0.75rem 1rem';
+            msgDiv.style.padding = '12px 16px';
             msgDiv.style.wordBreak = 'break-word';
-            msgDiv.style.fontSize = '0.875rem';
-            msgDiv.style.lineHeight = '1.25rem';
+            msgDiv.style.fontSize = '14px';
+            msgDiv.style.lineHeight = '20px';
             msgDiv.style.position = 'relative';
 
             if (msg.sender === 'user') {
@@ -811,18 +874,18 @@ function initializeChatEmbed() {
                 msgDiv.style.backgroundColor = theme.userBubble || '#dbeafe';
                 msgDiv.style.color = theme.userText || '#1e40af';
                 msgDiv.style.alignSelf = 'flex-end';
-                msgDiv.style.borderRadius = '1rem 1rem 0.25rem 1rem';
+                msgDiv.style.borderRadius = '16px 16px 4px 16px';
                 msgDiv.style.boxShadow = '0 2px 8px rgba(59, 130, 246, 0.15)';
             } else if (msg.sender === 'sales_rep') {
                 msgDiv.style.background = theme.salesRepBubble || '#f1f5f9';
                 msgDiv.style.color = theme.salesRepText || '#475569';
                 msgDiv.style.alignSelf = 'flex-start';
-                msgDiv.style.borderRadius = '1rem 1rem 1rem 0.25rem';
+                msgDiv.style.borderRadius = '16px 16px 16px 4px';
             } else {
                 msgDiv.style.backgroundColor = theme.botBubble || '#f1f5f9';
                 msgDiv.style.color = theme.botText || '#475569';
                 msgDiv.style.alignSelf = 'flex-start';
-                msgDiv.style.borderRadius = '1rem 1rem 1rem 0.25rem';
+                msgDiv.style.borderRadius = '16px 16px 16px 4px';
                 msgDiv.style.boxShadow = '0 2px 8px rgba(71, 85, 105, 0.1)';
             }
 
@@ -835,7 +898,7 @@ function initializeChatEmbed() {
                 img.src = msgs[i - 1].text;
                 img.style.maxWidth = '200px';
                 img.style.maxHeight = '150px';
-                img.style.borderRadius = '0.5rem';
+                img.style.borderRadius = '8px';
                 img.style.display = 'block';
                 msgDiv.appendChild(img);
             } else {
@@ -861,7 +924,7 @@ function initializeChatEmbed() {
 
                     // Create message content with sender name at the top
                     contentWrapper.innerHTML =
-                        '<div style=" padding-bottom: 6px; font-size: 0.75rem; color: #6b7280; font-weight: 500;">~ ' +
+                        '<div style=" padding-bottom: 6px; font-size: 12px; color: #6b7280; font-weight: 500;">~ ' +
                         senderName + '</div>' + messageText;
 
                     contentWrapper.style.fontWeight = '500';
@@ -881,7 +944,7 @@ function initializeChatEmbed() {
 
             if (!msg.isWelcomeMessage) {
                 var timestamp = document.createElement('div');
-                timestamp.style.fontSize = '0.75rem';
+                timestamp.style.fontSize = '12px';
                 timestamp.style.color = '#9ca3af';
                 timestamp.style.alignSelf = msg.sender === 'user' ? 'flex-end' : 'flex-start';
                 timestamp.innerText = msg.created_at;
@@ -972,15 +1035,24 @@ function initializeChatEmbed() {
                 var sessionAge = new Date() - new Date(sessionData.timestamp);
                 var maxAge = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
 
-                if (sessionData.chatID && sessionData.workflowId && sessionData.hashedWorkflowId &&
-                    sessionData.hash && sessionData.visitorInfo && sessionAge < maxAge) {
+                // When leadCapture is false, we don't require visitorInfo for session validity
+                var isSessionValid = sessionData.chatID && sessionData.workflowId && 
+                    sessionData.hashedWorkflowId && sessionData.hash && sessionAge < maxAge;
+                
+                if (leadCapture) {
+                    isSessionValid = isSessionValid && sessionData.visitorInfo;
+                }
+
+                if (isSessionValid) {
                     chatID = sessionData.chatID;
                     workflow_id = sessionData.workflowId;
                     wsParams = {
                         hashed_workflow_id: sessionData.hashedWorkflowId,
                         hash: sessionData.hash
                     };
-                    visitorInfo = sessionData.visitorInfo;
+                    if (sessionData.visitorInfo) {
+                        visitorInfo = sessionData.visitorInfo;
+                    }
                 } else {
                     // Session is invalid or expired, generate new data
                     throw new Error('Invalid or expired session');
@@ -999,18 +1071,21 @@ function initializeChatEmbed() {
             workflow_id = workflowId;
             wsParams = await generateSecureWsParams(workflow_id);
 
-            // Only store if we have visitor info (from completed form)
-            if (visitorInfo) {
-                var chatSessionData = {
-                    chatID: chatID,
-                    workflowId: workflow_id,
-                    hashedWorkflowId: wsParams.hashed_workflow_id,
-                    hash: wsParams.hash,
-                    visitorInfo: visitorInfo,
-                    timestamp: new Date().toISOString()
-                };
-                localStorage.setItem('simple-chat-session', JSON.stringify(chatSessionData));
+            // Store session data (with or without visitor info based on leadCapture setting)
+            var chatSessionData = {
+                chatID: chatID,
+                workflowId: workflow_id,
+                hashedWorkflowId: wsParams.hashed_workflow_id,
+                hash: wsParams.hash,
+                timestamp: new Date().toISOString()
+            };
+            
+            // Only include visitor info if lead capture is enabled and we have the info
+            if (leadCapture && visitorInfo) {
+                chatSessionData.visitorInfo = visitorInfo;
             }
+            
+            localStorage.setItem('simple-chat-session', JSON.stringify(chatSessionData));
         }
 
         var wsUrl = `${socketUrl}${config.org_id}/?visitor_info=${JSON.stringify(visitorInfo)}`;
@@ -1018,6 +1093,7 @@ function initializeChatEmbed() {
             currentSocket = new WebSocket(wsUrl);
             currentSocket.onopen = function () {
                 isWebSocketConnected = true;
+                startHeartBeat()
             };
             currentSocket.onmessage = function (event) {
                 var msgData = JSON.parse(event.data);
@@ -1144,18 +1220,38 @@ function initializeChatEmbed() {
                 console.error('WebSocket connection closed unexpectedly...');
                 isWebSocketConnected = false;
                 currentSocket = null;
+            if (heartBeatInterval) clearInterval(heartBeatInterval);
+            heartBeatInterval = null
+
                 // Stop enhanced presence tracking
             };
             currentSocket.onerror = function (error) {
                 console.error('WebSocket error:', error);
                 isWebSocketConnected = false;
                 currentSocket = null;
+            if (heartBeatInterval) clearInterval(heartBeatInterval);
+            heartBeatInterval = null
+
                 // Stop enhanced presence tracking
             };
         } catch (error) {
             console.error('Failed to create WebSocket connection:', error);
             isWebSocketConnected = false;
             currentSocket = null;
+            if (heartBeatInterval) clearInterval(heartBeatInterval);
+            heartBeatInterval = null
+        }
+    }
+
+    function startHeartBeat() {
+        if (currentSocket.readyState === WebSocket.OPEN) {
+              const heartbeatMessage = {
+          message_type: 'heartbeat',
+          timestamp: Date.now()
+        };
+            heartBeatInterval = setInterval(function () {
+                currentSocket.send(JSON.stringify(heartbeatMessage));
+            }, 2500); // Send heartbeat every 2.5 seconds
         }
     }
 
@@ -1246,7 +1342,10 @@ function initializeChatEmbed() {
 
     sendBtn.onclick = sendMessage;
     input.addEventListener('keydown', function (e) {
-        if (e.key === 'Enter') sendMessage();
+        if (e.key === 'Enter') {
+            e.preventDefault(); // Prevent default to avoid issues on mobile
+            sendMessage();
+        } 
     });
 
     function showLeadCaptureInChat(onComplete) {
@@ -1261,29 +1360,29 @@ function initializeChatEmbed() {
         wrapper.style.justifyContent = 'center';
         wrapper.style.height = '100%';
         wrapper.style.width = '100%';
-        wrapper.style.gap = '1.5rem';
+        wrapper.style.gap = '24px';
 
         var formContainer = document.createElement('div');
         formContainer.style.width = '100%';
         formContainer.style.maxWidth = '300px';
         formContainer.style.display = 'flex';
         formContainer.style.flexDirection = 'column';
-        formContainer.style.gap = '1.5rem';
+        formContainer.style.gap = '24px';
 
         var nameFieldContainer = document.createElement('div');
         nameFieldContainer.style.display = 'flex';
         nameFieldContainer.style.flexDirection = 'column';
-        nameFieldContainer.style.gap = '0.5rem';
+        nameFieldContainer.style.gap = '8px';
 
         var nameInputRow = document.createElement('div');
         nameInputRow.style.display = 'flex';
         nameInputRow.style.alignItems = 'center';
-        nameInputRow.style.gap = '1.5rem';
+        nameInputRow.style.gap = '24px';
 
         var nameLabel = document.createElement('label');
         nameLabel.innerText = 'Full Name:*';
         nameLabel.style.width = '27%';
-        nameLabel.style.fontSize = '0.875rem';
+        nameLabel.style.fontSize = '14px';
         nameLabel.style.fontWeight = '500';
         nameLabel.style.color = '#374151';
 
@@ -1291,12 +1390,13 @@ function initializeChatEmbed() {
         nameInput.type = 'text';
         nameInput.placeholder = 'Full name';
         nameInput.style.width = '60%';
-        nameInput.style.padding = '0.75rem 1rem';
+        nameInput.style.padding = '12px 16px';
         nameInput.style.border = '1px solid #d1d5db';
-        nameInput.style.borderRadius = '0.375rem';
-        nameInput.style.fontSize = '0.875rem';
+        nameInput.style.borderRadius = '6px';
+        nameInput.style.fontSize = '14px';
         nameInput.style.outline = 'none';
         nameInput.style.transition = 'border-color 0.2s ease-in-out';
+        nameInput.style.fontFamily = 'sans-serif';
 
         nameInput.addEventListener('focus', function () {
             nameInput.style.borderColor = '#3b82f6';
@@ -1312,9 +1412,9 @@ function initializeChatEmbed() {
         var nameError = document.createElement('div');
         nameError.style.display = 'none';
         nameError.style.color = '#ef4444';
-        nameError.style.fontSize = '0.75rem';
+        nameError.style.fontSize = '12px';
         nameError.style.marginLeft = '27%';
-        nameError.style.paddingLeft = '1.5rem';
+        nameError.style.paddingLeft = '24px';
         nameError.innerText = 'Full name is required';
 
         nameFieldContainer.appendChild(nameInputRow);
@@ -1324,17 +1424,17 @@ function initializeChatEmbed() {
         var emailFieldContainer = document.createElement('div');
         emailFieldContainer.style.display = 'flex';
         emailFieldContainer.style.flexDirection = 'column';
-        emailFieldContainer.style.gap = '0.5rem';
+        emailFieldContainer.style.gap = '8px';
 
         var emailInputRow = document.createElement('div');
         emailInputRow.style.display = 'flex';
         emailInputRow.style.alignItems = 'center';
-        emailInputRow.style.gap = '1.5rem';
+        emailInputRow.style.gap = '24px';
 
         var emailLabel = document.createElement('label');
         emailLabel.innerText = 'Email:*';
         emailLabel.style.width = '27%';
-        emailLabel.style.fontSize = '0.875rem';
+        emailLabel.style.fontSize = '14px';
         emailLabel.style.fontWeight = '500';
         emailLabel.style.color = '#374151';
 
@@ -1342,12 +1442,14 @@ function initializeChatEmbed() {
         emailInput.type = 'email';
         emailInput.placeholder = 'Email';
         emailInput.style.width = '60%';
-        emailInput.style.padding = '0.75rem 1rem';
+        emailInput.style.padding = '12px 16px';
         emailInput.style.border = '1px solid #d1d5db';
-        emailInput.style.borderRadius = '0.375rem';
-        emailInput.style.fontSize = '0.875rem';
+        emailInput.style.borderRadius = '6px';
+        emailInput.style.fontSize = '14px';
         emailInput.style.outline = 'none';
         emailInput.style.transition = 'border-color 0.2s ease-in-out';
+        emailInput.style.fontFamily = 'sans-serif';
+
 
         emailInput.addEventListener('focus', function () {
             emailInput.style.borderColor = '#3b82f6';
@@ -1363,9 +1465,9 @@ function initializeChatEmbed() {
         var emailError = document.createElement('div');
         emailError.style.display = 'none';
         emailError.style.color = '#ef4444';
-        emailError.style.fontSize = '0.75rem';
+        emailError.style.fontSize = '12px';
         emailError.style.marginLeft = '27%';
-        emailError.style.paddingLeft = '1.5rem';
+        emailError.style.paddingLeft = '24px';
         emailError.innerText = 'Please enter a valid email address';
 
         emailFieldContainer.appendChild(emailInputRow);
@@ -1375,17 +1477,17 @@ function initializeChatEmbed() {
         var phoneFieldContainer = document.createElement('div');
         phoneFieldContainer.style.display = 'flex';
         phoneFieldContainer.style.flexDirection = 'column';
-        phoneFieldContainer.style.gap = '0.5rem';
+        phoneFieldContainer.style.gap = '8px';
 
         var phoneInputRow = document.createElement('div');
         phoneInputRow.style.display = 'flex';
         phoneInputRow.style.alignItems = 'center';
-        phoneInputRow.style.gap = '1.5rem';
+        phoneInputRow.style.gap = '24px';
 
         var phoneLabel = document.createElement('label');
         phoneLabel.innerText = 'Phone:*';
         phoneLabel.style.width = '27%';
-        phoneLabel.style.fontSize = '0.875rem';
+        phoneLabel.style.fontSize = '14px';
         phoneLabel.style.fontWeight = '500';
         phoneLabel.style.color = '#374151';
 
@@ -1394,12 +1496,13 @@ function initializeChatEmbed() {
         phoneInput.placeholder = 'Phone number';
         phoneInput.maxLength = 20;
         phoneInput.style.width = '60%';
-        phoneInput.style.padding = '0.75rem 1rem';
+        phoneInput.style.padding = '12px 16px';
         phoneInput.style.border = '1px solid #d1d5db';
-        phoneInput.style.borderRadius = '0.375rem';
-        phoneInput.style.fontSize = '0.875rem';
+        phoneInput.style.borderRadius = '6px';
+        phoneInput.style.fontSize = '14px';
         phoneInput.style.outline = 'none';
         phoneInput.style.transition = 'border-color 0.2s ease-in-out';
+        phoneInput.style.fontFamily = 'sans-serif';
 
         phoneInput.addEventListener('focus', function () {
             phoneInput.style.borderColor = '#3b82f6';
@@ -1415,9 +1518,9 @@ function initializeChatEmbed() {
         var phoneError = document.createElement('div');
         phoneError.style.display = 'none';
         phoneError.style.color = '#ef4444';
-        phoneError.style.fontSize = '0.75rem';
+        phoneError.style.fontSize = '12px';
         phoneError.style.marginLeft = '27%';
-        phoneError.style.paddingLeft = '1.5rem';
+        phoneError.style.paddingLeft = '24px';
         phoneError.innerText = 'Phone number is required';
 
         phoneFieldContainer.appendChild(phoneInputRow);
@@ -1427,17 +1530,17 @@ function initializeChatEmbed() {
         var zipFieldContainer = document.createElement('div');
         zipFieldContainer.style.display = 'flex';
         zipFieldContainer.style.flexDirection = 'column';
-        zipFieldContainer.style.gap = '0.5rem';
+        zipFieldContainer.style.gap = '8px';
 
         var zipInputRow = document.createElement('div');
         zipInputRow.style.display = 'flex';
         zipInputRow.style.alignItems = 'center';
-        zipInputRow.style.gap = '1.5rem';
+        zipInputRow.style.gap = '24px';
 
         var zipLabel = document.createElement('label');
         zipLabel.innerText = 'Zip Code:*';
         zipLabel.style.width = '27%';
-        zipLabel.style.fontSize = '0.875rem';
+        zipLabel.style.fontSize = '14px';
         zipLabel.style.fontWeight = '500';
         zipLabel.style.color = '#374151';
 
@@ -1445,12 +1548,13 @@ function initializeChatEmbed() {
         zipInput.type = 'text';
         zipInput.placeholder = 'Zip code';
         zipInput.style.width = '60%';
-        zipInput.style.padding = '0.75rem 1rem';
+        zipInput.style.padding = '12px 16px';
         zipInput.style.border = '1px solid #d1d5db';
-        zipInput.style.borderRadius = '0.375rem';
-        zipInput.style.fontSize = '0.875rem';
+        zipInput.style.borderRadius = '6px';
+        zipInput.style.fontSize = '14px';
         zipInput.style.outline = 'none';
         zipInput.style.transition = 'border-color 0.2s ease-in-out';
+        zipInput.style.fontFamily = 'sans-serif';
 
         zipInput.addEventListener('focus', function () {
             zipInput.style.borderColor = '#3b82f6';
@@ -1466,9 +1570,9 @@ function initializeChatEmbed() {
         var zipError = document.createElement('div');
         zipError.style.display = 'none';
         zipError.style.color = '#ef4444';
-        zipError.style.fontSize = '0.75rem';
+        zipError.style.fontSize = '12px';
         zipError.style.marginLeft = '27%';
-        zipError.style.paddingLeft = '1.5rem';
+        zipError.style.paddingLeft = '24px';
         zipError.innerText = 'Zip code is required';
 
         zipFieldContainer.appendChild(zipInputRow);
@@ -1485,14 +1589,14 @@ function initializeChatEmbed() {
         confirmBtn.innerText = 'Start Chat';
         confirmBtn.style.width = '100%';
         confirmBtn.style.maxWidth = '300px';
-        confirmBtn.style.padding = '0.75rem 1.5rem';
+        confirmBtn.style.padding = '12px 24px';
         confirmBtn.style.background = theme.sendBtnBg || '#16a34a';
         confirmBtn.style.color = '#ffffff';
         confirmBtn.style.border = 'none';
-        confirmBtn.style.borderRadius = '0.375rem';
+        confirmBtn.style.borderRadius = '6px';
         confirmBtn.style.cursor = 'pointer';
         confirmBtn.style.fontWeight = '600';
-        confirmBtn.style.fontSize = '0.875rem';
+        confirmBtn.style.fontSize = '14px';
         confirmBtn.style.transition = 'background-color 0.2s ease-in-out';
 
         confirmBtn.addEventListener('mouseover', function () {
@@ -1593,13 +1697,20 @@ function initializeChatEmbed() {
             }
 
             messages.innerHTML = '';
-            await createVisitor(
-                sanitize(nameInput.value),
-                sanitize(emailInput.value),
-                sanitize(phoneInput.value),
-                sanitize(zipInput.value)
-            );
-
+            
+            // Create visitor - either with form data or as anonymous
+            if (leadCapture) {
+                // Create visitor with form data
+                await createVisitor(
+                    sanitize(nameInput.value),
+                    sanitize(emailInput.value),
+                    sanitize(phoneInput.value),
+                    sanitize(zipInput.value)
+                );
+            } else {
+                // Create anonymous visitor with browser metadata
+                await createVisitor(null, null, null, null);
+            }
 
             // Collect environment info
             var userAgent = navigator.userAgent;
@@ -1658,6 +1769,34 @@ function initializeChatEmbed() {
 
     // On load, show lead capture inside chat window
     function maybeShowLeadCapture() {
+        // If lead capture is disabled in config, skip the form entirely
+        if (!leadCapture) {
+            window.__simpleChatEmbedLeadCaptured = true;
+            setupChatInput();
+            
+            // Create anonymous visitor before establishing connection
+            createVisitor(null, null, null, null).then(() => {
+                // Show welcome message if set
+                if (welcomeMessage) {
+                    saveMessage(welcomeMessage, 'bot', 'welcomeMessage');
+                }
+                loadMessages();
+                
+                // Automatically establish WebSocket connection
+                connectWebSocket();
+            }).catch((error) => {
+                console.error('Failed to create anonymous visitor:', error);
+                // Still proceed with connection even if visitor creation fails
+                if (welcomeMessage) {
+                    saveMessage(welcomeMessage, 'bot', 'welcomeMessage');
+                }
+                loadMessages();
+                connectWebSocket();
+            });
+            
+            return;
+        }
+
         // Check if we have existing messages in localStorage - if yes, skip lead form
         var existingMessages = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
         var storedSession = localStorage.getItem('simple-chat-session');
@@ -1724,7 +1863,7 @@ function initializeChatEmbed() {
         inputContainer.style.flexDirection = 'column';
         inputContainer.style.width = '100%';
         inputContainer.style.boxSizing = 'border-box';
-        inputContainer.style.padding = '1rem';
+        inputContainer.style.padding = '16px';
         inputContainer.style.gap = '0';
         inputContainer.style.flex = '0 0 auto';
         inputContainer.style.borderTop = '1px solid #ececec';
@@ -1746,25 +1885,25 @@ function initializeChatEmbed() {
         // Style the input form container
         inputForm.style.display = 'grid';
         inputForm.style.gridTemplateColumns = '1fr auto';
-        inputForm.style.gap = '1rem';
+        inputForm.style.gap = '16px';
         inputForm.style.alignItems = 'center';
         inputForm.style.width = '100%';
         
-        input.style.padding = '0.75rem 1rem';
+        input.style.padding = '12px 16px';
         input.style.border = '1px solid #d1d5db';
-        input.style.borderRadius = '0.375rem';
+        input.style.borderRadius = '6px';
         input.style.background = theme.inputBg;
         input.style.color = theme.inputText;
-        input.style.fontSize = '0.875rem';
-        input.style.lineHeight = '1.25rem';
+        input.style.fontSize = '14px';
+        input.style.lineHeight = '20px';
         input.style.outline = 'none';
         input.style.transition = 'border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out';
         
-        sendBtn.style.padding = '0.75rem';
+        sendBtn.style.padding = '12px';
         sendBtn.style.background = theme.sendBtnBg || '#3b82f6';
         sendBtn.style.color = '#ffffff';
         sendBtn.style.border = 'none';
-        sendBtn.style.borderRadius = '0.375rem';
+        sendBtn.style.borderRadius = '6px';
         sendBtn.style.cursor = 'pointer';
         sendBtn.style.display = 'flex';
         sendBtn.style.alignItems = 'center';
@@ -1875,7 +2014,22 @@ function initializeChatEmbed() {
     window.generateSecureWsParams = generateSecureWsParams;
     window.connectWebSocket = connectWebSocket;
 
-    // Helper function to create visitor
+    // Helper function to collect browser metadata
+    const collectBrowserMetadata = () => {
+        return {
+            userAgent: navigator.userAgent,
+            platform: navigator.platform,
+            language: navigator.language,
+            referrer: document.referrer || 'direct',
+            url: window.location.href,
+            timestamp: new Date().toISOString(),
+            screenResolution: `${window.screen.width}x${window.screen.height}`,
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+            cookiesEnabled: navigator.cookieEnabled
+        };
+    };
+
+    // Helper function to create visitor (regular or anonymous)
     const createVisitor = async (name, email, phone, zip) => {
         try {
             var baseUrl = config.baseUrl;
@@ -1884,6 +2038,34 @@ function initializeChatEmbed() {
             if (!baseUrl || !token) {
                 console.error('baseUrl and token must be provided in SimpleChatEmbedConfig');
                 throw new Error('Missing required configuration: baseUrl and token');
+            }
+
+            // For anonymous visitors (when leadCapture is false), use browser fingerprint as email
+            const isAnonymous = !email;
+            const browserMetadata = collectBrowserMetadata();
+            
+            if (isAnonymous) {
+                // Create a truly unique identifier from multiple browser characteristics
+                const fingerprintData = [
+                    browserMetadata.userAgent,
+                    browserMetadata.platform,
+                    browserMetadata.language,
+                    browserMetadata.screenResolution,
+                    browserMetadata.timezone,
+                    browserMetadata.cookiesEnabled,
+                    navigator.hardwareConcurrency || 'unknown', // CPU cores
+                    navigator.maxTouchPoints || 0, // Touch support
+                    screen.colorDepth || 'unknown', // Color depth
+                    new Date().getTimezoneOffset(), // Timezone offset in minutes
+                ].join('|');
+                
+                // Create hash using a more robust approach
+                const fingerprint = btoa(fingerprintData)
+                    .replace(/[^a-zA-Z0-9]/g, '') // Remove special characters
+                    .substring(0, 40); // Use longer hash
+                
+                email = `anonymous_${fingerprint}@memox.local`;
+                name = 'Anonymous Visitor';
             }
 
             const getVisitor = await fetch(`${baseUrl}visitors/?email=${email}`, {
@@ -1899,19 +2081,25 @@ function initializeChatEmbed() {
 
             if (getVisitorJson.detail === "Not found." || !getVisitorJson.results?.length) {
                 // If visitor does not exist, create a new one
+                const visitorPayload = {
+                    name,
+                    email,
+                    phone_number: phone || '',
+                    zip_code: zip || '',
+                    organization: config.org_id,
+                    metadata: {
+                        browser_metadata: browserMetadata,
+                        anonymous: isAnonymous
+                    }
+                };
+                
                 const visitor = await fetch(`${baseUrl}visitors/`, {
                     method: "POST",
                     headers: {
                         'Content-Type': 'application/json',
                         'Authorization': `Token ${token} `,
                     },
-                    body: JSON.stringify({
-                        name,
-                        email,
-                        phone_number: phone,
-                        zip_code: zip,
-                        organization: config.org_id
-                    })
+                    body: JSON.stringify(visitorPayload)
                 })
 
                 if (!visitor.ok) {
