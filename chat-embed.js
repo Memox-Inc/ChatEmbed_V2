@@ -1369,6 +1369,21 @@ function initializeChatEmbed() {
         formContainer.style.flexDirection = 'column';
         formContainer.style.gap = '24px';
 
+        // Add helper text (configurable from SimpleChatEmbedConfig)
+        var helperTextConfig = config.leadFormHelperText || {};
+        var helperText = document.createElement('div');
+        helperText.innerText = helperTextConfig.text || 'To help us provide you with better service and personalized assistance, please share your details below.';
+        helperText.style.fontSize = helperTextConfig.fontSize || '13px';
+        helperText.style.lineHeight = helperTextConfig.lineHeight || '1.5';
+        helperText.style.textAlign = helperTextConfig.textAlign || 'center';
+        helperText.style.padding = helperTextConfig.padding || '11px';
+        helperText.style.marginBottom = helperTextConfig.marginBottom || '8px';
+        helperText.style.border = helperTextConfig.border || '1px dashed #8348FF';
+        helperText.style.background = helperTextConfig.background || '#f5f0ff';
+        helperText.style.color = helperTextConfig.color || '#8348FF';
+        helperText.style.fontStyle = helperTextConfig.fontStyle || 'italic';
+        helperText.style.borderRadius = helperTextConfig.borderRadius || '6px';
+
         var nameFieldContainer = document.createElement('div');
         nameFieldContainer.style.display = 'flex';
         nameFieldContainer.style.flexDirection = 'column';
@@ -1579,6 +1594,7 @@ function initializeChatEmbed() {
         zipFieldContainer.appendChild(zipError);
 
         // Add all fields to form container
+        formContainer.appendChild(helperText);
         formContainer.appendChild(nameFieldContainer);
         formContainer.appendChild(emailFieldContainer);
         formContainer.appendChild(phoneFieldContainer);
