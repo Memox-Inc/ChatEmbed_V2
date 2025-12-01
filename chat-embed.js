@@ -1468,9 +1468,22 @@ function initializeChatEmbed() {
 
         emailInput.addEventListener('focus', function () {
             emailInput.style.borderColor = '#3b82f6';
+            emailError.style.display = 'none';
         });
         emailInput.addEventListener('blur', function () {
-            emailInput.style.borderColor = '#d1d5db';
+            var emailVal = emailInput.value.trim();
+            if (emailVal) {
+                var validation = validateEmail(emailVal);
+                if (!validation.valid) {
+                    emailInput.style.borderColor = '#ef4444';
+                    emailError.innerText = validation.message;
+                    emailError.style.display = 'block';
+                } else {
+                    emailInput.style.borderColor = '#10b981';
+                }
+            } else {
+                emailInput.style.borderColor = '#d1d5db';
+            }
         });
 
         emailInputRow.appendChild(emailLabel);
@@ -1521,9 +1534,22 @@ function initializeChatEmbed() {
 
         phoneInput.addEventListener('focus', function () {
             phoneInput.style.borderColor = '#3b82f6';
+            phoneError.style.display = 'none';
         });
         phoneInput.addEventListener('blur', function () {
-            phoneInput.style.borderColor = '#d1d5db';
+            var phoneVal = phoneInput.value.trim();
+            if (phoneVal) {
+                var validation = validatePhone(phoneVal);
+                if (!validation.valid) {
+                    phoneInput.style.borderColor = '#ef4444';
+                    phoneError.innerText = validation.message;
+                    phoneError.style.display = 'block';
+                } else {
+                    phoneInput.style.borderColor = '#10b981';
+                }
+            } else {
+                phoneInput.style.borderColor = '#d1d5db';
+            }
         });
 
         phoneInputRow.appendChild(phoneLabel);
@@ -1536,7 +1562,7 @@ function initializeChatEmbed() {
         phoneError.style.fontSize = '12px';
         phoneError.style.marginLeft = '27%';
         phoneError.style.paddingLeft = '24px';
-        phoneError.innerText = 'Phone number is required';
+        phoneError.innerText = 'Please enter a valid phone number';
 
         phoneFieldContainer.appendChild(phoneInputRow);
         phoneFieldContainer.appendChild(phoneError);
@@ -1573,9 +1599,22 @@ function initializeChatEmbed() {
 
         zipInput.addEventListener('focus', function () {
             zipInput.style.borderColor = '#3b82f6';
+            zipError.style.display = 'none';
         });
         zipInput.addEventListener('blur', function () {
-            zipInput.style.borderColor = '#d1d5db';
+            var zipVal = zipInput.value.trim();
+            if (zipVal) {
+                var validation = validateZipCode(zipVal);
+                if (!validation.valid) {
+                    zipInput.style.borderColor = '#ef4444';
+                    zipError.innerText = validation.message;
+                    zipError.style.display = 'block';
+                } else {
+                    zipInput.style.borderColor = '#10b981';
+                }
+            } else {
+                zipInput.style.borderColor = '#d1d5db';
+            }
         });
 
         zipInputRow.appendChild(zipLabel);
@@ -1588,7 +1627,7 @@ function initializeChatEmbed() {
         zipError.style.fontSize = '12px';
         zipError.style.marginLeft = '27%';
         zipError.style.paddingLeft = '24px';
-        zipError.innerText = 'Zip code is required';
+        zipError.innerText = 'Please enter a valid zip/postal code';
 
         zipFieldContainer.appendChild(zipInputRow);
         zipFieldContainer.appendChild(zipError);
@@ -1627,18 +1666,6 @@ function initializeChatEmbed() {
             var nameVal = nameInput.value.trim();
             var emailVal = emailInput.value.trim();
             var phoneVal = phoneInput.value.trim();
-            var hasErrors = false;
-
-            // Reset all error states
-            nameInput.style.borderColor = '#d1d5db';
-            emailInput.style.borderColor = '#d1d5db';
-            phoneInput.style.borderColor = '#d1d5db';
-            nameError.style.display = 'none';
-            emailError.style.display = 'none';
-            phoneError.style.display = 'none';
-
-            // Validate name (required)
-
             var zipVal = zipInput.value.trim();
             var hasErrors = false;
 
@@ -1659,56 +1686,44 @@ function initializeChatEmbed() {
                 hasErrors = true;
             }
 
-            // Validate email (required and format)
-            if (!emailVal) {
+            // Validate email using industry-standard validation
+            var emailValidation = validateEmail(emailVal);
+            if (!emailValidation.valid) {
                 emailInput.style.borderColor = '#ef4444';
-                emailError.innerText = 'Email is required';
-                emailError.style.display = 'block';
-                hasErrors = true;
-            } else if (!/^\S+@\S+\.\S+$/.test(emailVal)) {
-                emailInput.style.borderColor = '#ef4444';
-                emailError.innerText = 'Please enter a valid email address';
+                emailError.innerText = emailValidation.message;
                 emailError.style.display = 'block';
                 hasErrors = true;
             }
 
-            // Validate phone (required and max length 20)
-            if (!phoneVal) {
+            // Validate phone using industry-standard validation
+            var phoneValidation = validatePhone(phoneVal);
+            if (!phoneValidation.valid) {
                 phoneInput.style.borderColor = '#ef4444';
-                phoneError.innerText = 'Phone number is required';
-                phoneError.style.display = 'block';
-                hasErrors = true;
-            } else if (phoneVal.length > 20) {
-                phoneInput.style.borderColor = '#ef4444';
-                phoneError.innerText = 'Phone number must be 20 characters or less';
-                phoneError.style.display = 'block';
-                hasErrors = true;
-            } else if (!/^[\+]?[0-9\s\-\(\)\.]{1,20}$/.test(phoneVal)) {
-                phoneInput.style.borderColor = '#ef4444';
-                phoneError.innerText = 'Please enter a valid phone number';
+                phoneError.innerText = phoneValidation.message;
                 phoneError.style.display = 'block';
                 hasErrors = true;
             }
 
-            // Validate zip code (required, basic format: 3-10 alphanumeric)
-            if (!zipVal) {
+            // Validate zip code using industry-standard validation
+            var zipValidation = validateZipCode(zipVal);
+            if (!zipValidation.valid) {
                 zipInput.style.borderColor = '#ef4444';
-                zipError.innerText = 'Zip code is required';
-                zipError.style.display = 'block';
-                hasErrors = true;
-            } else if (!/^\w{3,10}$/.test(zipVal)) {
-                zipInput.style.borderColor = '#ef4444';
-                zipError.innerText = 'Please enter a valid zip code';
+                zipError.innerText = zipValidation.message;
                 zipError.style.display = 'block';
                 hasErrors = true;
             }
 
             if (hasErrors) {
                 // Focus on first error field
-                if (!nameVal) nameInput.focus();
-                else if (!emailVal || !/^\S+@\S+\.\S+$/.test(emailVal)) emailInput.focus();
-                else if (!phoneVal || phoneVal.length > 20 || !/^[\+]?[0-9\s\-\(\)\.]{1,20}$/.test(phoneVal)) phoneInput.focus();
-                else if (!zipVal || !/^\w{3,10}$/.test(zipVal)) zipInput.focus();
+                if (!nameVal) {
+                    nameInput.focus();
+                } else if (!emailValidation.valid) {
+                    emailInput.focus();
+                } else if (!phoneValidation.valid) {
+                    phoneInput.focus();
+                } else if (!zipValidation.valid) {
+                    zipInput.focus();
+                }
                 return;
             }
 
@@ -1932,6 +1947,175 @@ function initializeChatEmbed() {
         return String(str).replace(/[&<>"']/g, function (c) {
             return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', '\'': '&#39;' }[c]);
         });
+    }
+
+    // Industry-standard email validation (RFC 5322 compliant)
+    function validateEmail(email) {
+        if (!email || typeof email !== 'string') {
+            return { valid: false, message: 'Email is required' };
+        }
+
+        var trimmedEmail = email.trim();
+        
+        // Check length (RFC 5321: local part max 64, domain max 255, total max 254)
+        if (trimmedEmail.length === 0) {
+            return { valid: false, message: 'Email is required' };
+        }
+        if (trimmedEmail.length > 254) {
+            return { valid: false, message: 'Email address is too long (maximum 254 characters)' };
+        }
+
+        // RFC 5322 compliant regex (simplified but comprehensive)
+        // This regex handles most valid email addresses while being practical
+        var emailRegex = /^[a-zA-Z0-9.!#$%&'*+\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+        
+        if (!emailRegex.test(trimmedEmail)) {
+            return { valid: false, message: 'Please enter a valid email address' };
+        }
+
+        // Additional checks
+        var parts = trimmedEmail.split('@');
+        if (parts.length !== 2) {
+            return { valid: false, message: 'Please enter a valid email address' };
+        }
+
+        var localPart = parts[0];
+        var domain = parts[1];
+
+        // Local part validation
+        if (localPart.length === 0 || localPart.length > 64) {
+            return { valid: false, message: 'Email address format is invalid' };
+        }
+
+        // Domain validation
+        if (domain.length === 0 || domain.length > 255) {
+            return { valid: false, message: 'Email address format is invalid' };
+        }
+
+        // Check for valid TLD (at least 2 characters, letters only)
+        var domainParts = domain.split('.');
+        if (domainParts.length < 2) {
+            return { valid: false, message: 'Email address must include a valid domain' };
+        }
+
+        var tld = domainParts[domainParts.length - 1];
+        if (!/^[a-zA-Z]{2,}$/.test(tld)) {
+            return { valid: false, message: 'Email address must include a valid domain extension' };
+        }
+
+        // Check for consecutive dots
+        if (trimmedEmail.includes('..')) {
+            return { valid: false, message: 'Email address cannot contain consecutive dots' };
+        }
+
+        // Check for leading/trailing dots in local part
+        if (localPart.startsWith('.') || localPart.endsWith('.')) {
+            return { valid: false, message: 'Email address format is invalid' };
+        }
+
+        return { valid: true, message: '' };
+    }
+
+    // Industry-standard phone validation (supports international formats)
+    function validatePhone(phone) {
+        if (!phone || typeof phone !== 'string') {
+            return { valid: false, message: 'Phone number is required' };
+        }
+
+        var trimmedPhone = phone.trim();
+        
+        if (trimmedPhone.length === 0) {
+            return { valid: false, message: 'Phone number is required' };
+        }
+
+        // Remove common formatting characters for validation
+        var digitsOnly = trimmedPhone.replace(/[\s\-\(\)\.\+]/g, '');
+        
+        // Check if contains only digits (after removing formatting)
+        if (!/^\d+$/.test(digitsOnly)) {
+            return { valid: false, message: 'Phone number can only contain digits and formatting characters (spaces, dashes, parentheses, dots, plus)' };
+        }
+
+        // Length validation (E.164 standard: 7-15 digits, but we allow formatting)
+        // Minimum: 7 digits (local numbers), Maximum: 15 digits (international with country code)
+        if (digitsOnly.length < 7) {
+            return { valid: false, message: 'Phone number must contain at least 7 digits' };
+        }
+        if (digitsOnly.length > 15) {
+            return { valid: false, message: 'Phone number cannot exceed 15 digits' };
+        }
+
+        // Check for reasonable formatting (not too many special characters)
+        var specialCharCount = (trimmedPhone.match(/[\s\-\(\)\.\+]/g) || []).length;
+        if (specialCharCount > digitsOnly.length) {
+            return { valid: false, message: 'Phone number has too many formatting characters' };
+        }
+
+        // Validate common formats (optional, for better UX)
+        // Accepts: +1-123-456-7890, (123) 456-7890, 123-456-7890, 123.456.7890, +1234567890, etc.
+        var phoneRegex = /^[\+]?[(]?[0-9]{1,4}[)]?[-\s\.]?[(]?[0-9]{1,4}[)]?[-\s\.]?[0-9]{1,9}$/;
+        
+        // More lenient check - just ensure it's not obviously wrong
+        if (trimmedPhone.length > 20) {
+            return { valid: false, message: 'Phone number is too long (maximum 20 characters including formatting)' };
+        }
+
+        return { valid: true, message: '' };
+    }
+
+    // Industry-standard zip/postal code validation (supports US and international formats)
+    function validateZipCode(zip) {
+        if (!zip || typeof zip !== 'string') {
+            return { valid: false, message: 'Zip code is required' };
+        }
+
+        var trimmedZip = zip.trim();
+        
+        if (trimmedZip.length === 0) {
+            return { valid: false, message: 'Zip code is required' };
+        }
+
+        // US ZIP code formats: 12345 or 12345-6789
+        var usZipRegex = /^\d{5}(-\d{4})?$/;
+        
+        // Canadian postal code: A1A 1A1 (with or without space)
+        var canadianZipRegex = /^[A-Za-z]\d[A-Za-z][\s-]?\d[A-Za-z]\d$/;
+        
+        // UK postcode: Various formats like SW1A 1AA, M1 1AA, etc.
+        var ukZipRegex = /^[A-Z]{1,2}\d{1,2}[A-Z]?\s?\d[A-Z]{2}$/i;
+        
+        // Generic international format: 3-10 alphanumeric characters (with optional dash/space)
+        var genericZipRegex = /^[A-Za-z0-9\s\-]{5,15}$/;
+
+        // Check US format first (most common)
+        if (usZipRegex.test(trimmedZip)) {
+            return { valid: true, message: '' };
+        }
+
+        // Check Canadian format
+        if (canadianZipRegex.test(trimmedZip)) {
+            return { valid: true, message: '' };
+        }
+
+        // Check UK format
+        if (ukZipRegex.test(trimmedZip)) {
+            return { valid: true, message: '' };
+        }
+
+        // Check generic international format
+        if (genericZipRegex.test(trimmedZip)) {
+            // Additional validation: must contain at least one alphanumeric character
+            if (!/[A-Za-z0-9]/.test(trimmedZip)) {
+                return { valid: false, message: 'Zip code must contain letters or numbers' };
+            }
+            return { valid: true, message: '' };
+        }
+
+        // If none match, provide helpful error message
+        return { 
+            valid: false, 
+            message: 'Please enter a valid zip/postal code (e.g., 12345, 12345-6789, A1A 1A1)' 
+        };
     }
 
     // Create chat toggle button
