@@ -1082,7 +1082,10 @@ function initializeChatEmbed() {
             
             // Only include visitor info if lead capture is enabled and we have the info
             if (leadCapture && visitorInfo) {
+                const browserMetadata = collectBrowserMetadata();
                 chatSessionData.visitorInfo = visitorInfo;
+                visitorInfo.browserMetadata = browserMetadata
+                
             }
             
             localStorage.setItem('simple-chat-session', JSON.stringify(chatSessionData));
