@@ -1359,17 +1359,29 @@ function initializeChatEmbed() {
         wrapper.style.display = 'flex';
         wrapper.style.flexDirection = 'column';
         wrapper.style.alignItems = 'center';
-        wrapper.style.justifyContent = 'center';
         wrapper.style.height = '100%';
         wrapper.style.width = '100%';
-        wrapper.style.gap = '24px';
+        wrapper.style.padding = '16px';
+        wrapper.style.boxSizing = 'border-box';
+        wrapper.style.overflow = 'hidden';
+        wrapper.style.justifyContent = 'center';
+
+        // Scrollable form content container
+        var formScrollContainer = document.createElement('div');
+        formScrollContainer.style.flex = '1';
+        formScrollContainer.style.width = '100%';
+        // formScrollContainer.style.overflowY = 'auto';
+        // formScrollContainer.style.overflowX = 'hidden';
+        formScrollContainer.style.display = 'flex';
+        formScrollContainer.style.justifyContent = 'center';
+        formScrollContainer.style.paddingBottom = '16px';
 
         var formContainer = document.createElement('div');
         formContainer.style.width = '100%';
         formContainer.style.maxWidth = '300px';
         formContainer.style.display = 'flex';
         formContainer.style.flexDirection = 'column';
-        formContainer.style.gap = '24px';
+        formContainer.style.gap = '20px';
 
         // Add helper text (configurable from SimpleChatEmbedConfig)
         var helperTextConfig = config.leadFormHelperText || {};
@@ -1379,59 +1391,78 @@ function initializeChatEmbed() {
         helperText.style.lineHeight = helperTextConfig.lineHeight || '1.5';
         helperText.style.textAlign = helperTextConfig.textAlign || 'center';
         helperText.style.padding = helperTextConfig.padding || '11px';
-        helperText.style.marginBottom = helperTextConfig.marginBottom || '8px';
+        helperText.style.marginBottom = helperTextConfig.marginBottom || '4px';
         helperText.style.border = helperTextConfig.border || '1px dashed #8348FF';
         helperText.style.background = helperTextConfig.background || '#f5f0ff';
         helperText.style.color = helperTextConfig.color || '#8348FF';
         helperText.style.fontStyle = helperTextConfig.fontStyle || 'italic';
         helperText.style.borderRadius = helperTextConfig.borderRadius || '6px';
+        helperText.style.flexShrink = '0';
 
         var nameFieldContainer = document.createElement('div');
         nameFieldContainer.style.display = 'flex';
         nameFieldContainer.style.flexDirection = 'column';
-        nameFieldContainer.style.gap = '8px';
+        nameFieldContainer.style.gap = '4px';
+        nameFieldContainer.style.marginBottom = '4px';
 
         var nameInputRow = document.createElement('div');
         nameInputRow.style.display = 'flex';
         nameInputRow.style.alignItems = 'center';
-        nameInputRow.style.gap = '24px';
+        nameInputRow.style.gap = '12px';
 
         var nameLabel = document.createElement('label');
         nameLabel.innerText = 'Full Name:*';
-        nameLabel.style.width = '27%';
+        nameLabel.style.minWidth = '80px';
         nameLabel.style.fontSize = '14px';
         nameLabel.style.fontWeight = '500';
         nameLabel.style.color = '#374151';
+        nameLabel.style.flexShrink = '0';
 
         var nameInput = document.createElement('input');
         nameInput.type = 'text';
         nameInput.placeholder = 'Full name';
-        nameInput.style.width = '60%';
-        nameInput.style.padding = '12px 16px';
+        nameInput.style.flex = '1';
+        nameInput.style.padding = '10px 12px';
         nameInput.style.border = '1px solid #d1d5db';
         nameInput.style.borderRadius = '6px';
         nameInput.style.fontSize = '14px';
         nameInput.style.outline = 'none';
-        nameInput.style.transition = 'border-color 0.2s ease-in-out';
+        nameInput.style.transition = 'all 0.2s ease-in-out';
         nameInput.style.fontFamily = 'sans-serif';
 
         nameInput.addEventListener('focus', function () {
             nameInput.style.borderColor = '#3b82f6';
+            nameInput.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
         });
         nameInput.addEventListener('blur', function () {
-            nameInput.style.borderColor = '#d1d5db';
+            if (!nameInput.classList.contains('error')) {
+                nameInput.style.borderColor = '#d1d5db';
+            }
+            nameInput.style.boxShadow = 'none';
+        });
+
+        // Clear error on input
+        nameInput.addEventListener('input', function() {
+            if (nameInput.value.trim()) {
+                nameInput.classList.remove('error');
+                nameInput.style.borderColor = '#d1d5db';
+                nameError.style.opacity = '0';
+                nameError.style.maxHeight = '0';
+            }
         });
 
         nameInputRow.appendChild(nameLabel);
         nameInputRow.appendChild(nameInput);
 
-        // Name error message (below the input)
+        // Name error message with reserved space
         var nameError = document.createElement('div');
-        nameError.style.display = 'none';
         nameError.style.color = '#ef4444';
-        nameError.style.fontSize = '12px';
-        nameError.style.marginLeft = '27%';
-        nameError.style.paddingLeft = '24px';
+        nameError.style.fontSize = '11px';
+        nameError.style.marginLeft = '92px';
+        nameError.style.opacity = '0';
+        nameError.style.maxHeight = '0';
+        nameError.style.overflow = 'hidden';
+        nameError.style.transition = 'all 0.3s ease-in-out';
         nameError.innerText = 'Full name is required';
 
         nameFieldContainer.appendChild(nameInputRow);
@@ -1441,50 +1472,67 @@ function initializeChatEmbed() {
         var emailFieldContainer = document.createElement('div');
         emailFieldContainer.style.display = 'flex';
         emailFieldContainer.style.flexDirection = 'column';
-        emailFieldContainer.style.gap = '8px';
+        emailFieldContainer.style.gap = '4px';
+        emailFieldContainer.style.marginBottom = '4px';
 
         var emailInputRow = document.createElement('div');
         emailInputRow.style.display = 'flex';
         emailInputRow.style.alignItems = 'center';
-        emailInputRow.style.gap = '24px';
+        emailInputRow.style.gap = '12px';
 
         var emailLabel = document.createElement('label');
         emailLabel.innerText = 'Email:*';
-        emailLabel.style.width = '27%';
+        emailLabel.style.minWidth = '80px';
         emailLabel.style.fontSize = '14px';
         emailLabel.style.fontWeight = '500';
         emailLabel.style.color = '#374151';
+        emailLabel.style.flexShrink = '0';
 
         var emailInput = document.createElement('input');
         emailInput.type = 'email';
         emailInput.placeholder = 'Email';
-        emailInput.style.width = '60%';
-        emailInput.style.padding = '12px 16px';
+        emailInput.style.flex = '1';
+        emailInput.style.padding = '10px 12px';
         emailInput.style.border = '1px solid #d1d5db';
         emailInput.style.borderRadius = '6px';
         emailInput.style.fontSize = '14px';
         emailInput.style.outline = 'none';
-        emailInput.style.transition = 'border-color 0.2s ease-in-out';
+        emailInput.style.transition = 'all 0.2s ease-in-out';
         emailInput.style.fontFamily = 'sans-serif';
-
 
         emailInput.addEventListener('focus', function () {
             emailInput.style.borderColor = '#3b82f6';
+            emailInput.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
         });
         emailInput.addEventListener('blur', function () {
-            emailInput.style.borderColor = '#d1d5db';
+            if (!emailInput.classList.contains('error')) {
+                emailInput.style.borderColor = '#d1d5db';
+            }
+            emailInput.style.boxShadow = 'none';
+        });
+
+        // Clear error on input
+        emailInput.addEventListener('input', function() {
+            if (emailInput.value.trim()) {
+                emailInput.classList.remove('error');
+                emailInput.style.borderColor = '#d1d5db';
+                emailError.style.opacity = '0';
+                emailError.style.maxHeight = '0';
+            }
         });
 
         emailInputRow.appendChild(emailLabel);
         emailInputRow.appendChild(emailInput);
 
-        // Email error message (below the input)
+        // Email error message with reserved space
         var emailError = document.createElement('div');
-        emailError.style.display = 'none';
         emailError.style.color = '#ef4444';
-        emailError.style.fontSize = '12px';
-        emailError.style.marginLeft = '27%';
-        emailError.style.paddingLeft = '24px';
+        emailError.style.fontSize = '11px';
+        emailError.style.marginLeft = '92px';
+        emailError.style.opacity = '0';
+        emailError.style.maxHeight = '0';
+        emailError.style.overflow = 'hidden';
+        emailError.style.transition = 'all 0.3s ease-in-out';
         emailError.innerText = 'Please enter a valid email address';
 
         emailFieldContainer.appendChild(emailInputRow);
@@ -1494,50 +1542,68 @@ function initializeChatEmbed() {
         var phoneFieldContainer = document.createElement('div');
         phoneFieldContainer.style.display = 'flex';
         phoneFieldContainer.style.flexDirection = 'column';
-        phoneFieldContainer.style.gap = '8px';
+        phoneFieldContainer.style.gap = '4px';
+        phoneFieldContainer.style.marginBottom = '4px';
 
         var phoneInputRow = document.createElement('div');
         phoneInputRow.style.display = 'flex';
         phoneInputRow.style.alignItems = 'center';
-        phoneInputRow.style.gap = '24px';
+        phoneInputRow.style.gap = '12px';
 
         var phoneLabel = document.createElement('label');
         phoneLabel.innerText = 'Phone:*';
-        phoneLabel.style.width = '27%';
+        phoneLabel.style.minWidth = '80px';
         phoneLabel.style.fontSize = '14px';
         phoneLabel.style.fontWeight = '500';
         phoneLabel.style.color = '#374151';
+        phoneLabel.style.flexShrink = '0';
 
         var phoneInput = document.createElement('input');
         phoneInput.type = 'tel';
         phoneInput.placeholder = 'Phone number';
         phoneInput.maxLength = 20;
-        phoneInput.style.width = '60%';
-        phoneInput.style.padding = '12px 16px';
+        phoneInput.style.flex = '1';
+        phoneInput.style.padding = '10px 12px';
         phoneInput.style.border = '1px solid #d1d5db';
         phoneInput.style.borderRadius = '6px';
         phoneInput.style.fontSize = '14px';
         phoneInput.style.outline = 'none';
-        phoneInput.style.transition = 'border-color 0.2s ease-in-out';
+        phoneInput.style.transition = 'all 0.2s ease-in-out';
         phoneInput.style.fontFamily = 'sans-serif';
 
         phoneInput.addEventListener('focus', function () {
             phoneInput.style.borderColor = '#3b82f6';
+            phoneInput.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
         });
         phoneInput.addEventListener('blur', function () {
-            phoneInput.style.borderColor = '#d1d5db';
+            if (!phoneInput.classList.contains('error')) {
+                phoneInput.style.borderColor = '#d1d5db';
+            }
+            phoneInput.style.boxShadow = 'none';
+        });
+
+        // Clear error on input
+        phoneInput.addEventListener('input', function() {
+            if (phoneInput.value.trim()) {
+                phoneInput.classList.remove('error');
+                phoneInput.style.borderColor = '#d1d5db';
+                phoneError.style.opacity = '0';
+                phoneError.style.maxHeight = '0';
+            }
         });
 
         phoneInputRow.appendChild(phoneLabel);
         phoneInputRow.appendChild(phoneInput);
 
-        // Phone error message (below the input)
+        // Phone error message with reserved space
         var phoneError = document.createElement('div');
-        phoneError.style.display = 'none';
         phoneError.style.color = '#ef4444';
-        phoneError.style.fontSize = '12px';
-        phoneError.style.marginLeft = '27%';
-        phoneError.style.paddingLeft = '24px';
+        phoneError.style.fontSize = '11px';
+        phoneError.style.marginLeft = '92px';
+        phoneError.style.opacity = '0';
+        phoneError.style.maxHeight = '0';
+        phoneError.style.overflow = 'hidden';
+        phoneError.style.transition = 'all 0.3s ease-in-out';
         phoneError.innerText = 'Phone number is required';
 
         phoneFieldContainer.appendChild(phoneInputRow);
@@ -1547,49 +1613,67 @@ function initializeChatEmbed() {
         var zipFieldContainer = document.createElement('div');
         zipFieldContainer.style.display = 'flex';
         zipFieldContainer.style.flexDirection = 'column';
-        zipFieldContainer.style.gap = '8px';
+        zipFieldContainer.style.gap = '4px';
+        zipFieldContainer.style.marginBottom = '4px';
 
         var zipInputRow = document.createElement('div');
         zipInputRow.style.display = 'flex';
         zipInputRow.style.alignItems = 'center';
-        zipInputRow.style.gap = '24px';
+        zipInputRow.style.gap = '12px';
 
         var zipLabel = document.createElement('label');
         zipLabel.innerText = 'Zip Code:*';
-        zipLabel.style.width = '27%';
+        zipLabel.style.minWidth = '80px';
         zipLabel.style.fontSize = '14px';
         zipLabel.style.fontWeight = '500';
         zipLabel.style.color = '#374151';
+        zipLabel.style.flexShrink = '0';
 
         var zipInput = document.createElement('input');
         zipInput.type = 'text';
         zipInput.placeholder = 'Zip code';
-        zipInput.style.width = '60%';
-        zipInput.style.padding = '12px 16px';
+        zipInput.style.flex = '1';
+        zipInput.style.padding = '10px 12px';
         zipInput.style.border = '1px solid #d1d5db';
         zipInput.style.borderRadius = '6px';
         zipInput.style.fontSize = '14px';
         zipInput.style.outline = 'none';
-        zipInput.style.transition = 'border-color 0.2s ease-in-out';
+        zipInput.style.transition = 'all 0.2s ease-in-out';
         zipInput.style.fontFamily = 'sans-serif';
 
         zipInput.addEventListener('focus', function () {
             zipInput.style.borderColor = '#3b82f6';
+            zipInput.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
         });
         zipInput.addEventListener('blur', function () {
-            zipInput.style.borderColor = '#d1d5db';
+            if (!zipInput.classList.contains('error')) {
+                zipInput.style.borderColor = '#d1d5db';
+            }
+            zipInput.style.boxShadow = 'none';
+        });
+
+        // Clear error on input
+        zipInput.addEventListener('input', function() {
+            if (zipInput.value.trim()) {
+                zipInput.classList.remove('error');
+                zipInput.style.borderColor = '#d1d5db';
+                zipError.style.opacity = '0';
+                zipError.style.maxHeight = '0';
+            }
         });
 
         zipInputRow.appendChild(zipLabel);
         zipInputRow.appendChild(zipInput);
 
-        // Zip error message (below the input)
+        // Zip error message with reserved space
         var zipError = document.createElement('div');
-        zipError.style.display = 'none';
         zipError.style.color = '#ef4444';
-        zipError.style.fontSize = '12px';
-        zipError.style.marginLeft = '27%';
-        zipError.style.paddingLeft = '24px';
+        zipError.style.fontSize = '11px';
+        zipError.style.marginLeft = '92px';
+        zipError.style.opacity = '0';
+        zipError.style.maxHeight = '0';
+        zipError.style.overflow = 'hidden';
+        zipError.style.transition = 'all 0.3s ease-in-out';
         zipError.innerText = 'Zip code is required';
 
         zipFieldContainer.appendChild(zipInputRow);
@@ -1601,6 +1685,19 @@ function initializeChatEmbed() {
         formContainer.appendChild(emailFieldContainer);
         formContainer.appendChild(phoneFieldContainer);
         formContainer.appendChild(zipFieldContainer);
+
+        // Add form container to scroll container
+        formScrollContainer.appendChild(formContainer);
+
+        // Fixed button container at bottom
+        var buttonContainer = document.createElement('div');
+        buttonContainer.style.width = '100%';
+        buttonContainer.style.display = 'flex';
+        buttonContainer.style.justifyContent = 'center';
+        // buttonContainer.style.padding = '16px 0 0 0';
+        // buttonContainer.style.borderTop = '1px solid #e5e7eb';
+        buttonContainer.style.background = '#fff';
+        buttonContainer.style.flexShrink = '0';
 
         // Start Chat button
         var confirmBtn = document.createElement('button');
@@ -1615,13 +1712,18 @@ function initializeChatEmbed() {
         confirmBtn.style.cursor = 'pointer';
         confirmBtn.style.fontWeight = '600';
         confirmBtn.style.fontSize = '14px';
-        confirmBtn.style.transition = 'background-color 0.2s ease-in-out';
+        confirmBtn.style.transition = 'all 0.2s ease-in-out';
+        confirmBtn.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.1)';
 
         confirmBtn.addEventListener('mouseover', function () {
             confirmBtn.style.backgroundColor = theme.sendBtnHover || '#15803d';
+            confirmBtn.style.transform = 'translateY(-1px)';
+            confirmBtn.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.15)';
         });
         confirmBtn.addEventListener('mouseout', function () {
             confirmBtn.style.backgroundColor = theme.sendBtnBg || '#16a34a';
+            confirmBtn.style.transform = 'translateY(0)';
+            confirmBtn.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.1)';
         });
 
         // Confirmation button click handler
@@ -1631,77 +1733,105 @@ function initializeChatEmbed() {
             var phoneVal = phoneInput.value.trim();
             var hasErrors = false;
 
-            // Reset all error states
-            nameInput.style.borderColor = '#d1d5db';
-            emailInput.style.borderColor = '#d1d5db';
-            phoneInput.style.borderColor = '#d1d5db';
-            nameError.style.display = 'none';
-            emailError.style.display = 'none';
-            phoneError.style.display = 'none';
-
-            // Validate name (required)
-
             var zipVal = zipInput.value.trim();
             var hasErrors = false;
 
             // Reset all error states
+            nameInput.classList.remove('error');
+            emailInput.classList.remove('error');
+            phoneInput.classList.remove('error');
+            zipInput.classList.remove('error');
             nameInput.style.borderColor = '#d1d5db';
             emailInput.style.borderColor = '#d1d5db';
             phoneInput.style.borderColor = '#d1d5db';
             zipInput.style.borderColor = '#d1d5db';
-            nameError.style.display = 'none';
-            emailError.style.display = 'none';
-            phoneError.style.display = 'none';
-            zipError.style.display = 'none';
+            nameError.style.opacity = '0';
+            nameError.style.maxHeight = '0';
+            emailError.style.opacity = '0';
+            emailError.style.maxHeight = '0';
+            phoneError.style.opacity = '0';
+            phoneError.style.maxHeight = '0';
+            zipError.style.opacity = '0';
+            zipError.style.maxHeight = '0';
 
             // Validate name (required)
             if (!nameVal) {
+                nameInput.classList.add('error');
                 nameInput.style.borderColor = '#ef4444';
-                nameError.style.display = 'block';
+                nameError.style.opacity = '1';
+                nameError.style.maxHeight = '40px';
                 hasErrors = true;
             }
 
             // Validate email (required and format)
             if (!emailVal) {
+                emailInput.classList.add('error');
                 emailInput.style.borderColor = '#ef4444';
                 emailError.innerText = 'Email is required';
-                emailError.style.display = 'block';
+                emailError.style.opacity = '1';
+                emailError.style.maxHeight = '40px';
                 hasErrors = true;
             } else if (!/^\S+@\S+\.\S+$/.test(emailVal)) {
+                emailInput.classList.add('error');
                 emailInput.style.borderColor = '#ef4444';
                 emailError.innerText = 'Please enter a valid email address';
-                emailError.style.display = 'block';
+                emailError.style.opacity = '1';
+                emailError.style.maxHeight = '40px';
                 hasErrors = true;
             }
 
             // Validate phone (required and max length 20)
             if (!phoneVal) {
+                phoneInput.classList.add('error');
                 phoneInput.style.borderColor = '#ef4444';
                 phoneError.innerText = 'Phone number is required';
-                phoneError.style.display = 'block';
+                phoneError.style.opacity = '1';
+                phoneError.style.maxHeight = '40px';
                 hasErrors = true;
             } else if (phoneVal.length > 20) {
+                phoneInput.classList.add('error');
                 phoneInput.style.borderColor = '#ef4444';
                 phoneError.innerText = 'Phone number must be 20 characters or less';
-                phoneError.style.display = 'block';
+                phoneError.style.opacity = '1';
+                phoneError.style.maxHeight = '40px';
                 hasErrors = true;
             } else if (!/^[\+]?[0-9\s\-\(\)\.]{1,20}$/.test(phoneVal)) {
+                phoneInput.classList.add('error');
                 phoneInput.style.borderColor = '#ef4444';
                 phoneError.innerText = 'Please enter a valid phone number';
-                phoneError.style.display = 'block';
+                phoneError.style.opacity = '1';
+                phoneError.style.maxHeight = '40px';
                 hasErrors = true;
             }
 
-            // Validate zip code (required, basic format: 3-10 alphanumeric)
+            // Validate zip code (required, must be numeric and minimum 4 digits)
             if (!zipVal) {
+                zipInput.classList.add('error');
                 zipInput.style.borderColor = '#ef4444';
                 zipError.innerText = 'Zip code is required';
-                zipError.style.display = 'block';
+                zipError.style.opacity = '1';
+                zipError.style.maxHeight = '40px';
                 hasErrors = true;
-            } else if (!/^\w{3,10}$/.test(zipVal)) {
+            } else if (!/^\d+$/.test(zipVal)) {
+                zipInput.classList.add('error');
                 zipInput.style.borderColor = '#ef4444';
-                zipError.innerText = 'Please enter a valid zip code';
-                zipError.style.display = 'block';
+                zipError.innerText = 'Zip code must contain only numbers';
+                zipError.style.opacity = '1';
+                zipError.style.maxHeight = '40px';
+                hasErrors = true;
+            } else if (zipVal.length < 4) {
+                zipInput.classList.add('error');
+                zipInput.style.borderColor = '#ef4444';
+                zipError.innerText = 'Zip code must be at least 4 digits';
+                zipError.style.opacity = '1';
+                zipError.style.maxHeight = '40px';
+                hasErrors = true;
+            } else if (zipVal.length > 10) {
+                zipInput.classList.add('error');
+                zipInput.style.borderColor = '#ef4444';
+                zipError.innerText = 'Zip code must be 10 digits or less';
+                zipError.style.opacity = '1';
+                zipError.style.maxHeight = '40px';
                 hasErrors = true;
             }
 
@@ -1710,7 +1840,7 @@ function initializeChatEmbed() {
                 if (!nameVal) nameInput.focus();
                 else if (!emailVal || !/^\S+@\S+\.\S+$/.test(emailVal)) emailInput.focus();
                 else if (!phoneVal || phoneVal.length > 20 || !/^[\+]?[0-9\s\-\(\)\.]{1,20}$/.test(phoneVal)) phoneInput.focus();
-                else if (!zipVal || !/^\w{3,10}$/.test(zipVal)) zipInput.focus();
+                else if (!zipVal || !/^\d+$/.test(zipVal) || zipVal.length < 4 || zipVal.length > 10) zipInput.focus();
                 return;
             }
 
@@ -1777,12 +1907,15 @@ function initializeChatEmbed() {
         });
 
         // Assemble the form
-        wrapper.appendChild(formContainer);
-        wrapper.appendChild(confirmBtn);
+        buttonContainer.appendChild(confirmBtn);
+        wrapper.appendChild(formScrollContainer);
+        wrapper.appendChild(buttonContainer);
         messages.appendChild(wrapper);
 
-        // Focus the first field
-    nameInput.focus();
+        // Focus the first field after a brief delay to ensure rendering
+        setTimeout(function() {
+            nameInput.focus();
+        }, 100);
     }
 
     // On load, show lead capture inside chat window
