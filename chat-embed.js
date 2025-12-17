@@ -141,7 +141,7 @@ function initializeChatEmbed() {
     
     chatContainer.style.width = '384px';
     chatContainer.style.height = '80vh';
-    chatContainer.style.maxHeight = '600px';
+    chatContainer.style.maxHeight = '650px';
     chatContainer.style.background = '#ffffff';
     chatContainer.style.border = '1px solid #e2e8f0';
     chatContainer.style.borderRadius = '12px';
@@ -184,7 +184,7 @@ function initializeChatEmbed() {
             chatContainer.style.width = '384px';
             chatContainer.style.height = '80vh';
             chatContainer.style.borderRadius = '12px';
-            chatContainer.style.maxHeight = '600px';
+            chatContainer.style.maxHeight = '650px';
         }
     }
     setResponsive();
@@ -1378,7 +1378,7 @@ function initializeChatEmbed() {
 
         var formContainer = document.createElement('div');
         formContainer.style.width = '100%';
-        formContainer.style.maxWidth = '300px';
+        formContainer.style.maxWidth = window.innerWidth <= 768 ? 'none' : '300px';
         formContainer.style.display = 'flex';
         formContainer.style.flexDirection = 'column';
         formContainer.style.gap = '20px';
@@ -1404,6 +1404,7 @@ function initializeChatEmbed() {
         nameFieldContainer.style.flexDirection = 'column';
         nameFieldContainer.style.gap = '4px';
         nameFieldContainer.style.marginBottom = '4px';
+        nameFieldContainer.style.height = '63px';
 
         var nameInputRow = document.createElement('div');
         nameInputRow.style.display = 'flex';
@@ -1474,6 +1475,8 @@ function initializeChatEmbed() {
         emailFieldContainer.style.flexDirection = 'column';
         emailFieldContainer.style.gap = '4px';
         emailFieldContainer.style.marginBottom = '4px';
+        emailFieldContainer.style.height = '63px';
+
 
         var emailInputRow = document.createElement('div');
         emailInputRow.style.display = 'flex';
@@ -1544,6 +1547,8 @@ function initializeChatEmbed() {
         phoneFieldContainer.style.flexDirection = 'column';
         phoneFieldContainer.style.gap = '4px';
         phoneFieldContainer.style.marginBottom = '4px';
+        phoneFieldContainer.style.height = '63px';
+
 
         var phoneInputRow = document.createElement('div');
         phoneInputRow.style.display = 'flex';
@@ -1615,6 +1620,8 @@ function initializeChatEmbed() {
         zipFieldContainer.style.flexDirection = 'column';
         zipFieldContainer.style.gap = '4px';
         zipFieldContainer.style.marginBottom = '4px';
+        zipFieldContainer.style.height = '63px';
+
 
         var zipInputRow = document.createElement('div');
         zipInputRow.style.display = 'flex';
@@ -1703,7 +1710,7 @@ function initializeChatEmbed() {
         var confirmBtn = document.createElement('button');
         confirmBtn.innerText = 'Start Chat';
         confirmBtn.style.width = '100%';
-        confirmBtn.style.maxWidth = '300px';
+        confirmBtn.style.maxWidth = window.innerWidth <= 768 ? 'none' : '300px';
         confirmBtn.style.padding = '12px 24px';
         confirmBtn.style.background = theme.sendBtnBg || '#16a34a';
         confirmBtn.style.color = '#ffffff';
