@@ -2158,6 +2158,34 @@ function initializeChatEmbed() {
     // Add both toggle button and chat container to body
     document.body.appendChild(chatToggle);
 
+    // Expose chat control functions globally
+    window.openChat = function() {
+        if (!chatOpen) {
+            chatOpen = true;
+            chatContainer.style.display = 'flex';
+            chatToggle.style.display = 'none';
+            setTimeout(function () {
+                forceScrollToBottom();
+            }, 150);
+        }
+    };
+
+    window.closeChat = function() {
+        if (chatOpen) {
+            chatOpen = false;
+            chatContainer.style.display = 'none';
+            chatToggle.style.display = 'flex';
+        }
+    };
+
+    window.toggleChat = function() {
+        if (chatOpen) {
+            window.closeChat();
+        } else {
+            window.openChat();
+        }
+    };
+
     // Expose functions globally for testing
     window.saveMessage = saveMessage;
     window.loadMessages = loadMessages;
