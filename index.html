@@ -9,6 +9,16 @@
 
 <body>
 
+    <button onclick="handleclick()">book a demo button</button>
+
+
+    <script>
+        function handleclick() {
+            console.log('Opening chat via button');
+            window.openChat();
+        }
+    </script>
+
     <script>
         // Production test configuration
         window.SimpleChatEmbedConfig = {
@@ -24,11 +34,11 @@
             socketUrl: "ws://localhost:8000",
             baseUrl: "http://localhost:8000/api/v1/",
             token: "eedb5fc2b457815409e45f3b1dc023c276c9cedb",
-            org_id:"1",
+            org_id: "1",
             // ---
             title: "Container One",
             welcomeMessage: "Welcome! This is a production test of the chat system.",
-            leadCapture: false, // Set to false to skip the form
+            leadCapture: true, // Set to false to skip the form
             position: "left", // Options: "left" or "right"
             // quickQuestions: [
             //     "Whats the price of a 20ft container?",
