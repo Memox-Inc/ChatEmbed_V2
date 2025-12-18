@@ -64,7 +64,6 @@ function initializeChatEmbed() {
     var theme = config.theme;
     var apiUrl = config.apiUrl;
     var welcomeMessage = config.welcomeMessage || null;
-    var workflowId = config.workflowId;
     var socketUrl = config.socketUrl + "/ws/app/";
     var leadCapture = config.leadCapture !== undefined ? config.leadCapture : true; // Default to true if not specified
 
@@ -92,30 +91,6 @@ function initializeChatEmbed() {
             clearSessionBtn.style.opacity = '1';
             clearSessionBtn.style.cursor = 'pointer';
         }
-    }
-
-    function generateSecureWsParams(workflow_id) {
-        const secret = '4f3c9a1d8e5b6c2f719a0e3d5a8b7c4d9e6f1a0b3d7c8e2f6a9d0e1b4c5f7a6d';
-        const hashedWorkflowId = btoa(String(workflow_id));
-        const encoder = new TextEncoder();
-        const keyData = encoder.encode(secret);
-        const data = encoder.encode(hashedWorkflowId);
-        return window.crypto.subtle.importKey(
-            'raw',
-            keyData,
-            { name: 'HMAC', hash: 'SHA-256' },
-            false,
-            ['sign']
-        ).then(key =>
-            window.crypto.subtle.sign('HMAC', key, data)
-        ).then(signature => {
-            const hashArray = Array.from(new Uint8Array(signature));
-            const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-            return {
-                hashed_workflow_id: hashedWorkflowId,
-                hash: hashHex
-            };
-        });
     }
 
     function generateChatId() {
@@ -1026,33 +1001,14 @@ function initializeChatEmbed() {
 
         // Try to get stored session data first
         var storedSession = localStorage.getItem('simple-chat-session');
-        var workflow_id, wsParams;
 
         if (storedSession) {
             try {
                 var sessionData = JSON.parse(storedSession);
                 // Check if session data is complete and not too old (optional: 24 hours)
-                var sessionAge = new Date() - new Date(sessionData.timestamp);
-                var maxAge = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
-
-                // When leadCapture is false, we don't require visitorInfo for session validity
-                var isSessionValid = sessionData.chatID && sessionData.workflowId && 
-                    sessionData.hashedWorkflowId && sessionData.hash && sessionAge < maxAge;
-                
-                if (leadCapture) {
-                    isSessionValid = isSessionValid && sessionData.visitorInfo;
-                }
-
-                if (isSessionValid) {
+                if (sessionData.chatID && sessionData.visitorInfo) {
                     chatID = sessionData.chatID;
-                    workflow_id = sessionData.workflowId;
-                    wsParams = {
-                        hashed_workflow_id: sessionData.hashedWorkflowId,
-                        hash: sessionData.hash
-                    };
-                    if (sessionData.visitorInfo) {
-                        visitorInfo = sessionData.visitorInfo;
-                    }
+                    visitorInfo = sessionData.visitorInfo;
                 } else {
                     // Session is invalid or expired, generate new data
                     throw new Error('Invalid or expired session');
@@ -1068,15 +1024,10 @@ function initializeChatEmbed() {
         if (!storedSession) {
             // Generate new session data if not stored or invalid
             chatID = generateChatId();
-            workflow_id = workflowId;
-            wsParams = await generateSecureWsParams(workflow_id);
 
             // Store session data (with or without visitor info based on leadCapture setting)
             var chatSessionData = {
                 chatID: chatID,
-                workflowId: workflow_id,
-                hashedWorkflowId: wsParams.hashed_workflow_id,
-                hash: wsParams.hash,
                 timestamp: new Date().toISOString()
             };
             
@@ -2197,7 +2148,6 @@ function initializeChatEmbed() {
     window.saveMessage = saveMessage;
     window.loadMessages = loadMessages;
     window.generateChatId = generateChatId;
-    window.generateSecureWsParams = generateSecureWsParams;
     window.connectWebSocket = connectWebSocket;
 
     // Helper function to collect browser metadata
@@ -2321,11 +2271,8 @@ function initializeChatEmbed() {
             try {
                 var sessionData = JSON.parse(storedSession);
                 // Check if session data is complete and not too old (24 hours)
-                var sessionAge = new Date() - new Date(sessionData.timestamp);
-                var maxAge = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
 
-                if (sessionData.chatID && sessionData.workflowId && sessionData.hashedWorkflowId &&
-                    sessionData.hash && sessionData.visitorInfo && sessionAge < maxAge) {
+                if (sessionData.chatID && sessionData.visitorInfo) {
 
                     // Set visitor info from stored session
                     visitorInfo = sessionData.visitorInfo;
