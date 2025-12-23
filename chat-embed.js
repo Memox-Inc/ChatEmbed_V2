@@ -66,6 +66,7 @@ function initializeChatEmbed() {
     var welcomeMessage = config.welcomeMessage || null;
     var socketUrl = config.socketUrl + "/ws/app/";
     var leadCapture = config.leadCapture !== undefined ? config.leadCapture : true; // Default to true if not specified
+    var ngrok = config.ngrok ?? false
 
     var currentSocket = null;
     var heartBeatInterval = null;
@@ -2205,15 +2206,21 @@ function initializeChatEmbed() {
                 name = 'Anonymous Visitor';
             }
 
+            console.log(baseUrl,'before getvisitor')
+            
             const getVisitor = await fetch(`${baseUrl}visitors/?email=${email}`, {
                 method: "GET",
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Token ${token} `,
+                    ...(ngrok && {'ngrok-skip-browser-warning': 'true'})
+
                 }
             })
 
             const getVisitorJson = await getVisitor.json();
+
+            console.log(getVisitorJson,'my json')
 
 
             if (getVisitorJson.detail === "Not found." || !getVisitorJson.results?.length) {
@@ -2234,6 +2241,7 @@ function initializeChatEmbed() {
                     headers: {
                         'Content-Type': 'application/json',
                         'Authorization': `Token ${token} `,
+                    ...(ngrok && {'ngrok-skip-browser-warning': 'true'})
                     },
                     body: JSON.stringify(visitorPayload)
                 })
