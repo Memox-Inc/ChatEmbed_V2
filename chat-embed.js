@@ -67,6 +67,7 @@ function initializeChatEmbed() {
     var socketUrl = config.socketUrl + "/ws/app/";
     var leadCapture = config.leadCapture !== undefined ? config.leadCapture : true; // Default to true if not specified
     var ngrok = config.ngrok ?? false
+    var isMobileDevice = config.isMobileDevice ?? false
 
     var currentSocket = null;
     var heartBeatInterval = null;
@@ -2213,6 +2214,7 @@ function initializeChatEmbed() {
                 method: "GET",
                 headers: {
                     'Content-Type': 'application/json',
+                    ...(isMobileDevice && {'X-App-Platform': 'react-native-webview'}),
                     'Authorization': `Token ${token} `,
                     ...(ngrok && {'ngrok-skip-browser-warning': 'true'})
 
@@ -2242,6 +2244,7 @@ function initializeChatEmbed() {
                     headers: {
                         'Content-Type': 'application/json',
                         'Authorization': `Token ${token} `,
+                    ...(isMobileDevice && {'X-App-Platform': 'react-native-webview'}),
                     ...(ngrok && {'ngrok-skip-browser-warning': 'true'})
                     },
                     body: JSON.stringify(visitorPayload)
