@@ -28,6 +28,9 @@ function initializeChatEmbed() {
             userText: '#22223b',
             botText: '#4a4e69',
             background: '#fff',
+            containerBg: '#ffffff',
+            messagesBg: '#ffffff',
+            inputContainerBg: '#ffffff',
             border: '#ccc',
             text: '#222',
             width: '100%',
@@ -36,12 +39,11 @@ function initializeChatEmbed() {
             borderRadius: '8px',
             fontFamily: 'sans-serif',
             zIndex: 9999,
-            headerText: '#fff',
-            headerBg: 'rgba(34, 34, 59, 0.95)',
             inputBg: '#fff',
             inputText: '#222',
             sendBtnBg: '#0078d4',
             sendBtnText: '#fff',
+            sendBtnSvgColor: '#fff',
             sendBtnHover: '#005fa3',
             shadow: '0 2px 8px rgba(0,0,0,0.15)',
             salesRepBubble: '#f1f5f9',
@@ -49,9 +51,32 @@ function initializeChatEmbed() {
             salesRepAvatar: '#E4E7FC',
             userAvatar: '#8349ff',
             botAvatar: '#E4E7FC',
+            userAvatarSvgColor: '#fff',
+            botAvatarSvgColor: '#8349ff',
+            salesRepAvatarSvgColor: '#8349ff',
+            userAvatarBorder: 'none',
+            botAvatarBorder: 'none',
+            salesRepAvatarBorder: 'none',
+            timestampColor: '#9ca3af',
+            messageFontFamily: 'inherit',
             handoverNotificationBg: '#E4E7FC',
             handoverNotificationText: '#334155',
-            handoverNotificationBorder: '#8349FF'
+            handoverNotificationBorder: '#8349FF',
+            headerStyle: {
+                backgroundColor: 'rgba(34, 34, 59, 0.95)',
+                textColor: '#fff',
+                fontWeight: '600',
+                fontFamily: '',
+                height: 'auto',
+                padding: '32px',
+                borderRadius: '12px',
+                logoStyle: {
+                    logoUrl: '',
+                    logoWidth: '24px',
+                    logoHeight: '24px',
+                    borderRadius: '0'
+                }
+            }
         }
     };
 
@@ -119,9 +144,9 @@ function initializeChatEmbed() {
     chatContainer.style.width = '384px';
     chatContainer.style.height = '80vh';
     chatContainer.style.maxHeight = '650px';
-    chatContainer.style.background = '#ffffff';
+    chatContainer.style.background = theme.containerBg || '#ffffff';
     chatContainer.style.border = '1px solid #e2e8f0';
-    chatContainer.style.borderRadius = '12px';
+    chatContainer.style.borderRadius = (theme.headerStyle && theme.headerStyle.borderRadius) || '12px';
     chatContainer.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)';
     chatContainer.style.fontFamily = theme.fontFamily + ', Inter, system-ui, sans-serif';
     chatContainer.style.zIndex = theme.zIndex;
@@ -160,7 +185,7 @@ function initializeChatEmbed() {
             chatContainer.style.bottom = '20px';
             chatContainer.style.width = '384px';
             chatContainer.style.height = '80vh';
-            chatContainer.style.borderRadius = '12px';
+            chatContainer.style.borderRadius = (theme.headerStyle && theme.headerStyle.borderRadius) || '12px';
             chatContainer.style.maxHeight = '650px';
         }
     }
@@ -199,21 +224,43 @@ function initializeChatEmbed() {
     header.style.display = 'flex';
     header.style.justifyContent = 'space-between';
     header.style.alignItems = 'center';
-    header.style.background = theme.headerBg || '#16a34a';
-    header.style.color = theme.headerText;
-    header.style.padding = '32px';
-    header.style.borderTopLeftRadius = '12px';
-    header.style.borderTopRightRadius = '12px';
-    header.style.fontWeight = '600';
-    header.style.fontSize = '18px';
+    header.style.background = (theme.headerStyle && theme.headerStyle.backgroundColor) || theme.headerBg || '#16a34a';
+    header.style.color = (theme.headerStyle && theme.headerStyle.textColor) || theme.headerText || '#fff';
+    header.style.padding = (theme.headerStyle && theme.headerStyle.padding) || '32px';
+    header.style.height = (theme.headerStyle && theme.headerStyle.height) || 'auto';
+    header.style.borderTopLeftRadius = (theme.headerStyle && theme.headerStyle.borderRadius) || '12px';
+    header.style.borderTopRightRadius = (theme.headerStyle && theme.headerStyle.borderRadius) || '12px';
+    header.style.fontWeight = (theme.headerStyle && theme.headerStyle.fontWeight) || '600';
+    header.style.fontFamily = (theme.headerStyle && theme.headerStyle.fontFamily) || theme.messageFontFamily || theme.fontFamily || 'sans-serif';
+    header.style.fontSize = (theme.headerStyle && theme.headerStyle.fontSize) || "18px";
     header.style.lineHeight = '28px';
     header.style.position  = "sticky";
     header.style.top  = "0";
-    header.style.top  = "0";
+
+    var headerTitleContainer = document.createElement('div');
+    headerTitleContainer.style.display = 'flex';
+    headerTitleContainer.style.alignItems = 'center';
+    headerTitleContainer.style.gap = '12px';
+
+    // Add logo if provided
+    var logoStyle = (theme.headerStyle && theme.headerStyle.logoStyle) || theme.headerStyle || {};
+    var logoUrl = logoStyle.logoUrl || (theme.headerStyle && theme.headerStyle.logoUrl) || '';
+    
+    if (logoUrl) {
+        var headerLogo = document.createElement('img');
+        headerLogo.src = logoUrl;
+        headerLogo.alt = 'Logo';
+        headerLogo.style.width = logoStyle.logoWidth || (theme.headerStyle && theme.headerStyle.logoWidth) || '24px';
+        headerLogo.style.height = logoStyle.logoHeight || (theme.headerStyle && theme.headerStyle.logoHeight) || '24px';
+        headerLogo.style.borderRadius = logoStyle.borderRadius || '0';
+        headerLogo.style.objectFit = 'cover';
+        headerTitleContainer.appendChild(headerLogo);
+    }
 
     var headerTitle = document.createElement('div');
     headerTitle.innerText = config.title;
-    header.appendChild(headerTitle);
+    headerTitleContainer.appendChild(headerTitle);
+    header.appendChild(headerTitleContainer);
 
     var headerActions = document.createElement('div');
     headerActions.style.display = 'flex';
@@ -223,7 +270,7 @@ function initializeChatEmbed() {
     refreshBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="m21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg>';
     refreshBtn.title = 'Clear chat history';
     refreshBtn.style.background = 'transparent';
-    refreshBtn.style.color = theme.headerText;
+    refreshBtn.style.color = (theme.headerStyle && theme.headerStyle.textColor) || theme.headerText || '#fff';
     refreshBtn.style.border = 'none';
     refreshBtn.style.padding = '8px';
     refreshBtn.style.cursor = 'pointer';
@@ -283,7 +330,7 @@ function initializeChatEmbed() {
     clearSessionBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>';
     clearSessionBtn.title = 'Clear session & restart';
     clearSessionBtn.style.background = 'transparent';
-    clearSessionBtn.style.color = theme.headerText;
+    clearSessionBtn.style.color = (theme.headerStyle && theme.headerStyle.textColor) || theme.headerText || '#fff';
     clearSessionBtn.style.border = 'none';
     clearSessionBtn.style.padding = '8px';
     clearSessionBtn.style.cursor = 'pointer';
@@ -373,7 +420,7 @@ function initializeChatEmbed() {
     closeBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>';
     closeBtn.title = 'Close chat';
     closeBtn.style.background = 'transparent';
-    closeBtn.style.color = theme.headerText;
+    closeBtn.style.color = (theme.headerStyle && theme.headerStyle.textColor) || theme.headerText || '#fff';
     closeBtn.style.border = 'none';
     closeBtn.style.padding = '8px';
     closeBtn.style.cursor = 'pointer';
@@ -399,7 +446,7 @@ function initializeChatEmbed() {
     messages.style.overflowY = 'auto';
     messages.style.overflowX = 'hidden';
     messages.style.padding = '16px';
-    messages.style.background = '#ffffff';
+    messages.style.background = theme.messagesBg || '#ffffff';
     messages.style.webkitOverflowScrolling = 'touch'; // Smooth scrolling on iOS
     messages.id = 'chat-messages';
     messages.style.display = 'flex';
@@ -408,6 +455,8 @@ function initializeChatEmbed() {
     messages.style.scrollBehavior = 'smooth';
     messages.style.scrollbarWidth = 'none';
     messages.style.msOverflowStyle = 'none';
+    
+    
     var style = document.createElement('style');
     style.textContent = `
         #chat-messages::-webkit-scrollbar { display: none; }
@@ -476,7 +525,7 @@ function initializeChatEmbed() {
 
     var inputContainer = document.createElement('div');
     inputContainer.style.padding = '16px';
-    inputContainer.style.background = '#ffffff';
+    inputContainer.style.background = theme.inputContainerBg || '#ffffff';
     inputContainer.style.display = 'flex';
     inputContainer.style.flexDirection = 'column';
     inputContainer.style.borderBottomLeftRadius = '12px';
@@ -555,7 +604,7 @@ function initializeChatEmbed() {
     input.style.lineHeight = '20px';
     input.style.outline = 'none';
     input.style.transition = 'border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out';
-    input.style.fontFamily = 'sans-serif';
+    input.style.fontFamily = theme.messageFontFamily || theme.fontFamily || 'sans-serif';
 
     input.addEventListener('focus', function () {
         input.style.borderColor = '#3b82f6';
@@ -569,7 +618,8 @@ function initializeChatEmbed() {
     // Create the “Send” <button> field
     var sendBtn = document.createElement('button');
     sendBtn.title = 'Send';
-    sendBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>';
+    var sendBtnSvgColor = theme.sendBtnSvgColor || '#fff';
+    sendBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="' + sendBtnSvgColor + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>';
     sendBtn.style.padding = '12px';
     sendBtn.style.background = theme.sendBtnBg || '#3b82f6';
     sendBtn.style.color = '#ffffff';
@@ -782,13 +832,15 @@ function initializeChatEmbed() {
                 avatar.style.alignItems = 'center';
                 avatar.style.justifyContent = 'center';
                 avatar.style.background = theme.userAvatar || '#8349ff';
+                avatar.style.border = theme.userAvatarBorder || 'none';
 
                 // Load user SVG from assets
                 var userSvg = document.createElement('div');
+                var userSvgColor = theme.userAvatarSvgColor || '#fff';
                 userSvg.innerHTML = `
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M19 21V19C19 17.9391 18.5786 16.9217 17.8284 16.1716C17.0783 15.4214 16.0609 15 15 15H9C7.93913 15 6.92172 15.4214 6.17157 16.1716C5.42143 16.9217 5 17.9391 5 19V21" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        <path d="M12 11C14.2091 11 16 9.20914 16 7C16 4.79086 14.2091 3 12 3C9.79086 3 8 4.79086 8 7C8 9.20914 9.79086 11 12 11Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M19 21V19C19 17.9391 18.5786 16.9217 17.8284 16.1716C17.0783 15.4214 16.0609 15 15 15H9C7.93913 15 6.92172 15.4214 6.17157 16.1716C5.42143 16.9217 5 17.9391 5 19V21" stroke="${userSvgColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M12 11C14.2091 11 16 9.20914 16 7C16 4.79086 14.2091 3 12 3C9.79086 3 8 4.79086 8 7C8 9.20914 9.79086 11 12 11Z" stroke="${userSvgColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
                 `;
                 avatar.appendChild(userSvg);
@@ -801,7 +853,8 @@ function initializeChatEmbed() {
                 avatar.style.alignItems = 'center';
                 avatar.style.justifyContent = 'center';
                 avatar.style.background = theme.salesRepAvatar || '#E4E7FC';
-                var iconColor = theme.primary || '#8349FF';
+                avatar.style.border = theme.salesRepAvatarBorder || 'none';
+                var iconColor = theme.salesRepAvatarSvgColor || theme.primary || '#8349FF';
                 avatar.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" style="width:26px;height:26px;color:' + iconColor + ';" width="200" height="200" viewBox="0 0 24 24"><path fill="currentColor" d="M19.938 8H21a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-1.062A8.001 8.001 0 0 1 12 23v-2a6 6 0 0 0 6-6V9A6 6 0 0 0 6 9v7H3a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h1.062a8.001 8.001 0 0 1 15.876 0ZM3 10v4h1v-4H3Zm17 0v4h1v-4h-1ZM7.76 15.785l1.06-1.696A5.972 5.972 0 0 0 12 15a5.972 5.972 0 0 0 3.18-.911l1.06 1.696A7.963 7.963 0 0 1 12 17a7.962 7.962 0 0 1-4.24-1.215Z"/></svg>'; // Sales rep icon
             } else if (msg.sender === 'bot' || msg.sender === 'ai') {
                 avatar = document.createElement('div');
@@ -812,10 +865,11 @@ function initializeChatEmbed() {
                 avatar.style.alignItems = 'center';
                 avatar.style.justifyContent = 'center';
                 avatar.style.background = theme.botAvatar || '#E4E7FC';
+                avatar.style.border = theme.botAvatarBorder || 'none';
 
                 // Load bot SVG from assets
                 var botSvg = document.createElement('div');
-                var iconColor = theme.primary || '#8349ff';
+                var iconColor = theme.botAvatarSvgColor || theme.primary || '#8349ff';
                 botSvg.innerHTML = `
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <g clip-path="url(#clip0_4_4929)">
@@ -845,11 +899,12 @@ function initializeChatEmbed() {
             msgDiv.style.wordBreak = 'break-word';
             msgDiv.style.fontSize = '14px';
             msgDiv.style.lineHeight = '20px';
+            msgDiv.style.fontFamily = theme.messageFontFamily || theme.fontFamily || 'sans-serif';
             msgDiv.style.position = 'relative';
 
             if (msg.sender === 'user') {
                 // User message styling
-                msgDiv.style.backgroundColor = theme.userBubble || '#dbeafe';
+                msgDiv.style.background = theme.userBubble || '#dbeafe';
                 msgDiv.style.color = theme.userText || '#1e40af';
                 msgDiv.style.alignSelf = 'flex-end';
                 msgDiv.style.borderRadius = '16px 16px 4px 16px';
@@ -860,7 +915,7 @@ function initializeChatEmbed() {
                 msgDiv.style.alignSelf = 'flex-start';
                 msgDiv.style.borderRadius = '16px 16px 16px 4px';
             } else {
-                msgDiv.style.backgroundColor = theme.botBubble || '#f1f5f9';
+                msgDiv.style.background = theme.botBubble || '#f1f5f9';
                 msgDiv.style.color = theme.botText || '#475569';
                 msgDiv.style.alignSelf = 'flex-start';
                 msgDiv.style.borderRadius = '16px 16px 16px 4px';
@@ -923,7 +978,7 @@ function initializeChatEmbed() {
             if (!msg.isWelcomeMessage) {
                 var timestamp = document.createElement('div');
                 timestamp.style.fontSize = '12px';
-                timestamp.style.color = '#9ca3af';
+                timestamp.style.color = theme.timestampColor || '#9ca3af';
                 timestamp.style.alignSelf = msg.sender === 'user' ? 'flex-end' : 'flex-start';
                 timestamp.innerText = msg.created_at;
                 contentContainer.appendChild(timestamp);
@@ -1383,7 +1438,7 @@ function initializeChatEmbed() {
         nameInput.style.fontSize = '14px';
         nameInput.style.outline = 'none';
         nameInput.style.transition = 'all 0.2s ease-in-out';
-        nameInput.style.fontFamily = 'sans-serif';
+        nameInput.style.fontFamily = theme.messageFontFamily || theme.fontFamily || 'sans-serif';
 
         nameInput.addEventListener('focus', function () {
             nameInput.style.borderColor = '#3b82f6';
@@ -1455,7 +1510,7 @@ function initializeChatEmbed() {
         emailInput.style.fontSize = '14px';
         emailInput.style.outline = 'none';
         emailInput.style.transition = 'all 0.2s ease-in-out';
-        emailInput.style.fontFamily = 'sans-serif';
+        emailInput.style.fontFamily = theme.messageFontFamily || theme.fontFamily || 'sans-serif';
 
         emailInput.addEventListener('focus', function () {
             emailInput.style.borderColor = '#3b82f6';
@@ -1528,7 +1583,7 @@ function initializeChatEmbed() {
         phoneInput.style.fontSize = '14px';
         phoneInput.style.outline = 'none';
         phoneInput.style.transition = 'all 0.2s ease-in-out';
-        phoneInput.style.fontFamily = 'sans-serif';
+        phoneInput.style.fontFamily = theme.messageFontFamily || theme.fontFamily || 'sans-serif';
 
         phoneInput.addEventListener('focus', function () {
             phoneInput.style.borderColor = '#3b82f6';
@@ -1600,7 +1655,7 @@ function initializeChatEmbed() {
         zipInput.style.fontSize = '14px';
         zipInput.style.outline = 'none';
         zipInput.style.transition = 'all 0.2s ease-in-out';
-        zipInput.style.fontFamily = 'sans-serif';
+        zipInput.style.fontFamily = theme.messageFontFamily || theme.fontFamily || 'sans-serif';
 
         zipInput.addEventListener('focus', function () {
             zipInput.style.borderColor = '#3b82f6';
@@ -1979,7 +2034,7 @@ function initializeChatEmbed() {
         inputContainer.style.gap = '0';
         inputContainer.style.flex = '0 0 auto';
         inputContainer.style.borderTop = '1px solid #ececec';
-        inputContainer.style.background = '#ffffff';
+        inputContainer.style.background = theme.inputContainerBg || '#ffffff';
         
         // Show quick buttons based on configuration
         if (config.quickQuestions && config.quickQuestions.length > 0) {
