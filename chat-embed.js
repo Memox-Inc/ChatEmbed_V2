@@ -615,6 +615,19 @@ function initializeChatEmbed() {
         input.style.boxShadow = 'none';
     });
 
+    // Enable/disable send button based on input value
+    input.addEventListener('input', function () {
+        if (input.value.trim()) {
+            sendBtn.disabled = false;
+            sendBtn.style.opacity = '1';
+            sendBtn.style.cursor = 'pointer';
+        } else {
+            sendBtn.disabled = true;
+            sendBtn.style.opacity = '0.5';
+            sendBtn.style.cursor = 'not-allowed';
+        }
+    });
+
     // Create the “Send” <button> field
     var sendBtn = document.createElement('button');
     sendBtn.title = 'Send';
@@ -629,13 +642,20 @@ function initializeChatEmbed() {
     sendBtn.style.display = 'flex';
     sendBtn.style.alignItems = 'center';
     sendBtn.style.justifyContent = 'center';
-    sendBtn.style.transition = 'background-color 0.2s ease-in-out';
+    sendBtn.style.transition = 'background-color 0.2s ease-in-out, opacity 0.2s ease-in-out';
+    sendBtn.disabled = true;
+    sendBtn.style.opacity = '0.5';
+    sendBtn.style.cursor = 'not-allowed';
 
     sendBtn.addEventListener('mouseover', function () {
-        sendBtn.style.backgroundColor = theme.sendBtnHover || '#2563eb';
+        if (!sendBtn.disabled) {
+            sendBtn.style.backgroundColor = theme.sendBtnHover || '#2563eb';
+        }
     });
     sendBtn.addEventListener('mouseout', function () {
-        sendBtn.style.backgroundColor = theme.sendBtnBg || '#3b82f6';
+        if (!sendBtn.disabled) {
+            sendBtn.style.backgroundColor = theme.sendBtnBg || '#3b82f6';
+        }
     });
 
     inputForm.appendChild(input);
