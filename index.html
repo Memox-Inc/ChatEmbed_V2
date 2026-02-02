@@ -2,85 +2,122 @@
 <html lang="en">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat Embed Production Test</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chat Embed Production Test</title>
 </head>
 
 <body>
 
-    <script>
-        // Production test configuration
-        window.SimpleChatEmbedConfig = {
-            // Use these settings for production
-            // ---
-            // socketUrl: "wss://hub.memox.io",
-            // baseUrl: "https://hub.memox.io/api/v1/",
-            // token: "eedb5fc2b457815409e45f3b1dc023c276c9cedb",
-            // org_id:"2",
-            // ---
-            // Use these settings for local testing
-            // ---
-            socketUrl: "ws://localhost:8000",
-            baseUrl: "http://localhost:8000/api/v1/",
-            token: "eedb5fc2b457815409e45f3b1dc023c276c9cedb",
-            org_id:"1",
-            // ---
-            title: "Container One",
-            welcomeMessage: "Welcome! This is a production test of the chat system.",
-            leadCapture: false, // Set to false to skip the form
-            position: "left", // Options: "left" or "right"
-            // quickQuestions: [
-            //     "Whats the price of a 20ft container?",
-            //     "What container grades do you offer?",
-            //     "How long does delivery take? "
+  <button onclick="handleclick()">book a demo button</button>
 
-            // ],
-            quickQuestionsPermanent: false, // Set to false to show only for first question
-            leadFormHelperText: {
-                text: 'To help us provide you with better service and personalized assistance, please share your details below.',
-                fontSize: '13px',
-                lineHeight: '1.5',
-                textAlign: 'center',
-                padding: '11px',
-                marginBottom: '8px',
-                border: '1px dashed #8348FF',
-                background: '#f5f0ff',
-                color: '#8348FF',
-                fontStyle: 'italic',
-                borderRadius: '6px'
-            },
-            theme: {
-                primary: '#8349ff',
-                headerBg: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                userBubble: '#8349ff',
-                botBubble: '#f8f9fa',
-                userText: '#fff',
-                botText: '#2d3748',
-                salesRepBubble: '#f8f9fa',
-                salesRepText: '#2d3748',
-                userAvatar: '#8349ff',
-                botAvatar: '#E4E7FC',
-                salesRepAvatar: '#E4E7FC',
-                handoverNotificationBg: '#E4E7FC',
-                handoverNotificationText: '#334155',
-                handoverNotificationBorder: '#8349FF',
-                background: '#fff',
-                border: '#e2e8f0',
-                text: '#2d3748',
-                headerText: '#fff',
-                inputBg: '#fff',
-                inputText: '#2d3748',
-                sendBtnBg: '#8349ff',
-                sendBtnText: '#fff',
-                sendBtnHover: '#6b2fff',
-                borderRadius: '16px',
-                shadow: '0 10px 30px rgba(0,0,0,0.1)'
-            }
-        };
-    </script>
 
-    <script src="./chat-embed.js"></script>
+  <script>
+    function handleclick() {
+      console.log('Opening chat via button');
+      window.openChat();
+    }
+  </script>
+
+  <script>
+    // Production test configuration
+    window.SimpleChatEmbedConfig = {
+      // Use these settings for production
+      // ---
+      // socketUrl: "ws://hub-dev.memox.io",
+      // baseUrl: "https://hub-dev.memox.io/api/v1/",
+      // token: "3486fff1b1847af4109a9dcf11b7b1867137bdec",
+      // org_id:"23",
+      // ---
+      // Use these settings for local testing
+      // ---
+      socketUrl: "wss://sectional-delightsomely-thiago.ngrok-free.dev",
+      baseUrl: "https://sectional-delightsomely-thiago.ngrok-free.dev/api/v1/",
+      // socketUrl: "ws://localhost:8000",
+      // baseUrl: "http://localhost:8000/api/v1/",
+      token: "543ebfa15b57b6bda627605da693554fe020cb29",
+      org_id: "3",
+      // ---
+      title: "Container One",
+      welcomeMessage: "Welcome! This is a production test of the chat system.",
+      leadCapture: false, // Set to false to skip the form
+      position: "left", // Options: "left" or "right"
+      quickQuestionsPermanent: false, // Set to false to show only for first question
+      ngrok: true,
+      isMobileDevice: true,
+      leadFormHelperText: {
+        text: 'To help us provide you with better service and personalized assistance, please share your details below.',
+        fontSize: '13px',
+        lineHeight: '1.5',
+        textAlign: 'center',
+        padding: '11px',
+        marginBottom: '8px',
+        border: '1px dashed #ee3028',
+        background: 'rgb(246, 227, 227)',
+        color: '#ee3028',
+        fontStyle: 'italic',
+        borderRadius: '6px'
+      },
+      theme: {
+        primary: '#ee3028',
+        userBubble: '#ee3028',
+        botBubble: '#f8f9fa',
+        userText: '#fff',
+        botText: '#2d3748',
+        salesRepBubble: '#f8f9fa',
+        salesRepText: '#2d3748',
+        userAvatar: '#ee3028',
+        botAvatar: '#f6e3e3',
+        salesRepAvatar: '#f6e3e3',
+        handoverNotificationBg: '#f6e3e3',
+        handoverNotificationText: '#334155',
+        handoverNotificationBorder: '#ee3028',
+        background: '#fff',
+        containerBg: '#000',
+        messagesBg: 'transparent',
+        inputContainerBg: 'transparent',
+        border: '#e2e8f0',
+        text: '#2d3748',
+        inputBg: '#fff',
+        inputText: '#2d3748',
+        sendBtnBg: '#ee3028',
+        sendBtnText: '#fff',
+        sendBtnSvgColor: '#fff',
+        sendBtnHover: '#c3221c',
+        borderRadius: '16px',
+        shadow: '#ee3028',
+        userAvatarSvgColor: '#fff',
+        botAvatarSvgColor: '#ee3028',
+        salesRepAvatarSvgColor: '#ee3028',
+        userAvatarBorder: '2px solid #c3221c',
+        botAvatarBorder: '2px solid #ee3028',
+        salesRepAvatarBorder: '2px solid #ee3028',
+        timestampColor: '#9ca3af',
+        messageFontFamily: 'Proxima Nova, Arial, sans-serif',
+        headerStyle: {
+          backgroundColor: '#ee3028',
+          textColor: '#fff',
+          fontWeight: '700',
+          fontFamily: 'Proxima Nova, Arial, sans-serif',
+          height: 'auto',
+          padding: '24px',
+          borderRadius: '16px',
+          fontSize:"18px",
+          logoStyle: {
+            logoUrl: 'https://www.shutterstock.com/image-vector/abstract-technology-logo-template-corporate-600nw-1786736897.jpg',
+            logoWidth: '32px',
+            logoHeight: '32px',
+            borderRadius: '50%'
+          }
+        }
+      }
+    };
+  </script>
+
+    <!-- <script src="./chat-embed.js"></script> -->
+    <script src="https://cdn.jsdelivr.net/gh/Memox-Inc/ChatEmbed_V2@v0.3.4/chat-embed.min.js"></script>
 </body>
 
 </html>
+
+
