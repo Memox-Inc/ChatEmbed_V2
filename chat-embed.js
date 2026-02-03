@@ -93,6 +93,10 @@ function initializeChatEmbed() {
     var leadCapture = config.leadCapture !== undefined ? config.leadCapture : true; // Default to true if not specified
     var ngrok = config.ngrok ?? false
     var isMobileDevice = config.isMobileDevice ?? false
+    
+    // Session expiry configuration
+    var sessionExpiry = config.sessionExpiry !== undefined ? config.sessionExpiry : true; // Default to true (enabled)
+    var sessionTimeoutMinutes = config.sessionTimeoutMinutes !== undefined ? config.sessionTimeoutMinutes : 30; // Default to 30 minutes
 
     var currentSocket = null;
     var heartBeatInterval = null;
@@ -125,6 +129,190 @@ function initializeChatEmbed() {
             var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
             return v.toString(16);
         });
+    }
+
+    // Check if session has expired (based on configurable timeout since last user message)
+    function isSessionExpired() {
+        // If session expiry is disabled, always return false
+        if (!sessionExpiry) return false;
+        
+        var storedSession = localStorage.getItem('simple-chat-session');
+        if (!storedSession) return false; // No session yet, not expired
+        
+        try {
+            var sessionData = JSON.parse(storedSession);
+            var lastActivity = sessionData.lastActivityTimestamp;
+            
+            // If no lastActivityTimestamp exists, user hasn't sent first message yet - NOT expired
+            if (!lastActivity) return false;
+            
+            var lastActivityTime = new Date(lastActivity).getTime();
+            var timeoutMs = sessionTimeoutMinutes * 60 * 1000; // Convert minutes to milliseconds
+            var expiryThreshold = Date.now() - timeoutMs;
+            
+            return lastActivityTime < expiryThreshold;
+        } catch (e) {
+            console.error('Error checking session expiry:', e);
+            return false;
+        }
+    }
+
+    // Handle session expiry - show notification and overlay
+    function handleSessionExpiry() {
+        // Add session ended notification to messages
+        var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
+        
+        // Check if session ended notification already exists
+        var hasSessionEndedNotification = msgs.some(function(msg) {
+            return msg.isSystemNotification && msg.notificationType === 'session_ended';
+        });
+        
+        if (!hasSessionEndedNotification) {
+            msgs.push({
+                text: 'This chat session has ended due to inactivity',
+                sender: 'system',
+                isWelcomeMessage: false,
+                isSystemNotification: true,
+                notificationType: 'session_ended',
+                created_at: formatTimeStamp(new Date().toISOString())
+            });
+            localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
+        }
+        
+        // Close WebSocket connection
+        if (currentSocket) {
+            currentSocket.close();
+            currentSocket = null;
+            isWebSocketConnected = false;
+        }
+        
+        if (heartBeatInterval) {
+            clearInterval(heartBeatInterval);
+            heartBeatInterval = null;
+        }
+        
+        // Load messages to show the notification
+        loadMessages();
+        
+        // Hide the input container completely
+        inputContainer.style.display = 'none';
+        
+        // Create overlay that covers messages area
+        var existingOverlay = document.getElementById('session-expired-overlay');
+        if (existingOverlay) {
+            existingOverlay.remove();
+        }
+        
+        var isMobileView = window.innerWidth < 768;
+        
+        var overlay = document.createElement('div');
+        overlay.id = 'session-expired-overlay';
+        overlay.style.display = 'flex';
+        overlay.style.flexDirection = 'column';
+        overlay.style.alignItems = 'center';
+        overlay.style.justifyContent = 'center';
+        overlay.style.gap = isMobileView ? '16px' : '20px';
+        overlay.style.padding = isMobileView ? '32px 24px' : '40px 32px';
+        overlay.style.boxSizing = 'border-box';
+        overlay.style.background = theme.messagesBg || '#ffffff';
+        overlay.style.borderBottomLeftRadius = isMobileView ? '0' : '12px';
+        overlay.style.borderBottomRightRadius = isMobileView ? '0' : '12px';
+        overlay.style.textAlign = 'center';
+        overlay.style.flexShrink = '0';
+        
+        var icon = document.createElement('div');
+        icon.innerHTML = '🔒';
+        icon.style.fontSize = isMobileView ? '48px' : '56px';
+        icon.style.lineHeight = '1';
+        icon.style.marginBottom = '8px';
+        
+        var message = document.createElement('div');
+        message.innerText = 'Session Expired';
+        message.style.fontSize = isMobileView ? '20px' : '24px';
+        message.style.fontWeight = '700';
+        message.style.color = '#1f2937';
+        message.style.textAlign = 'center';
+        message.style.lineHeight = '1.3';
+        message.style.marginBottom = '4px';
+        
+        var subMessage = document.createElement('div');
+        subMessage.innerText = 'Your chat session has ended due to inactivity.\\nClick below to start a new conversation.';
+        subMessage.style.fontSize = isMobileView ? '14px' : '15px';
+        subMessage.style.color = '#6b7280';
+        subMessage.style.textAlign = 'center';
+        subMessage.style.lineHeight = '1.5';
+        subMessage.style.maxWidth = '280px';
+        subMessage.style.marginBottom = '8px';
+        subMessage.style.whiteSpace = 'pre-line';
+        
+        var startNewChatBtn = document.createElement('button');
+        startNewChatBtn.innerText = 'Start New Chat';
+        startNewChatBtn.style.padding = isMobileView ? '14px 28px' : '16px 32px';
+        startNewChatBtn.style.background = theme.sendBtnBg || '#3b82f6';
+        startNewChatBtn.style.color = '#ffffff';
+        startNewChatBtn.style.border = 'none';
+        startNewChatBtn.style.borderRadius = '10px';
+        startNewChatBtn.style.fontSize = isMobileView ? '15px' : '16px';
+        startNewChatBtn.style.fontWeight = '600';
+        startNewChatBtn.style.cursor = 'pointer';
+        startNewChatBtn.style.transition = 'all 0.2s ease-in-out';
+        startNewChatBtn.style.boxShadow = '0 4px 14px rgba(0, 0, 0, 0.15)';
+        startNewChatBtn.style.minWidth = isMobileView ? '180px' : '200px';
+        startNewChatBtn.style.whiteSpace = 'nowrap';
+        startNewChatBtn.style.webkitTapHighlightColor = 'transparent';
+        startNewChatBtn.style.touchAction = 'manipulation';
+        startNewChatBtn.style.marginTop = '8px';
+        
+        startNewChatBtn.addEventListener('mouseover', function() {
+            startNewChatBtn.style.background = theme.sendBtnHover || '#2563eb';
+            startNewChatBtn.style.transform = 'translateY(-2px)';
+            startNewChatBtn.style.boxShadow = '0 6px 20px rgba(0, 0, 0, 0.2)';
+        });
+        
+        startNewChatBtn.addEventListener('mouseout', function() {
+            startNewChatBtn.style.background = theme.sendBtnBg || '#3b82f6';
+            startNewChatBtn.style.transform = 'translateY(0)';
+            startNewChatBtn.style.boxShadow = '0 4px 14px rgba(0, 0, 0, 0.15)';
+        });
+        
+        // Touch support for mobile
+        startNewChatBtn.addEventListener('touchstart', function() {
+            startNewChatBtn.style.background = theme.sendBtnHover || '#2563eb';
+        });
+        
+        startNewChatBtn.addEventListener('touchend', function() {
+            startNewChatBtn.style.background = theme.sendBtnBg || '#3b82f6';
+        });
+        
+        startNewChatBtn.onclick = function() {
+            // Trigger the same logic as clearSessionBtn
+            clearSessionBtn.click();
+        };
+        
+        overlay.appendChild(icon);
+        overlay.appendChild(message);
+        overlay.appendChild(subMessage);
+        overlay.appendChild(startNewChatBtn);
+        
+        // Append overlay to chatContainer after messages area
+        chatContainer.appendChild(overlay);
+        
+        // Update overlay on window resize for responsiveness
+        var updateOverlayResponsive = function() {
+            var isNowMobile = window.innerWidth < 768;
+            icon.style.fontSize = isNowMobile ? '48px' : '56px';
+            message.style.fontSize = isNowMobile ? '20px' : '24px';
+            subMessage.style.fontSize = isNowMobile ? '14px' : '15px';
+            startNewChatBtn.style.padding = isNowMobile ? '14px 28px' : '16px 32px';
+            startNewChatBtn.style.fontSize = isNowMobile ? '15px' : '16px';
+            startNewChatBtn.style.minWidth = isNowMobile ? '180px' : '200px';
+            overlay.style.gap = isNowMobile ? '16px' : '20px';
+            overlay.style.padding = isNowMobile ? '32px 24px' : '40px 32px';
+            overlay.style.borderBottomLeftRadius = isNowMobile ? '0' : '12px';
+            overlay.style.borderBottomRightRadius = isNowMobile ? '0' : '12px';
+        };
+        
+        window.addEventListener('resize', updateOverlayResponsive);
     }
 
     var chatContainer = document.createElement('div');
@@ -352,6 +540,22 @@ function initializeChatEmbed() {
         if (isFormShowing) {
             return;
         }
+        
+        // Remove session expired overlay if it exists
+        var existingOverlay = document.getElementById('session-expired-overlay');
+        if (existingOverlay) {
+            existingOverlay.remove();
+        }
+        
+        // Show input container again (it may have been hidden by session expiry)
+        inputContainer.style.display = 'flex';
+        
+        // Re-enable input field and send button
+        input.disabled = false;
+        input.style.opacity = '1';
+        sendBtn.disabled = false;
+        sendBtn.style.opacity = '1';
+        sendBtn.style.cursor = 'pointer';
         
         // Clear all chat data
         localStorage.removeItem('simple-chat-messages');
@@ -812,6 +1016,11 @@ function initializeChatEmbed() {
                     notification.style.background = theme.handoverNotificationBg || '#E4E7FC';
                     notification.style.color = theme.handoverNotificationText || '#334155';
                     notification.style.border = '1px solid ' + (theme.handoverNotificationBorder || '#8349FF');
+                } else if (msg.notificationType === 'session_ended') {
+                    icon.innerHTML = '🔒';
+                    notification.style.background = '#fef2f2';
+                    notification.style.color = '#991b1b';
+                    notification.style.border = '1px solid #fca5a5';
                 } else {
                     icon.innerHTML = '💬';
                 }
@@ -1086,6 +1295,21 @@ function initializeChatEmbed() {
             msgs.push({ text: msg, isWelcomeMessage: false, sender, created_at: formatTimeStamp(new Date().toISOString()) });
         }
         localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
+        
+        // Update lastActivityTimestamp ONLY when user sends a message (if session expiry is enabled)
+        // This starts/resets the session expiry timer based on sessionTimeoutMinutes config
+        if (sender === 'user' && sessionExpiry) {
+            var storedSession = localStorage.getItem('simple-chat-session');
+            if (storedSession) {
+                try {
+                    var sessionData = JSON.parse(storedSession);
+                    sessionData.lastActivityTimestamp = new Date().toISOString();
+                    localStorage.setItem('simple-chat-session', JSON.stringify(sessionData));
+                } catch (e) {
+                    console.error('Error updating lastActivityTimestamp:', e);
+                }
+            }
+        }
     }
 
     async function connectWebSocket() {
@@ -1142,8 +1366,24 @@ function initializeChatEmbed() {
             };
             currentSocket.onmessage = function (event) {
                 var msgData = JSON.parse(event.data);
+                console.log(msgData,'msg data before condition')
 
                 if(msgData?.room_name && msgData?.room_name === chatID){
+                    console.log(msgData,'my msgdata')
+                    
+                                    // Handle error_message (session closed by backend)
+                                    if (msgData?.message_type === "error_message" && msgData?.chat_data?.is_closed) {
+                                        console.log('Session closed by backend:', msgData.message);
+                                        handleSessionExpiry();
+                                        return;
+                                    }
+                                    
+                                    // Handle session_end message from backend
+                                    if (msgData?.message_type === "session_end") {
+                                        console.log('Session ended notification received');
+                                        handleSessionExpiry();
+                                        return;
+                                    }
                     
                                     // Skip unread messages but allow broadcast messages
                                     if (msgData?.message_type === "unread_message") {
@@ -1318,6 +1558,14 @@ function initializeChatEmbed() {
     function sendMessage(value) {
         var val = input.value.trim() || value
         if (!val) return;
+        
+        // Check if session has expired before sending
+        if (isSessionExpired()) {
+            alert('Your session has expired due to inactivity. Please start a new chat.');
+            handleSessionExpiry();
+            return;
+        }
+        
         // Save user message immediately
         saveMessage(val, 'user');
         input.value = '';
@@ -2006,8 +2254,17 @@ function initializeChatEmbed() {
         var existingMessages = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
         var storedSession = localStorage.getItem('simple-chat-session');
 
-        // If we have messages and session data, skip the form
+        // If we have messages and session data, check expiry before restoring
         if (existingMessages.length > 0 && storedSession) {
+            // Check if session has expired
+            if (isSessionExpired()) {
+                console.log('Session expired on page load');
+                window.__simpleChatEmbedLeadCaptured = true;
+                setupChatInput();
+                handleSessionExpiry();
+                return;
+            }
+            
             window.__simpleChatEmbedLeadCaptured = true;
 
             // Load stored session data and check for handover flag
@@ -2374,6 +2631,12 @@ function initializeChatEmbed() {
         var storedSession = localStorage.getItem('simple-chat-session');
 
         if (storedSession) {
+            // Check if session has expired before auto-connecting
+            if (isSessionExpired()) {
+                console.log('Session expired, not auto-connecting');
+                return;
+            }
+            
             try {
                 var sessionData = JSON.parse(storedSession);
                 // Check if session data is complete and not too old (24 hours)
