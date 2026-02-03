@@ -145,7 +145,7 @@ function initializeChatEmbed() {
     chatContainer.style.height = '80vh';
     chatContainer.style.maxHeight = '650px';
     chatContainer.style.background = theme.containerBg || '#ffffff';
-    chatContainer.style.border = '1px solid #e2e8f0';
+    chatContainer.style.border = theme.containerBorderStyle || '1px solid #e2e8f0';
     chatContainer.style.borderRadius = (theme.headerStyle && theme.headerStyle.borderRadius) || '12px';
     chatContainer.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)';
     chatContainer.style.fontFamily = theme.fontFamily + ', Inter, system-ui, sans-serif';
@@ -445,7 +445,7 @@ function initializeChatEmbed() {
     messages.style.flex = '1 1 0%';
     messages.style.overflowY = 'auto';
     messages.style.overflowX = 'hidden';
-    messages.style.padding = '16px';
+    messages.style.padding = theme.messagesContainerPadding || '16px';
     messages.style.background = theme.messagesBg || '#ffffff';
     messages.style.webkitOverflowScrolling = 'touch'; // Smooth scrolling on iOS
     messages.id = 'chat-messages';
@@ -487,17 +487,26 @@ function initializeChatEmbed() {
 
     chatContainer.appendChild(messages);
 
+    // Get scroll button styles from config
+    var scrollButtonStyle = theme.scrollButtonStyle || {};
+    var scrollIconColor = scrollButtonStyle.iconColor || '#ffffff';
+    var scrollBgColor = scrollButtonStyle.backgroundColor || theme.sendBtnBg || '#3b82f6';
+    var scrollHoverColor = scrollButtonStyle.hoverColor || theme.sendBtnHover || '#2563eb';
+    var scrollPosition = scrollButtonStyle.position || {};
+    var scrollRight = scrollPosition.right || '16px';
+    var scrollBottom = scrollPosition.bottom || '80px';
+
     var scrollToBottomBtn = document.createElement('button');
     scrollToBottomBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 13 5 5 5-5"/><path d="M12 18V6"/></svg>';
     scrollToBottomBtn.title = 'Scroll to bottom';
     scrollToBottomBtn.style.position = 'absolute';
-    scrollToBottomBtn.style.right = '16px';
-    scrollToBottomBtn.style.bottom = '80px';
+    scrollToBottomBtn.style.right = scrollRight;
+    scrollToBottomBtn.style.bottom = scrollBottom;
     scrollToBottomBtn.style.width = '40px';
     scrollToBottomBtn.style.height = '40px';
     scrollToBottomBtn.style.borderRadius = '50%';
-    scrollToBottomBtn.style.background = theme.sendBtnBg || '#3b82f6';
-    scrollToBottomBtn.style.color = '#ffffff';
+    scrollToBottomBtn.style.background = scrollBgColor;
+    scrollToBottomBtn.style.color = scrollIconColor;
     scrollToBottomBtn.style.border = 'none';
     scrollToBottomBtn.style.cursor = 'pointer';
     scrollToBottomBtn.style.display = 'none';
@@ -508,11 +517,11 @@ function initializeChatEmbed() {
     scrollToBottomBtn.style.zIndex = '10';
 
     scrollToBottomBtn.addEventListener('mouseover', function () {
-        scrollToBottomBtn.style.backgroundColor = theme.sendBtnHover || '#2563eb';
+        scrollToBottomBtn.style.backgroundColor = scrollHoverColor;
         scrollToBottomBtn.style.transform = 'scale(1.1)';
     });
     scrollToBottomBtn.addEventListener('mouseout', function () {
-        scrollToBottomBtn.style.backgroundColor = theme.sendBtnBg || '#3b82f6';
+        scrollToBottomBtn.style.backgroundColor = scrollBgColor;
         scrollToBottomBtn.style.transform = 'scale(1)';
     });
 
@@ -523,8 +532,13 @@ function initializeChatEmbed() {
 
     chatContainer.appendChild(scrollToBottomBtn);
 
+    // Get input container styles from config
+    var inputContainerStyle = theme.inputContainerStyle || {};
+    var inputContainerPadding = inputContainerStyle.padding || '16px';
+    var inputContainerBorderTop = inputContainerStyle.borderTop || '1px solid #ececec';
+
     var inputContainer = document.createElement('div');
-    inputContainer.style.padding = '16px';
+    inputContainer.style.padding = inputContainerPadding;
     inputContainer.style.background = theme.inputContainerBg || '#ffffff';
     inputContainer.style.display = 'flex';
     inputContainer.style.flexDirection = 'column';
@@ -596,23 +610,23 @@ function initializeChatEmbed() {
     input.type = 'text';
     input.placeholder = 'Type your message...';
     input.style.padding = '12px 16px';
-    input.style.border = '1px solid #d1d5db';
+    input.style.border = theme.inputContainerStyle?.inputStyle?.border || '1px solid #d1d5db';
     input.style.borderRadius = '6px';
     input.style.background = '#ffffff';
     input.style.color = '#374151';
     input.style.fontSize = '14px';
     input.style.lineHeight = '20px';
-    input.style.outline = 'none';
-    input.style.transition = 'border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out';
+    input.style.outline = theme.inputContainerStyle?.inputStyle?.outline || 'none';
+    input.style.transition = theme.inputContainerStyle?.inputStyle?.transition || 'border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out';
     input.style.fontFamily = theme.messageFontFamily || theme.fontFamily || 'sans-serif';
 
     input.addEventListener('focus', function () {
-        input.style.borderColor = '#3b82f6';
-        input.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+        input.style.border = theme.inputContainerStyle?.inputStyle?.borderOnFocus || '1px solid #3b82f6';
+        input.style.boxShadow = theme.inputContainerStyle?.inputStyle?.boxShadowOnFocus ||  '0 0 0 3px rgba(59, 130, 246, 0.1)';
     });
     input.addEventListener('blur', function () {
-        input.style.borderColor = '#d1d5db';
-        input.style.boxShadow = 'none';
+        input.style.border = theme.inputContainerStyle?.inputStyle?.borderOnBlur || '1px solid #d1d5db';
+        input.style.boxShadow = theme.inputContainerStyle?.inputStyle?.boxShadowOnBlur || 'none';
     });
 
     // Enable/disable send button based on input value
@@ -1307,6 +1321,10 @@ function initializeChatEmbed() {
         // Save user message immediately
         saveMessage(val, 'user');
         input.value = '';
+        // Disable send button after clearing input
+        sendBtn.disabled = true;
+        sendBtn.style.opacity = '0.5';
+        sendBtn.style.cursor = 'not-allowed';
         loadMessages();
 
         // Show typing indicator only if handover is not active
@@ -2050,10 +2068,10 @@ function initializeChatEmbed() {
         inputContainer.style.flexDirection = 'column';
         inputContainer.style.width = '100%';
         inputContainer.style.boxSizing = 'border-box';
-        inputContainer.style.padding = '16px';
+        inputContainer.style.padding = inputContainerPadding;
         inputContainer.style.gap = '0';
         inputContainer.style.flex = '0 0 auto';
-        inputContainer.style.borderTop = '1px solid #ececec';
+        inputContainer.style.borderTop = inputContainerBorderTop;
         inputContainer.style.background = theme.inputContainerBg || '#ffffff';
         
         // Show quick buttons based on configuration
