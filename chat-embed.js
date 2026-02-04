@@ -22,6 +22,11 @@ function initializeChatEmbed() {
     var defaultConfig = {
         title: 'Chat',
         customIcon: null, // Can be SVG string or image URL
+        botIcon: {
+            width: '24px',
+            height: '24px',
+            botAvatarUrl: null // URL for custom bot avatar icon
+        },
         theme: {
             primary: '#0078d4',
             userBubble: '#e6f0fa',
@@ -902,23 +907,34 @@ function initializeChatEmbed() {
                 avatar.style.background = theme.botAvatar || '#E4E7FC';
                 avatar.style.border = theme.botAvatarBorder || 'none';
 
-                // Load bot SVG from assets
+                // Load bot icon - either custom URL or default SVG
                 var botSvg = document.createElement('div');
-                var iconColor = theme.botAvatarSvgColor || theme.primary || '#8349ff';
-                botSvg.innerHTML = `
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <g clip-path="url(#clip0_4_4929)">
-                            <path d="M19 11H5C3.89543 11 3 11.8954 3 13V19C3 20.1046 3.89543 21 5 21H19C20.1046 21 21 20.1046 21 19V13C21 11.8954 20.1046 11 19 11Z" stroke="${iconColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                            <path d="M12 7C13.1046 7 14 6.10457 14 5C14 3.89543 13.1046 3 12 3C10.8954 3 10 3.89543 10 5C10 6.10457 10.8954 7 12 7Z" stroke="${iconColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                            <path d="M12 7V11" stroke="${iconColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        </g>
-                        <defs>
-                            <clipPath id="clip0_4_4929">
-                                <rect width="24" height="24" fill="white"/>
-                            </clipPath>
-                        </defs>
-                    </svg>
-                `;
+                var botIconConfig = theme.botIcon || config.botIcon || {};
+                var botIconWidth = botIconConfig.width || '24px';
+                var botIconHeight = botIconConfig.height || '24px';
+                var botAvatarUrl = botIconConfig.botAvatarUrl;
+
+                if (botAvatarUrl) {
+                    // Use custom image URL
+                    botSvg.innerHTML = `<img src="${botAvatarUrl}" alt="Bot" style="width: ${botIconWidth}; height: ${botIconHeight}; object-fit: contain;" />`;
+                } else {
+                    // Use default SVG
+                    var iconColor = theme.botAvatarSvgColor || theme.primary || '#8349ff';
+                    botSvg.innerHTML = `
+                        <svg width="${botIconWidth}" height="${botIconHeight}" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <g clip-path="url(#clip0_4_4929)">
+                                <path d="M19 11H5C3.89543 11 3 11.8954 3 13V19C3 20.1046 3.89543 21 5 21H19C20.1046 21 21 20.1046 21 19V13C21 11.8954 20.1046 11 19 11Z" stroke="${iconColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M12 7C13.1046 7 14 6.10457 14 5C14 3.89543 13.1046 3 12 3C10.8954 3 10 3.89543 10 5C10 6.10457 10.8954 7 12 7Z" stroke="${iconColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M12 7V11" stroke="${iconColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </g>
+                            <defs>
+                                <clipPath id="clip0_4_4929">
+                                    <rect width="24" height="24" fill="white"/>
+                                </clipPath>
+                            </defs>
+                        </svg>
+                    `;
+                }
                 avatar.appendChild(botSvg);
             }
 
