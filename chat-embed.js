@@ -21,6 +21,7 @@
 function initializeChatEmbed() {
     var defaultConfig = {
         title: 'Chat',
+        customIcon: null, // Can be SVG string or image URL
         theme: {
             primary: '#0078d4',
             userBubble: '#e6f0fa',
@@ -2126,7 +2127,22 @@ function initializeChatEmbed() {
     // Create chat toggle button
     var chatToggle = document.createElement('button');
     chatToggle.setAttribute("id",'chat-embed-toggle-button')
-    chatToggle.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-message-circle-icon lucide-message-circle"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>';
+    
+    // Set the icon based on customIcon config (SVG string or URL)
+    var defaultIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-message-circle-icon lucide-message-circle"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>';
+    
+    if (config.customIcon) {
+        // Check if it's a URL (contains http/https or ends with common image extensions)
+        if (config.customIcon.match(/^https?:\/\//) || config.customIcon.match(/\.(png|jpg|jpeg|gif|svg|webp)$/i)) {
+            chatToggle.innerHTML = '<img src="' + config.customIcon + '" alt="Chat" style="width: 34px; height: 34px; object-fit: contain;" />';
+        } else {
+            // Assume it's an SVG string
+            chatToggle.innerHTML = config.customIcon;
+        }
+    } else {
+        chatToggle.innerHTML = defaultIcon;
+    }
+    
     chatToggle.style.position = 'fixed';
     chatToggle.style.bottom = '20px';
     
