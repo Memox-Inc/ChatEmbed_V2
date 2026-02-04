@@ -143,9 +143,12 @@
         messagesContainerPadding: '8px',
         inputBorderStyle: '1px solid #000',
         botIcon: {
-          width: '5px',
-          height: '5px',
-          botAvatarUrl: 'https://www.shutterstock.com/image-vector/abstract-technology-logo-template-corporate-600nw-1786736897.jpg' // Set to image URL to use custom bot avatar icon
+          svgWidth: '100%',     // Width of the actual SVG/image element
+          svgHeight: '100%',    // Height of the actual SVG/image element
+          width: '100%',        // Width of the container (botSvg)
+          height: '100%',       // Height of the container (botSvg)
+          objectFit: 'cover',   // How image fits: contain, cover, fill, scale-down, none
+          botAvatarUrl: 'https://img1.wsimg.com/isteam/ip/9d165873-422c-4a64-818a-0fec10d1e4c4/Screenshot%202025-07-18%20at%202.20.46%E2%80%AFPM.png' // Set to image URL to use custom bot avatar icon
         }
       }
     };
