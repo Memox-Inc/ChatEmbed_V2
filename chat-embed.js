@@ -71,6 +71,9 @@ function initializeChatEmbed() {
             handoverNotificationBg: '#E4E7FC',
             handoverNotificationText: '#334155',
             handoverNotificationBorder: '#8349FF',
+            closeBtnIconStyle:{
+                display:""
+            },
             headerStyle: {
                 backgroundColor: 'rgba(34, 34, 59, 0.95)',
                 textColor: '#fff',
@@ -98,6 +101,7 @@ function initializeChatEmbed() {
     var theme = config.theme;
     var apiUrl = config.apiUrl;
     var welcomeMessage = config.welcomeMessage || null;
+    var welcomeMessageStyle = config.welcomeMessageStyle || {};
     var socketUrl = config.socketUrl + "/ws/app/";
     var leadCapture = config.leadCapture !== undefined ? config.leadCapture : true; // Default to true if not specified
     var ngrok = config.ngrok ?? false
@@ -149,7 +153,7 @@ function initializeChatEmbed() {
         chatContainer.style.right = '20px';
         chatContainer.style.left = 'auto';
     }
-    
+    console.log(theme.containerBorderStyle,'my border style')
     chatContainer.style.width = '384px';
     chatContainer.style.height = '80vh';
     chatContainer.style.maxHeight = '650px';
@@ -425,6 +429,7 @@ function initializeChatEmbed() {
     };
 
     var closeBtn = document.createElement('button');
+    closeBtn.style.display = theme.closeBtnIconStyle.display || "flex"
     closeBtn.setAttribute("id","close-btn")
     closeBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>';
     closeBtn.title = 'Close chat';
@@ -434,7 +439,6 @@ function initializeChatEmbed() {
     closeBtn.style.padding = '8px';
     closeBtn.style.cursor = 'pointer';
     closeBtn.style.borderRadius = '6px';
-    closeBtn.style.display = 'flex';
     closeBtn.style.alignItems = 'center';
     closeBtn.style.justifyContent = 'center';
     closeBtn.style.transition = 'background-color 0.2s ease-in-out';
@@ -554,41 +558,44 @@ function initializeChatEmbed() {
     inputContainer.style.borderBottomLeftRadius = '12px';
     inputContainer.style.borderBottomRightRadius = '12px';
 
-    // Quick question buttons container
+    // Quick question buttons container (placed in messages area, below welcome message)
     var quickButtonsContainer = document.createElement('div');
-    quickButtonsContainer.style.display = 'none'; // Initially hidden, shown when input is active
-    quickButtonsContainer.style.flexDirection = 'column';
+    quickButtonsContainer.style.display = 'none'; // Initially hidden, shown after welcome message renders
+    quickButtonsContainer.style.flexDirection = 'row';
+    quickButtonsContainer.style.flexWrap = 'wrap';
     quickButtonsContainer.style.gap = '8px';
-    quickButtonsContainer.style.marginBottom = '16px';
-    quickButtonsContainer.style.width = '100%';
+    quickButtonsContainer.style.paddingLeft = '44px';
+    quickButtonsContainer.style.width = 'auto';
 
     // Create quick question buttons if configured
     if (config.quickQuestions && config.quickQuestions.length > 0) {
         config.quickQuestions.forEach(function(question, index) {
             var quickBtn = document.createElement('button');
             quickBtn.innerText = question;
-            quickBtn.style.padding = '12px 16px';
-            quickBtn.style.background = '#f3f4f6';
-            quickBtn.style.color = '#374151';
-            quickBtn.style.border = '1px solid #d1d5db';
-            quickBtn.style.borderRadius = '8px';
+            quickBtn.style.padding = '8px 16px';
+            quickBtn.style.background = '#ffffff';
+            quickBtn.style.color = '#6b7280';
+            quickBtn.style.border = '1px solid #e5e7eb';
+            quickBtn.style.borderRadius = '9999px';
             quickBtn.style.cursor = 'pointer';
             quickBtn.style.fontSize = '14px';
+            quickBtn.style.fontWeight = '500';
             quickBtn.style.transition = 'all 0.2s ease-in-out';
-            quickBtn.style.width = '100%';
-            quickBtn.style.textAlign = 'left';
+            quickBtn.style.width = 'auto';
+            quickBtn.style.textAlign = 'center';
             quickBtn.style.boxSizing = 'border-box';
+            quickBtn.style.whiteSpace = 'nowrap';
 
             quickBtn.addEventListener('mouseover', function() {
-                quickBtn.style.background = theme.sendBtnBg || '#3b82f6';
-                quickBtn.style.color = '#ffffff';
-                quickBtn.style.borderColor = theme.sendBtnBg || '#3b82f6';
+                quickBtn.style.borderColor = theme.primary || '#8349FF';
+                quickBtn.style.color = theme.primary || '#8349FF';
+                quickBtn.style.background = '#ffffff';
             });
 
             quickBtn.addEventListener('mouseout', function() {
-                quickBtn.style.background = '#f3f4f6';
-                quickBtn.style.color = '#374151';
-                quickBtn.style.borderColor = '#d1d5db';
+                quickBtn.style.background = '#ffffff';
+                quickBtn.style.color = '#6b7280';
+                quickBtn.style.borderColor = '#e5e7eb';
             });
 
             quickBtn.addEventListener('click', function() {
@@ -603,8 +610,6 @@ function initializeChatEmbed() {
             quickButtonsContainer.appendChild(quickBtn);
         });
     }
-
-    inputContainer.appendChild(quickButtonsContainer);
 
     chatContainer.appendChild(inputContainer);
 
@@ -1010,7 +1015,45 @@ function initializeChatEmbed() {
 
                 // Use markdown conversion for bot messages, plain text for others
                 if (msg.sender === 'bot' || msg.sender === 'ai') {
-                    contentWrapper.innerHTML = markdownToHtml(msg.text);
+                    var html = markdownToHtml(msg.text);
+
+                    // Apply welcomeMessageStyle to welcome message paragraphs
+                    if (msg.isWelcomeMessage && welcomeMessageStyle) {
+                        var tempDiv = document.createElement('div');
+                        tempDiv.innerHTML = html;
+                        var paragraphs = tempDiv.querySelectorAll('p');
+
+                        // Apply container lineHeight to all paragraphs
+                        if (welcomeMessageStyle.lineHeight) {
+                            for (var pi = 0; pi < paragraphs.length; pi++) {
+                                paragraphs[pi].style.lineHeight = welcomeMessageStyle.lineHeight;
+                            }
+                        }
+
+                        // Apply body style (marginTop, color) to the middle paragraph(s)
+                        if (welcomeMessageStyle.body && paragraphs.length > 1) {
+                            for (var bi = 1; bi < paragraphs.length - 1; bi++) {
+                                if (welcomeMessageStyle.body.marginTop) {
+                                    paragraphs[bi].style.marginTop = welcomeMessageStyle.body.marginTop;
+                                }
+                                if (welcomeMessageStyle.body.color) {
+                                    paragraphs[bi].style.color = welcomeMessageStyle.body.color;
+                                }
+                            }
+                        }
+
+                        // Apply closing style (marginTop) to the last paragraph
+                        if (welcomeMessageStyle.closing && paragraphs.length > 2) {
+                            var lastP = paragraphs[paragraphs.length - 1];
+                            if (welcomeMessageStyle.closing.marginTop) {
+                                lastP.style.marginTop = welcomeMessageStyle.closing.marginTop;
+                            }
+                        }
+
+                        html = tempDiv.innerHTML;
+                    }
+
+                    contentWrapper.innerHTML = html;
                 } else if (msg.sender === 'sales_rep') {
                     // Sales rep messages with clean formatting and sender name at top
                     var messageText = escapeHtml(msg.text).replace(/\n/g, '<br>');
@@ -1060,6 +1103,18 @@ function initializeChatEmbed() {
             messageWrapper.appendChild(contentContainer);
             messageContainer.appendChild(messageWrapper);
             messages.appendChild(messageContainer);
+        }
+
+        // Append quick buttons after all messages are rendered
+        if (config.quickQuestions && config.quickQuestions.length > 0) {
+            messages.appendChild(quickButtonsContainer);
+            var isFirstSession = msgs.length === 0 || (msgs.length === 1 && msgs[0].isWelcomeMessage);
+            
+            if (config.quickQuestionsPermanent || isFirstSession) {
+                quickButtonsContainer.style.display = 'flex';
+            } else {
+                quickButtonsContainer.style.display = 'none';
+            }
         }
 
         messages.scrollTop = messages.scrollHeight;
@@ -2109,19 +2164,6 @@ function initializeChatEmbed() {
         inputContainer.style.flex = '0 0 auto';
         inputContainer.style.borderTop = inputContainerBorderTop;
         inputContainer.style.background = theme.inputContainerBg || '#ffffff';
-        
-        // Show quick buttons based on configuration
-        if (config.quickQuestions && config.quickQuestions.length > 0) {
-            var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
-            var isFirstSession = msgs.length === 0 || (msgs.length === 1 && msgs[0].isWelcomeMessage);
-            
-            // Show if permanent OR if it's the first session
-            if (config.quickQuestionsPermanent || isFirstSession) {
-                quickButtonsContainer.style.display = 'flex';
-            } else {
-                quickButtonsContainer.style.display = 'none';
-            }
-        }
         
         // Style the input form container
         inputForm.style.display = 'grid';
