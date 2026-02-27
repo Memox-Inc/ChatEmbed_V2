@@ -1703,7 +1703,7 @@ function initializeChatEmbed() {
 
         var phoneInput = document.createElement('input');
         phoneInput.type = 'tel';
-        phoneInput.placeholder = 'Phone number';
+        phoneInput.placeholder = '+1 555 123 4567';
         phoneInput.maxLength = 20;
         phoneInput.style.flex = '1';
         phoneInput.style.padding = '10px 12px';
@@ -1725,8 +1725,40 @@ function initializeChatEmbed() {
             phoneInput.style.boxShadow = 'none';
         });
 
-        // Clear error on input
+        // Helper: strip non-digit characters from phone (keeps + at start)
+        function stripPhoneDigits(val) {
+            return val.replace(/\D/g, '');
+        }
+
+        // Helper: normalize phone to E.164 format for HubSpot
+        // E.164: + followed by country code + number, 7-15 digits total
+        function normalizePhoneE164(val) {
+            var cleaned = val.replace(/[\s\-\(\)\.]/g, '');
+            // Already has + prefix — just strip any remaining non-digit/non-plus chars
+            if (cleaned.charAt(0) === '+') {
+                return '+' + cleaned.substring(1).replace(/\D/g, '');
+            }
+            var digits = cleaned.replace(/\D/g, '');
+            // 10 digits without prefix — assume US/Canada, prepend +1
+            if (digits.length === 10) return '+1' + digits;
+            // Otherwise prepend + (user likely included country code)
+            return '+' + digits;
+        }
+
+        // Only allow digits, +, spaces, dashes, parens, dots in the phone field
         phoneInput.addEventListener('input', function() {
+            var val = phoneInput.value;
+            // Strip any characters that aren't digits, +, space, dash, parens, or dot
+            var cleaned = val.replace(/[^\d\+\s\-\(\)\.]/g, '');
+            // Ensure + only appears at the start
+            var firstChar = cleaned.charAt(0);
+            var rest = cleaned.substring(1).replace(/\+/g, '');
+            cleaned = firstChar + rest;
+            if (cleaned !== val) {
+                phoneInput.value = cleaned;
+            }
+
+            // Clear error on input
             if (phoneInput.value.trim()) {
                 phoneInput.classList.remove('error');
                 phoneInput.style.borderColor = '#d1d5db';
@@ -1925,7 +1957,8 @@ function initializeChatEmbed() {
                 hasErrors = true;
             }
 
-            // Validate phone (required and max length 20)
+            // Validate phone (required, E.164 compatible: 7-15 digits)
+            var phoneDigits = stripPhoneDigits(phoneVal);
             if (!phoneVal) {
                 phoneInput.classList.add('error');
                 phoneInput.style.borderColor = '#ef4444';
@@ -1933,17 +1966,17 @@ function initializeChatEmbed() {
                 phoneError.style.opacity = '1';
                 phoneError.style.maxHeight = '40px';
                 hasErrors = true;
-            } else if (phoneVal.length > 20) {
+            } else if (phoneDigits.length < 7) {
                 phoneInput.classList.add('error');
                 phoneInput.style.borderColor = '#ef4444';
-                phoneError.innerText = 'Phone number must be 20 characters or less';
+                phoneError.innerText = 'Phone number is too short';
                 phoneError.style.opacity = '1';
                 phoneError.style.maxHeight = '40px';
                 hasErrors = true;
-            } else if (!/^[\+]?[0-9\s\-\(\)\.]{1,20}$/.test(phoneVal)) {
+            } else if (phoneDigits.length > 15) {
                 phoneInput.classList.add('error');
                 phoneInput.style.borderColor = '#ef4444';
-                phoneError.innerText = 'Please enter a valid phone number';
+                phoneError.innerText = 'Phone number is too long';
                 phoneError.style.opacity = '1';
                 phoneError.style.maxHeight = '40px';
                 hasErrors = true;
@@ -1984,7 +2017,7 @@ function initializeChatEmbed() {
                 // Focus on first error field
                 if (!nameVal) nameInput.focus();
                 else if (!emailVal || !/^\S+@\S+\.\S+$/.test(emailVal)) emailInput.focus();
-                else if (!phoneVal || phoneVal.length > 20 || !/^[\+]?[0-9\s\-\(\)\.]{1,20}$/.test(phoneVal)) phoneInput.focus();
+                else if (!phoneVal || phoneDigits.length < 7 || phoneDigits.length > 15) phoneInput.focus();
                 else if (!zipVal || !/^\d+$/.test(zipVal) || zipVal.length < 4 || zipVal.length > 10) zipInput.focus();
                 return;
             }
@@ -1997,7 +2030,7 @@ function initializeChatEmbed() {
                 await createVisitor(
                     sanitize(nameInput.value),
                     sanitize(emailInput.value),
-                    sanitize(phoneInput.value),
+                    normalizePhoneE164(phoneInput.value),
                     sanitize(zipInput.value)
                 );
             } else {
@@ -2016,7 +2049,7 @@ function initializeChatEmbed() {
             var leadData = {
                 name: sanitize(nameInput.value),
                 email: sanitize(emailInput.value),
-                phone: sanitize(phoneInput.value),
+                phone: normalizePhoneE164(phoneInput.value),
                 zip: sanitize(zipInput.value),
                 timestamp,
                 userAgent,
@@ -2033,7 +2066,7 @@ function initializeChatEmbed() {
             localStorage.setItem('simple-chat-leads', JSON.stringify(leads));
 
             onComplete(leadData);
-            sendMessage(`${nameInput.value} ${emailInput.value} ${phoneInput.value} ${zipInput.value}`);  
+            sendMessage(`${nameInput.value} ${emailInput.value} ${normalizePhoneE164(phoneInput.value)} ${zipInput.value}`);  
 
         };
 
