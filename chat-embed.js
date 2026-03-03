@@ -113,8 +113,31 @@ function initializeChatEmbed() {
     var visitorInfo = null;
     var isHandoverActive = false;
     var isFormShowing = false;
+    var isBotResponding = false;
     var chatID = null
     var isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+    // Function to enable/disable input while bot is responding
+    function setBotResponding(responding) {
+        isBotResponding = responding;
+        if (responding) {
+            input.disabled = true;
+            input.style.opacity = '0.6';
+            sendBtn.disabled = true;
+            sendBtn.style.opacity = '0.5';
+            sendBtn.style.cursor = 'not-allowed';
+        } else {
+            input.disabled = false;
+            input.style.opacity = '1';
+            // Re-enable send button only if there's text in the input
+            if (input.value.trim()) {
+                sendBtn.disabled = false;
+                sendBtn.style.opacity = '1';
+                sendBtn.style.cursor = 'pointer';
+            }
+            input.focus();
+        }
+    }
 
     // Function to update button states based on form visibility
     function updateButtonStates() {
@@ -1301,6 +1324,7 @@ function initializeChatEmbed() {
                                                 localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
                                                 // No need to reload - already processed correctly
                                             }
+                                            setBotResponding(false);
                                             return;
                                         }
                     
@@ -1328,6 +1352,17 @@ function initializeChatEmbed() {
                                             }
                                             localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
                                             loadMessages(); // Use immediate loading for streaming
+
+                                            // If this chunk also carries the completion flag, re-enable input
+                                            if (msgData.is_complete === true) {
+                                                var streamMsg = msgs[msgs.length - 1];
+                                                if (streamMsg && streamMsg.isStreaming) {
+                                                    streamMsg.isStreaming = false;
+                                                    msgs[msgs.length - 1] = streamMsg;
+                                                    localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
+                                                }
+                                                setBotResponding(false);
+                                            }
                                         }
                                     } else if ((msgData.sender_type === "sales_rep" || msgData.sender === "sales_rep")) {
                                         var content = msgData.content || '';
@@ -1409,6 +1444,7 @@ function initializeChatEmbed() {
     function sendMessage(value) {
         var val = input.value.trim() || value
         if (!val) return;
+        if (isBotResponding) return;
         // Save user message immediately
         saveMessage(val, 'user');
         input.value = '';
@@ -1422,6 +1458,7 @@ function initializeChatEmbed() {
         if (!isHandoverActive) {
             saveMessage('', 'bot');
             loadMessages();
+            setBotResponding(true);
         }
 
         if (!isWebSocketConnected || !currentSocket || currentSocket.readyState !== WebSocket.OPEN) {
@@ -1449,6 +1486,7 @@ function initializeChatEmbed() {
                         isWelcomeMessage: false
                     });
                     localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
+                    setBotResponding(false);
                     loadMessages();
                 }
             };
@@ -1475,6 +1513,7 @@ function initializeChatEmbed() {
                     isWelcomeMessage: false
                 });
                 localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
+                setBotResponding(false);
                 loadMessages();
             }
         }
