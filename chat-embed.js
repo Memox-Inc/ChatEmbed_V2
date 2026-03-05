@@ -1679,19 +1679,98 @@ function initializeChatEmbed() {
         emailFieldContainer.appendChild(emailInputRow);
         emailFieldContainer.appendChild(emailError);
 
+        // Country codes data for phone selector
+        var COUNTRY_CODES = [
+            { code: 'US', dial: '+1', flag: '\uD83C\uDDFA\uD83C\uDDF8', name: 'United States', minLen: 10, maxLen: 10 },
+            { code: 'CA', dial: '+1', flag: '\uD83C\uDDE8\uD83C\uDDE6', name: 'Canada', minLen: 10, maxLen: 10 },
+            { code: 'GB', dial: '+44', flag: '\uD83C\uDDEC\uD83C\uDDE7', name: 'United Kingdom', minLen: 10, maxLen: 10 },
+            { code: 'AF', dial: '+93', flag: '\uD83C\uDDE6\uD83C\uDDEB', name: 'Afghanistan', minLen: 9, maxLen: 9 },
+            { code: 'AL', dial: '+355', flag: '\uD83C\uDDE6\uD83C\uDDF1', name: 'Albania', minLen: 8, maxLen: 9 },
+            { code: 'DZ', dial: '+213', flag: '\uD83C\uDDE9\uD83C\uDDFF', name: 'Algeria', minLen: 9, maxLen: 9 },
+            { code: 'AR', dial: '+54', flag: '\uD83C\uDDE6\uD83C\uDDF7', name: 'Argentina', minLen: 10, maxLen: 11 },
+            { code: 'AU', dial: '+61', flag: '\uD83C\uDDE6\uD83C\uDDFA', name: 'Australia', minLen: 9, maxLen: 9 },
+            { code: 'AT', dial: '+43', flag: '\uD83C\uDDE6\uD83C\uDDF9', name: 'Austria', minLen: 10, maxLen: 11 },
+            { code: 'BD', dial: '+880', flag: '\uD83C\uDDE7\uD83C\uDDE9', name: 'Bangladesh', minLen: 10, maxLen: 10 },
+            { code: 'BE', dial: '+32', flag: '\uD83C\uDDE7\uD83C\uDDEA', name: 'Belgium', minLen: 9, maxLen: 9 },
+            { code: 'BR', dial: '+55', flag: '\uD83C\uDDE7\uD83C\uDDF7', name: 'Brazil', minLen: 10, maxLen: 11 },
+            { code: 'BG', dial: '+359', flag: '\uD83C\uDDE7\uD83C\uDDEC', name: 'Bulgaria', minLen: 8, maxLen: 9 },
+            { code: 'KH', dial: '+855', flag: '\uD83C\uDDF0\uD83C\uDDED', name: 'Cambodia', minLen: 8, maxLen: 9 },
+            { code: 'CL', dial: '+56', flag: '\uD83C\uDDE8\uD83C\uDDF1', name: 'Chile', minLen: 9, maxLen: 9 },
+            { code: 'CN', dial: '+86', flag: '\uD83C\uDDE8\uD83C\uDDF3', name: 'China', minLen: 11, maxLen: 11 },
+            { code: 'CO', dial: '+57', flag: '\uD83C\uDDE8\uD83C\uDDF4', name: 'Colombia', minLen: 10, maxLen: 10 },
+            { code: 'CR', dial: '+506', flag: '\uD83C\uDDE8\uD83C\uDDF7', name: 'Costa Rica', minLen: 8, maxLen: 8 },
+            { code: 'HR', dial: '+385', flag: '\uD83C\uDDED\uD83C\uDDF7', name: 'Croatia', minLen: 8, maxLen: 9 },
+            { code: 'CZ', dial: '+420', flag: '\uD83C\uDDE8\uD83C\uDDFF', name: 'Czech Republic', minLen: 9, maxLen: 9 },
+            { code: 'DK', dial: '+45', flag: '\uD83C\uDDE9\uD83C\uDDF0', name: 'Denmark', minLen: 8, maxLen: 8 },
+            { code: 'DO', dial: '+1', flag: '\uD83C\uDDE9\uD83C\uDDF4', name: 'Dominican Republic', minLen: 10, maxLen: 10 },
+            { code: 'EC', dial: '+593', flag: '\uD83C\uDDEA\uD83C\uDDE8', name: 'Ecuador', minLen: 9, maxLen: 9 },
+            { code: 'EG', dial: '+20', flag: '\uD83C\uDDEA\uD83C\uDDEC', name: 'Egypt', minLen: 10, maxLen: 10 },
+            { code: 'FI', dial: '+358', flag: '\uD83C\uDDEB\uD83C\uDDEE', name: 'Finland', minLen: 9, maxLen: 10 },
+            { code: 'FR', dial: '+33', flag: '\uD83C\uDDEB\uD83C\uDDF7', name: 'France', minLen: 9, maxLen: 9 },
+            { code: 'DE', dial: '+49', flag: '\uD83C\uDDE9\uD83C\uDDEA', name: 'Germany', minLen: 10, maxLen: 11 },
+            { code: 'GH', dial: '+233', flag: '\uD83C\uDDEC\uD83C\uDDED', name: 'Ghana', minLen: 9, maxLen: 9 },
+            { code: 'GR', dial: '+30', flag: '\uD83C\uDDEC\uD83C\uDDF7', name: 'Greece', minLen: 10, maxLen: 10 },
+            { code: 'GT', dial: '+502', flag: '\uD83C\uDDEC\uD83C\uDDF9', name: 'Guatemala', minLen: 8, maxLen: 8 },
+            { code: 'HN', dial: '+504', flag: '\uD83C\uDDED\uD83C\uDDF3', name: 'Honduras', minLen: 8, maxLen: 8 },
+            { code: 'HK', dial: '+852', flag: '\uD83C\uDDED\uD83C\uDDF0', name: 'Hong Kong', minLen: 8, maxLen: 8 },
+            { code: 'HU', dial: '+36', flag: '\uD83C\uDDED\uD83C\uDDFA', name: 'Hungary', minLen: 9, maxLen: 9 },
+            { code: 'IN', dial: '+91', flag: '\uD83C\uDDEE\uD83C\uDDF3', name: 'India', minLen: 10, maxLen: 10 },
+            { code: 'ID', dial: '+62', flag: '\uD83C\uDDEE\uD83C\uDDE9', name: 'Indonesia', minLen: 10, maxLen: 12 },
+            { code: 'IE', dial: '+353', flag: '\uD83C\uDDEE\uD83C\uDDEA', name: 'Ireland', minLen: 9, maxLen: 9 },
+            { code: 'IL', dial: '+972', flag: '\uD83C\uDDEE\uD83C\uDDF1', name: 'Israel', minLen: 9, maxLen: 9 },
+            { code: 'IT', dial: '+39', flag: '\uD83C\uDDEE\uD83C\uDDF9', name: 'Italy', minLen: 9, maxLen: 10 },
+            { code: 'JM', dial: '+1', flag: '\uD83C\uDDEF\uD83C\uDDF2', name: 'Jamaica', minLen: 10, maxLen: 10 },
+            { code: 'JP', dial: '+81', flag: '\uD83C\uDDEF\uD83C\uDDF5', name: 'Japan', minLen: 10, maxLen: 10 },
+            { code: 'KE', dial: '+254', flag: '\uD83C\uDDF0\uD83C\uDDEA', name: 'Kenya', minLen: 9, maxLen: 9 },
+            { code: 'MY', dial: '+60', flag: '\uD83C\uDDF2\uD83C\uDDFE', name: 'Malaysia', minLen: 9, maxLen: 10 },
+            { code: 'MX', dial: '+52', flag: '\uD83C\uDDF2\uD83C\uDDFD', name: 'Mexico', minLen: 10, maxLen: 10 },
+            { code: 'MA', dial: '+212', flag: '\uD83C\uDDF2\uD83C\uDDE6', name: 'Morocco', minLen: 9, maxLen: 9 },
+            { code: 'NL', dial: '+31', flag: '\uD83C\uDDF3\uD83C\uDDF1', name: 'Netherlands', minLen: 9, maxLen: 9 },
+            { code: 'NZ', dial: '+64', flag: '\uD83C\uDDF3\uD83C\uDDFF', name: 'New Zealand', minLen: 9, maxLen: 10 },
+            { code: 'NG', dial: '+234', flag: '\uD83C\uDDF3\uD83C\uDDEC', name: 'Nigeria', minLen: 10, maxLen: 10 },
+            { code: 'NO', dial: '+47', flag: '\uD83C\uDDF3\uD83C\uDDF4', name: 'Norway', minLen: 8, maxLen: 8 },
+            { code: 'PK', dial: '+92', flag: '\uD83C\uDDF5\uD83C\uDDF0', name: 'Pakistan', minLen: 10, maxLen: 10 },
+            { code: 'PA', dial: '+507', flag: '\uD83C\uDDF5\uD83C\uDDE6', name: 'Panama', minLen: 7, maxLen: 8 },
+            { code: 'PE', dial: '+51', flag: '\uD83C\uDDF5\uD83C\uDDEA', name: 'Peru', minLen: 9, maxLen: 9 },
+            { code: 'PH', dial: '+63', flag: '\uD83C\uDDF5\uD83C\uDDED', name: 'Philippines', minLen: 10, maxLen: 10 },
+            { code: 'PL', dial: '+48', flag: '\uD83C\uDDF5\uD83C\uDDF1', name: 'Poland', minLen: 9, maxLen: 9 },
+            { code: 'PT', dial: '+351', flag: '\uD83C\uDDF5\uD83C\uDDF9', name: 'Portugal', minLen: 9, maxLen: 9 },
+            { code: 'PR', dial: '+1', flag: '\uD83C\uDDF5\uD83C\uDDF7', name: 'Puerto Rico', minLen: 10, maxLen: 10 },
+            { code: 'RO', dial: '+40', flag: '\uD83C\uDDF7\uD83C\uDDF4', name: 'Romania', minLen: 9, maxLen: 9 },
+            { code: 'RU', dial: '+7', flag: '\uD83C\uDDF7\uD83C\uDDFA', name: 'Russia', minLen: 10, maxLen: 10 },
+            { code: 'SA', dial: '+966', flag: '\uD83C\uDDF8\uD83C\uDDE6', name: 'Saudi Arabia', minLen: 9, maxLen: 9 },
+            { code: 'SG', dial: '+65', flag: '\uD83C\uDDF8\uD83C\uDDEC', name: 'Singapore', minLen: 8, maxLen: 8 },
+            { code: 'ZA', dial: '+27', flag: '\uD83C\uDDFF\uD83C\uDDE6', name: 'South Africa', minLen: 9, maxLen: 9 },
+            { code: 'KR', dial: '+82', flag: '\uD83C\uDDF0\uD83C\uDDF7', name: 'South Korea', minLen: 10, maxLen: 11 },
+            { code: 'ES', dial: '+34', flag: '\uD83C\uDDEA\uD83C\uDDF8', name: 'Spain', minLen: 9, maxLen: 9 },
+            { code: 'SE', dial: '+46', flag: '\uD83C\uDDF8\uD83C\uDDEA', name: 'Sweden', minLen: 9, maxLen: 10 },
+            { code: 'CH', dial: '+41', flag: '\uD83C\uDDE8\uD83C\uDDED', name: 'Switzerland', minLen: 9, maxLen: 9 },
+            { code: 'TW', dial: '+886', flag: '\uD83C\uDDF9\uD83C\uDDFC', name: 'Taiwan', minLen: 9, maxLen: 9 },
+            { code: 'TH', dial: '+66', flag: '\uD83C\uDDF9\uD83C\uDDED', name: 'Thailand', minLen: 9, maxLen: 9 },
+            { code: 'TR', dial: '+90', flag: '\uD83C\uDDF9\uD83C\uDDF7', name: 'Turkey', minLen: 10, maxLen: 10 },
+            { code: 'UA', dial: '+380', flag: '\uD83C\uDDFA\uD83C\uDDE6', name: 'Ukraine', minLen: 9, maxLen: 9 },
+            { code: 'AE', dial: '+971', flag: '\uD83C\uDDE6\uD83C\uDDEA', name: 'United Arab Emirates', minLen: 9, maxLen: 9 },
+            { code: 'UY', dial: '+598', flag: '\uD83C\uDDFA\uD83C\uDDFE', name: 'Uruguay', minLen: 8, maxLen: 8 },
+            { code: 'VE', dial: '+58', flag: '\uD83C\uDDFB\uD83C\uDDEA', name: 'Venezuela', minLen: 10, maxLen: 10 },
+            { code: 'VN', dial: '+84', flag: '\uD83C\uDDFB\uD83C\uDDF3', name: 'Vietnam', minLen: 9, maxLen: 10 }
+        ];
+        var selectedCountry = COUNTRY_CODES[0]; // Default to US
+
         // Phone field (required)
         var phoneFieldContainer = document.createElement('div');
         phoneFieldContainer.style.display = 'flex';
         phoneFieldContainer.style.flexDirection = 'column';
         phoneFieldContainer.style.gap = '4px';
         phoneFieldContainer.style.marginBottom = '4px';
-        phoneFieldContainer.style.height = '63px';
+        phoneFieldContainer.style.minHeight = '63px';
 
 
         var phoneInputRow = document.createElement('div');
         phoneInputRow.style.display = 'flex';
         phoneInputRow.style.alignItems = 'center';
         phoneInputRow.style.gap = '12px';
+        phoneInputRow.style.width = '100%';
+        phoneInputRow.style.minWidth = '0';
 
         var phoneLabel = document.createElement('label');
         phoneLabel.innerText = 'Phone:*';
@@ -1701,59 +1780,265 @@ function initializeChatEmbed() {
         phoneLabel.style.color = '#374151';
         phoneLabel.style.flexShrink = '0';
 
+        // Phone input wrapper — acts as a single unified input field
+        var phoneInputWrapper = document.createElement('div');
+        phoneInputWrapper.style.display = 'flex';
+        phoneInputWrapper.style.alignItems = 'center';
+        phoneInputWrapper.style.flex = '1';
+        phoneInputWrapper.style.position = 'relative';
+        phoneInputWrapper.style.minWidth = '0';
+        phoneInputWrapper.style.border = '1px solid #d1d5db';
+        phoneInputWrapper.style.borderRadius = '6px';
+        phoneInputWrapper.style.background = '#fff';
+        phoneInputWrapper.style.transition = 'all 0.2s ease-in-out';
+        phoneInputWrapper.style.overflow = 'visible';
+
+        function setWrapperFocus(focused) {
+            if (focused) {
+                phoneInputWrapper.style.borderColor = '#3b82f6';
+                phoneInputWrapper.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+            } else if (!phoneInput.classList.contains('error')) {
+                phoneInputWrapper.style.borderColor = '#d1d5db';
+                phoneInputWrapper.style.boxShadow = 'none';
+            } else {
+                phoneInputWrapper.style.boxShadow = 'none';
+            }
+        }
+
+        // Country code button — seamless inside the wrapper
+        var countryCodeBtn = document.createElement('button');
+        countryCodeBtn.type = 'button';
+        countryCodeBtn.style.display = 'flex';
+        countryCodeBtn.style.alignItems = 'center';
+        countryCodeBtn.style.gap = '4px';
+        countryCodeBtn.style.padding = '10px 8px 10px 10px';
+        countryCodeBtn.style.border = 'none';
+        countryCodeBtn.style.borderRight = '1px solid #e5e7eb';
+        countryCodeBtn.style.borderRadius = '6px 0 0 6px';
+        countryCodeBtn.style.fontSize = '13px';
+        countryCodeBtn.style.background = 'transparent';
+        countryCodeBtn.style.cursor = 'pointer';
+        countryCodeBtn.style.outline = 'none';
+        countryCodeBtn.style.flexShrink = '0';
+        countryCodeBtn.style.boxSizing = 'border-box';
+        countryCodeBtn.style.fontFamily = theme.messageFontFamily || theme.fontFamily || 'sans-serif';
+        countryCodeBtn.style.whiteSpace = 'nowrap';
+        countryCodeBtn.style.color = '#374151';
+
+        function updateCountryBtn() {
+            countryCodeBtn.innerHTML = '<span style="font-size:13px">' + selectedCountry.dial + '</span><span style="font-size:8px;color:#9ca3af;margin-left:1px">\u25BC</span>';
+        }
+        updateCountryBtn();
+
+        countryCodeBtn.addEventListener('mouseenter', function() {
+            countryCodeBtn.style.background = '#f3f4f6';
+        });
+        countryCodeBtn.addEventListener('mouseleave', function() {
+            countryCodeBtn.style.background = 'transparent';
+        });
+        countryCodeBtn.addEventListener('focus', function () { setWrapperFocus(true); });
+        countryCodeBtn.addEventListener('blur', function () {
+            // Delay to check if focus moved to phoneInput (still inside wrapper)
+            setTimeout(function() {
+                if (!phoneInputWrapper.contains(document.activeElement)) setWrapperFocus(false);
+            }, 0);
+        });
+
+        // Phone number input — borderless inside the wrapper
         var phoneInput = document.createElement('input');
         phoneInput.type = 'tel';
-        phoneInput.placeholder = '+1 555 123 4567';
-        phoneInput.maxLength = 20;
+        phoneInput.placeholder = '555 123 4567';
+        phoneInput.maxLength = 15;
         phoneInput.style.flex = '1';
         phoneInput.style.padding = '10px 12px';
-        phoneInput.style.border = '1px solid #d1d5db';
-        phoneInput.style.borderRadius = '6px';
+        phoneInput.style.border = 'none';
+        phoneInput.style.borderRadius = '0 6px 6px 0';
         phoneInput.style.fontSize = '14px';
         phoneInput.style.outline = 'none';
-        phoneInput.style.transition = 'all 0.2s ease-in-out';
+        phoneInput.style.background = 'transparent';
         phoneInput.style.fontFamily = theme.messageFontFamily || theme.fontFamily || 'sans-serif';
+        phoneInput.style.minWidth = '0';
+        phoneInput.style.boxSizing = 'border-box';
+        phoneInput.style.width = '0';
+        phoneInput.style.color = '#111827';
 
-        phoneInput.addEventListener('focus', function () {
-            phoneInput.style.borderColor = '#3b82f6';
-            phoneInput.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
-        });
+        phoneInput.addEventListener('focus', function () { setWrapperFocus(true); });
         phoneInput.addEventListener('blur', function () {
-            if (!phoneInput.classList.contains('error')) {
-                phoneInput.style.borderColor = '#d1d5db';
-            }
-            phoneInput.style.boxShadow = 'none';
+            setTimeout(function() {
+                if (!phoneInputWrapper.contains(document.activeElement)) setWrapperFocus(false);
+            }, 0);
         });
 
-        // Helper: strip non-digit characters from phone (keeps + at start)
+        // Country dropdown
+        var countryDropdown = document.createElement('div');
+        countryDropdown.style.position = 'absolute';
+        countryDropdown.style.top = '100%';
+        countryDropdown.style.left = '0';
+        countryDropdown.style.right = '0';
+        countryDropdown.style.background = '#fff';
+        countryDropdown.style.border = '1px solid #e5e7eb';
+        countryDropdown.style.borderRadius = '8px';
+        countryDropdown.style.boxShadow = '0 8px 24px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.08)';
+        countryDropdown.style.zIndex = '9999';
+        countryDropdown.style.display = 'none';
+        countryDropdown.style.marginTop = '4px';
+        countryDropdown.style.overflow = 'hidden';
+
+        var countrySearch = document.createElement('input');
+        countrySearch.type = 'text';
+        countrySearch.placeholder = 'Search country...';
+        countrySearch.style.width = '100%';
+        countrySearch.style.padding = '10px 12px';
+        countrySearch.style.border = 'none';
+        countrySearch.style.borderBottom = '1px solid #f3f4f6';
+        countrySearch.style.fontSize = '16px'; // Prevent iOS zoom
+        countrySearch.style.outline = 'none';
+        countrySearch.style.boxSizing = 'border-box';
+        countrySearch.style.fontFamily = theme.messageFontFamily || theme.fontFamily || 'sans-serif';
+        countrySearch.style.color = '#111827';
+        countrySearch.style.background = '#fafafa';
+
+        var countryList = document.createElement('div');
+        countryList.style.maxHeight = window.innerWidth < 768 ? '150px' : '220px';
+        countryList.style.overflowY = 'auto';
+
+        function renderCountryList(filter) {
+            countryList.innerHTML = '';
+            var lowerFilter = (filter || '').toLowerCase();
+            COUNTRY_CODES.forEach(function(c, idx) {
+                if (lowerFilter && c.name.toLowerCase().indexOf(lowerFilter) === -1 &&
+                    c.dial.indexOf(lowerFilter) === -1 &&
+                    c.code.toLowerCase().indexOf(lowerFilter) === -1) return;
+                var isSelected = c.code === selectedCountry.code && c.dial === selectedCountry.dial;
+                var row = document.createElement('div');
+                row.style.display = 'flex';
+                row.style.alignItems = 'center';
+                row.style.gap = '10px';
+                row.style.padding = '9px 12px';
+                row.style.cursor = 'pointer';
+                row.style.fontSize = '13px';
+                row.style.transition = 'background 0.1s';
+                row.style.background = isSelected ? '#eff6ff' : '';
+                row.style.borderLeft = isSelected ? '2px solid #3b82f6' : '2px solid transparent';
+                row.style.borderBottom = '1px solid #f3f4f6';
+                row.setAttribute('data-idx', String(idx));
+                row.innerHTML = '<span style="font-size:16px;line-height:1">' + c.flag + '</span><span style="flex:1;color:#111827;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + c.name + '</span><span style="color:#9ca3af;font-size:12px;flex-shrink:0">' + c.dial + '</span>';
+                row.addEventListener('mouseenter', function() { if (!isSelected) row.style.background = '#f9fafb'; });
+                row.addEventListener('mouseleave', function() { row.style.background = isSelected ? '#eff6ff' : ''; });
+                row.addEventListener('click', function() {
+                    selectedCountry = c;
+                    updateCountryBtn();
+                    closeDropdown();
+                    phoneInput.focus();
+                });
+                countryList.appendChild(row);
+            });
+        }
+
+        countryDropdown.appendChild(countrySearch);
+        countryDropdown.appendChild(countryList);
+
+        var dropdownOpen = false;
+        function openDropdown() {
+            dropdownOpen = true;
+            countryDropdown.style.display = 'block';
+            countrySearch.value = '';
+            renderCountryList('');
+            // Auto-flip above if not enough space below
+            var wrapperRect = phoneInputWrapper.getBoundingClientRect();
+            var spaceBelow = window.innerHeight - wrapperRect.bottom;
+            if (spaceBelow < 260) {
+                countryDropdown.style.top = 'auto';
+                countryDropdown.style.bottom = '100%';
+                countryDropdown.style.marginTop = '0';
+                countryDropdown.style.marginBottom = '4px';
+            } else {
+                countryDropdown.style.top = '100%';
+                countryDropdown.style.bottom = 'auto';
+                countryDropdown.style.marginTop = '4px';
+                countryDropdown.style.marginBottom = '0';
+            }
+            setTimeout(function() { countrySearch.focus(); }, 0);
+        }
+        function closeDropdown() {
+            dropdownOpen = false;
+            countryDropdown.style.display = 'none';
+        }
+
+        countryCodeBtn.addEventListener('click', function() {
+            if (dropdownOpen) closeDropdown(); else openDropdown();
+        });
+
+        // Close on click outside
+        document.addEventListener('click', function(e) {
+            if (dropdownOpen && !phoneInputWrapper.contains(e.target)) {
+                closeDropdown();
+            }
+        });
+
+        // Close on Escape
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && dropdownOpen) closeDropdown();
+        });
+
+        // Search filtering
+        countrySearch.addEventListener('input', function() {
+            renderCountryList(countrySearch.value);
+        });
+
+        // Keyboard navigation in dropdown
+        countrySearch.addEventListener('keydown', function(e) {
+            var rows = countryList.querySelectorAll('[data-idx]');
+            if (!rows.length) return;
+            var highlighted = countryList.querySelector('.cc-highlighted');
+            var hIdx = -1;
+            for (var i = 0; i < rows.length; i++) {
+                if (rows[i] === highlighted) { hIdx = i; break; }
+            }
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                if (highlighted) { highlighted.style.background = ''; highlighted.classList.remove('cc-highlighted'); }
+                hIdx = (hIdx + 1) % rows.length;
+                rows[hIdx].style.background = '#e5e7eb';
+                rows[hIdx].classList.add('cc-highlighted');
+                rows[hIdx].scrollIntoView({ block: 'nearest' });
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (highlighted) { highlighted.style.background = ''; highlighted.classList.remove('cc-highlighted'); }
+                hIdx = hIdx <= 0 ? rows.length - 1 : hIdx - 1;
+                rows[hIdx].style.background = '#e5e7eb';
+                rows[hIdx].classList.add('cc-highlighted');
+                rows[hIdx].scrollIntoView({ block: 'nearest' });
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                e.stopPropagation();
+                if (highlighted) highlighted.click();
+            }
+        });
+
+        // Helper: strip non-digit characters from phone
         function stripPhoneDigits(val) {
             return val.replace(/\D/g, '');
         }
 
         // Helper: normalize phone to E.164 format for HubSpot
-        // E.164: + followed by country code + number, 7-15 digits total
-        function normalizePhoneE164(val) {
-            var cleaned = val.replace(/[\s\-\(\)\.]/g, '');
-            // Already has + prefix — just strip any remaining non-digit/non-plus chars
-            if (cleaned.charAt(0) === '+') {
-                return '+' + cleaned.substring(1).replace(/\D/g, '');
+        function normalizePhoneE164(localNumber, dialCode) {
+            var digits = localNumber.replace(/\D/g, '');
+            // Strip accidental leading country code digits
+            var dialDigits = dialCode.replace(/\D/g, '');
+            if (digits.length > 0 && digits.indexOf(dialDigits) === 0 && digits.length > dialDigits.length) {
+                var withoutDial = digits.substring(dialDigits.length);
+                if (withoutDial.length >= 7) {
+                    digits = withoutDial;
+                }
             }
-            var digits = cleaned.replace(/\D/g, '');
-            // 10 digits without prefix — assume US/Canada, prepend +1
-            if (digits.length === 10) return '+1' + digits;
-            // Otherwise prepend + (user likely included country code)
-            return '+' + digits;
+            return dialCode + digits;
         }
 
-        // Only allow digits, +, spaces, dashes, parens, dots in the phone field
+        // Only allow digits, spaces, dashes, parens, dots in the phone field (no + needed)
         phoneInput.addEventListener('input', function() {
             var val = phoneInput.value;
-            // Strip any characters that aren't digits, +, space, dash, parens, or dot
-            var cleaned = val.replace(/[^\d\+\s\-\(\)\.]/g, '');
-            // Ensure + only appears at the start
-            var firstChar = cleaned.charAt(0);
-            var rest = cleaned.substring(1).replace(/\+/g, '');
-            cleaned = firstChar + rest;
+            var cleaned = val.replace(/[^\d\s\-\(\)\.]/g, '');
             if (cleaned !== val) {
                 phoneInput.value = cleaned;
             }
@@ -1761,14 +2046,18 @@ function initializeChatEmbed() {
             // Clear error on input
             if (phoneInput.value.trim()) {
                 phoneInput.classList.remove('error');
-                phoneInput.style.borderColor = '#d1d5db';
+                phoneInputWrapper.style.borderColor = '#d1d5db';
                 phoneError.style.opacity = '0';
                 phoneError.style.maxHeight = '0';
             }
         });
 
+        phoneInputWrapper.appendChild(countryCodeBtn);
+        phoneInputWrapper.appendChild(phoneInput);
+        phoneInputWrapper.appendChild(countryDropdown);
+
         phoneInputRow.appendChild(phoneLabel);
-        phoneInputRow.appendChild(phoneInput);
+        phoneInputRow.appendChild(phoneInputWrapper);
 
         // Phone error message with reserved space
         var phoneError = document.createElement('div');
@@ -1957,26 +2246,34 @@ function initializeChatEmbed() {
                 hasErrors = true;
             }
 
-            // Validate phone (required, E.164 compatible: 7-15 digits)
+            // Validate phone (required, per-country length)
             var phoneDigits = stripPhoneDigits(phoneVal);
+            // Strip accidental leading country code digits for validation
+            var dialDigits = selectedCountry.dial.replace(/\D/g, '');
+            if (phoneDigits.indexOf(dialDigits) === 0 && phoneDigits.length > dialDigits.length) {
+                var strippedDigits = phoneDigits.substring(dialDigits.length);
+                if (strippedDigits.length >= selectedCountry.minLen) {
+                    phoneDigits = strippedDigits;
+                }
+            }
             if (!phoneVal) {
                 phoneInput.classList.add('error');
-                phoneInput.style.borderColor = '#ef4444';
+                phoneInputWrapper.style.borderColor = '#ef4444';
                 phoneError.innerText = 'Phone number is required';
                 phoneError.style.opacity = '1';
                 phoneError.style.maxHeight = '40px';
                 hasErrors = true;
-            } else if (phoneDigits.length < 7) {
+            } else if (phoneDigits.length < selectedCountry.minLen) {
                 phoneInput.classList.add('error');
-                phoneInput.style.borderColor = '#ef4444';
-                phoneError.innerText = 'Phone number is too short';
+                phoneInputWrapper.style.borderColor = '#ef4444';
+                phoneError.innerText = 'Phone number is too short for ' + selectedCountry.name;
                 phoneError.style.opacity = '1';
                 phoneError.style.maxHeight = '40px';
                 hasErrors = true;
-            } else if (phoneDigits.length > 15) {
+            } else if (phoneDigits.length > selectedCountry.maxLen) {
                 phoneInput.classList.add('error');
-                phoneInput.style.borderColor = '#ef4444';
-                phoneError.innerText = 'Phone number is too long';
+                phoneInputWrapper.style.borderColor = '#ef4444';
+                phoneError.innerText = 'Phone number is too long for ' + selectedCountry.name;
                 phoneError.style.opacity = '1';
                 phoneError.style.maxHeight = '40px';
                 hasErrors = true;
@@ -2017,7 +2314,7 @@ function initializeChatEmbed() {
                 // Focus on first error field
                 if (!nameVal) nameInput.focus();
                 else if (!emailVal || !/^\S+@\S+\.\S+$/.test(emailVal)) emailInput.focus();
-                else if (!phoneVal || phoneDigits.length < 7 || phoneDigits.length > 15) phoneInput.focus();
+                else if (!phoneVal || phoneDigits.length < selectedCountry.minLen || phoneDigits.length > selectedCountry.maxLen) phoneInput.focus();
                 else if (!zipVal || !/^\d+$/.test(zipVal) || zipVal.length < 4 || zipVal.length > 10) zipInput.focus();
                 return;
             }
@@ -2030,7 +2327,7 @@ function initializeChatEmbed() {
                 await createVisitor(
                     sanitize(nameInput.value),
                     sanitize(emailInput.value),
-                    normalizePhoneE164(phoneInput.value),
+                    normalizePhoneE164(phoneInput.value, selectedCountry.dial),
                     sanitize(zipInput.value)
                 );
             } else {
@@ -2049,7 +2346,7 @@ function initializeChatEmbed() {
             var leadData = {
                 name: sanitize(nameInput.value),
                 email: sanitize(emailInput.value),
-                phone: normalizePhoneE164(phoneInput.value),
+                phone: normalizePhoneE164(phoneInput.value, selectedCountry.dial),
                 zip: sanitize(zipInput.value),
                 timestamp,
                 userAgent,
@@ -2066,7 +2363,7 @@ function initializeChatEmbed() {
             localStorage.setItem('simple-chat-leads', JSON.stringify(leads));
 
             onComplete(leadData);
-            sendMessage(`${nameInput.value} ${emailInput.value} ${normalizePhoneE164(phoneInput.value)} ${zipInput.value}`);  
+            sendMessage(`${nameInput.value} ${emailInput.value} ${normalizePhoneE164(phoneInput.value, selectedCountry.dial)} ${zipInput.value}`);  
 
         };
 
@@ -2490,7 +2787,7 @@ function initializeChatEmbed() {
             // Create fallback visitor info for offline mode
             visitorInfo = {
                 "id": "offline_" + Date.now(),
-                "name": name
+                "name": name 
             };
         }
     }
