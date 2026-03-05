@@ -4,11 +4,10 @@
     if (typeof marked === 'undefined') {
         var script = document.createElement('script');
         script.src = 'https://cdn.jsdelivr.net/npm/marked/lib/marked.umd.js';
-        script.onload = function() {
-            console.log('Marked.js library loaded');
+        script.onload = function () {
             initializeChatEmbed();
         };
-        script.onerror = function() {
+        script.onerror = function () {
             console.warn('Failed to load marked.js from CDN, initializing without it');
             initializeChatEmbed();
         };
@@ -18,460 +17,502 @@
         initializeChatEmbed();
     }
 
-function initializeChatEmbed() {
-    var defaultConfig = {
-        title: 'Chat',
-        customIcon: null, // Can be SVG string or image URL
-        botIcon: {
-            svgWidth: '24px',      // Width of the SVG/image element
-            svgHeight: '24px',     // Height of the SVG/image element
-            width: '24px',         // Width of the bot icon container
-            height: '24px',        // Height of the bot icon container
-            objectFit: 'contain',  // How image should fit: contain, cover, fill, etc.
-            botAvatarUrl: null     // URL for custom bot avatar icon
-        },
-        theme: {
-            primary: '#0078d4',
-            userBubble: '#e6f0fa',
-            botBubble: '#f1f1f1',
-            userText: '#22223b',
-            botText: '#4a4e69',
-            background: '#fff',
-            containerBg: '#ffffff',
-            messagesBg: '#ffffff',
-            inputContainerBg: '#ffffff',
-            border: '#ccc',
-            text: '#222',
-            width: '100%',
-            maxWidth: '350px',
-            minWidth: '220px',
-            borderRadius: '8px',
-            fontFamily: 'sans-serif',
-            zIndex: 9999,
-            inputBg: '#fff',
-            inputText: '#222',
-            sendBtnBg: '#0078d4',
-            sendBtnText: '#fff',
-            sendBtnSvgColor: '#fff',
-            sendBtnHover: '#005fa3',
-            shadow: '0 2px 8px rgba(0,0,0,0.15)',
-            salesRepBubble: '#f1f5f9',
-            salesRepText: '#475569',
-            salesRepAvatar: '#E4E7FC',
-            userAvatar: '#8349ff',
-            botAvatar: '#E4E7FC',
-            userAvatarSvgColor: '#fff',
-            botAvatarSvgColor: '#8349ff',
-            salesRepAvatarSvgColor: '#8349ff',
-            userAvatarBorder: 'none',
-            botAvatarBorder: 'none',
-            salesRepAvatarBorder: 'none',
-            timestampColor: '#9ca3af',
-            messageFontFamily: 'inherit',
-            handoverNotificationBg: '#E4E7FC',
-            handoverNotificationText: '#334155',
-            handoverNotificationBorder: '#8349FF',
-            closeBtnIconStyle:{
-                display:""
+    function initializeChatEmbed() {
+        var defaultConfig = {
+            title: 'Chat',
+            customIcon: null, // Can be SVG string or image URL
+            botIcon: {
+                svgWidth: '24px',      // Width of the SVG/image element
+                svgHeight: '24px',     // Height of the SVG/image element
+                width: '24px',         // Width of the bot icon container
+                height: '24px',        // Height of the bot icon container
+                objectFit: 'contain',  // How image should fit: contain, cover, fill, etc.
+                botAvatarUrl: null     // URL for custom bot avatar icon
             },
-            headerStyle: {
-                backgroundColor: 'rgba(34, 34, 59, 0.95)',
-                textColor: '#fff',
-                fontWeight: '600',
-                fontFamily: '',
-                height: 'auto',
-                padding: '32px',
-                borderRadius: '12px',
-                logoStyle: {
-                    logoUrl: '',
-                    logoWidth: '24px',
-                    logoHeight: '24px',
-                    borderRadius: '0'
+            theme: {
+                primary: '#0078d4',
+                userBubble: '#e6f0fa',
+                botBubble: '#f1f1f1',
+                userText: '#22223b',
+                botText: '#4a4e69',
+                background: '#fff',
+                containerBg: '#ffffff',
+                messagesBg: '#ffffff',
+                inputContainerBg: '#ffffff',
+                border: '#ccc',
+                text: '#222',
+                width: '100%',
+                maxWidth: '350px',
+                minWidth: '220px',
+                borderRadius: '8px',
+                fontFamily: 'sans-serif',
+                zIndex: 9999,
+                inputBg: '#fff',
+                inputText: '#222',
+                sendBtnBg: '#0078d4',
+                sendBtnText: '#fff',
+                sendBtnSvgColor: '#fff',
+                sendBtnHover: '#005fa3',
+                shadow: '0 2px 8px rgba(0,0,0,0.15)',
+                salesRepBubble: '#f1f5f9',
+                salesRepText: '#475569',
+                salesRepAvatar: '#E4E7FC',
+                userAvatar: '#8349ff',
+                botAvatar: '#E4E7FC',
+                userAvatarSvgColor: '#fff',
+                botAvatarSvgColor: '#8349ff',
+                salesRepAvatarSvgColor: '#8349ff',
+                userAvatarBorder: 'none',
+                botAvatarBorder: 'none',
+                salesRepAvatarBorder: 'none',
+                timestampColor: '#9ca3af',
+                messageFontFamily: 'inherit',
+                handoverNotificationBg: '#E4E7FC',
+                handoverNotificationText: '#334155',
+                handoverNotificationBorder: '#8349FF',
+                closeBtnIconStyle: {
+                    display: ""
+                },
+                headerStyle: {
+                    backgroundColor: 'rgba(34, 34, 59, 0.95)',
+                    textColor: '#fff',
+                    fontWeight: '600',
+                    fontFamily: '',
+                    height: 'auto',
+                    padding: '32px',
+                    borderRadius: '12px',
+                    logoStyle: {
+                        logoUrl: '',
+                        logoWidth: '24px',
+                        logoHeight: '24px',
+                        borderRadius: '0'
+                    }
                 }
             }
-        }
-    };
+        };
 
-    var config = window.SimpleChatEmbedConfig ? {
-        ...defaultConfig,
-        ...window.SimpleChatEmbedConfig,
-        theme: { ...defaultConfig.theme, ...(window.SimpleChatEmbedConfig.theme || {}) }
-    } : defaultConfig;
+        var config = window.SimpleChatEmbedConfig ? {
+            ...defaultConfig,
+            ...window.SimpleChatEmbedConfig,
+            theme: { ...defaultConfig.theme, ...(window.SimpleChatEmbedConfig.theme || {}) }
+        } : defaultConfig;
 
-    var theme = config.theme;
-    var apiUrl = config.apiUrl;
-    var welcomeMessage = config.welcomeMessage || null;
-    var welcomeMessageStyle = config.welcomeMessageStyle || {};
-    var socketUrl = config.socketUrl + "/ws/app/";
-    var leadCapture = config.leadCapture !== undefined ? config.leadCapture : true; // Default to true if not specified
-    var ngrok = config.ngrok ?? false
-    var isMobileDevice = config.isMobileDevice ?? false
+        var theme = config.theme;
+        var apiUrl = config.apiUrl;
+        var welcomeMessage = config.welcomeMessage || null;
+        var welcomeMessageStyle = config.welcomeMessageStyle || {};
+        var socketUrl = config.socketUrl + "/ws/app/";
+        var leadCapture = config.leadCapture !== undefined ? config.leadCapture : true; // Default to true if not specified
+        var ngrok = config.ngrok ?? false
+        var isMobileDevice = config.isMobileDevice ?? false
 
-    var currentSocket = null;
-    var heartBeatInterval = null;
-    var isWebSocketConnected = false;
-    var visitorInfo = null;
-    var isHandoverActive = false;
-    var isFormShowing = false;
-    var chatID = null
-    var isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        var currentSocket = null;
+        var heartBeatInterval = null;
+        var isWebSocketConnected = false;
+        var visitorInfo = null;
+        var isHandoverActive = false;
+        var isFormShowing = false;
+        var chatID = null
+        var isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
-    // Function to update button states based on form visibility
-    function updateButtonStates() {
-        if (isFormShowing) {
-            // Disable appearance when form is showing
-            refreshBtn.style.opacity = '0.5';
-            refreshBtn.style.cursor = 'not-allowed';
-            clearSessionBtn.style.opacity = '0.5';
-            clearSessionBtn.style.cursor = 'not-allowed';
-        } else {
-            // Enable appearance when form is not showing
-            refreshBtn.style.opacity = '1';
-            refreshBtn.style.cursor = 'pointer';
-            clearSessionBtn.style.opacity = '1';
-            clearSessionBtn.style.cursor = 'pointer';
-        }
-    }
-
-    function generateChatId() {
-        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-            var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
-            return v.toString(16);
-        });
-    }
-
-    var chatContainer = document.createElement('div');
-    chatContainer.id = 'simple-chat-embed';
-    chatContainer.style.position = 'fixed';
-    chatContainer.style.bottom = '20px';
-    
-    // Set horizontal position based on config
-    if (config.position === 'left') {
-        chatContainer.style.left = '20px';
-        chatContainer.style.right = 'auto';
-    } else {
-        chatContainer.style.right = '20px';
-        chatContainer.style.left = 'auto';
-    }
-    console.log(theme.containerBorderStyle,'my border style')
-    chatContainer.style.width = '384px';
-    chatContainer.style.height = '80vh';
-    chatContainer.style.maxHeight = '650px';
-    chatContainer.style.background = theme.containerBg || '#ffffff';
-    chatContainer.style.border = theme.containerBorderStyle || '1px solid #e2e8f0';
-    chatContainer.style.borderRadius = (theme.headerStyle && theme.headerStyle.borderRadius) || '12px';
-    chatContainer.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)';
-    chatContainer.style.fontFamily = theme.fontFamily + ', Inter, system-ui, sans-serif';
-    chatContainer.style.zIndex = theme.zIndex;
-    chatContainer.style.color = theme.text;
-    chatContainer.style.transition = 'transform 0.3s ease-in-out';
-    chatContainer.style.display = 'flex';
-    chatContainer.style.flexDirection = 'column';
-    chatContainer.style.overflow = 'hidden';
-
-    function setResponsive() {
-        if (window.innerWidth < 768) {
-            chatContainer.style.position = 'fixed';
-            chatContainer.style.top = '0';
-            chatContainer.style.left = '0';
-            chatContainer.style.right = '0';
-            chatContainer.style.bottom = '0';
-            chatContainer.style.width = '100%';
-            chatContainer.style.height = '100dvh'; // Dynamic viewport height for mobile browsers
-            chatContainer.style.borderRadius = '0';
-            // chatContainer.style.maxHeight = '100vh';
-            chatContainer.style.maxHeight = '100dvh';
-
-        } else {
-            chatContainer.style.position = 'fixed';
-            chatContainer.style.top = 'auto';
-            
-            // Set horizontal position based on config
-            if (config.position === 'left') {
-                chatContainer.style.left = '20px';
-                chatContainer.style.right = 'auto';
+        // Function to update button states based on form visibility
+        function updateButtonStates() {
+            if (isFormShowing) {
+                // Disable appearance when form is showing
+                refreshBtn.style.opacity = '0.5';
+                refreshBtn.style.cursor = 'not-allowed';
+                clearSessionBtn.style.opacity = '0.5';
+                clearSessionBtn.style.cursor = 'not-allowed';
             } else {
-                chatContainer.style.left = 'auto';
-                chatContainer.style.right = '20px';
-            }
-            
-            chatContainer.style.bottom = '20px';
-            chatContainer.style.width = '384px';
-            chatContainer.style.height = '80vh';
-            chatContainer.style.borderRadius = (theme.headerStyle && theme.headerStyle.borderRadius) || '12px';
-            chatContainer.style.maxHeight = '650px';
-        }
-    }
-    setResponsive();
-    window.addEventListener('resize', setResponsive);
-    var originalHeight = window.innerHeight;
-    function handleMobileKeyboard() {
-        if (isMobile && window.innerWidth < 768) {
-            var currentHeight = window.innerHeight;
-            var keyboardHeight = originalHeight - currentHeight;
-            
-            // If keyboard is visible (height changed significantly)
-            if (keyboardHeight > 100) {
-                chatContainer.style.height = currentHeight + 'px';
-                chatContainer.style.maxHeight = currentHeight + 'px';
-                
-                // Scroll to show input
-                setTimeout(function() {
-                    inputContainer.scrollIntoView({ behavior: 'smooth', block: 'end' });
-                }, 100);
-            } else {
-                // Keyboard hidden, restore original size
-                chatContainer.style.height = '100vh';
-                chatContainer.style.height = '100dvh';
-                chatContainer.style.maxHeight = '100vh';
-                chatContainer.style.maxHeight = '100dvh';
-            }
-        }
-    }
-
-    window.addEventListener('resize', handleMobileKeyboard);
-    window.visualViewport && window.visualViewport.addEventListener('resize', handleMobileKeyboard);
-
-
-    var header = document.createElement('div');
-    header.style.display = 'flex';
-    header.style.justifyContent = 'space-between';
-    header.style.alignItems = 'center';
-    header.style.background = (theme.headerStyle && theme.headerStyle.backgroundColor) || theme.headerBg || '#16a34a';
-    header.style.color = (theme.headerStyle && theme.headerStyle.textColor) || theme.headerText || '#fff';
-    header.style.padding = (theme.headerStyle && theme.headerStyle.padding) || '32px';
-    header.style.height = (theme.headerStyle && theme.headerStyle.height) || 'auto';
-    header.style.borderTopLeftRadius = (theme.headerStyle && theme.headerStyle.borderRadius) || '12px';
-    header.style.borderTopRightRadius = (theme.headerStyle && theme.headerStyle.borderRadius) || '12px';
-    header.style.fontWeight = (theme.headerStyle && theme.headerStyle.fontWeight) || '600';
-    header.style.fontFamily = (theme.headerStyle && theme.headerStyle.fontFamily) || theme.messageFontFamily || theme.fontFamily || 'sans-serif';
-    header.style.fontSize = (theme.headerStyle && theme.headerStyle.fontSize) || "18px";
-    header.style.lineHeight = '28px';
-    header.style.position  = "sticky";
-    header.style.top  = "0";
-
-    var headerTitleContainer = document.createElement('div');
-    headerTitleContainer.style.display = 'flex';
-    headerTitleContainer.style.alignItems = 'center';
-    headerTitleContainer.style.gap = '12px';
-
-    // Add logo if provided
-    var logoStyle = (theme.headerStyle && theme.headerStyle.logoStyle) || theme.headerStyle || {};
-    var logoUrl = logoStyle.logoUrl || (theme.headerStyle && theme.headerStyle.logoUrl) || '';
-    
-    if (logoUrl) {
-        var headerLogo = document.createElement('img');
-        headerLogo.src = logoUrl;
-        headerLogo.alt = 'Logo';
-        headerLogo.style.width = logoStyle.logoWidth || (theme.headerStyle && theme.headerStyle.logoWidth) || '24px';
-        headerLogo.style.height = logoStyle.logoHeight || (theme.headerStyle && theme.headerStyle.logoHeight) || '24px';
-        headerLogo.style.borderRadius = logoStyle.borderRadius || '0';
-        headerLogo.style.objectFit = 'cover';
-        headerTitleContainer.appendChild(headerLogo);
-    }
-
-    var headerTitle = document.createElement('div');
-    headerTitle.innerText = config.title;
-    headerTitleContainer.appendChild(headerTitle);
-    header.appendChild(headerTitleContainer);
-
-    var headerActions = document.createElement('div');
-    headerActions.style.display = 'flex';
-    headerActions.style.gap = '4px';
-
-    var refreshBtn = document.createElement('button');
-    refreshBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="m21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg>';
-    refreshBtn.title = 'Clear chat history';
-    refreshBtn.style.background = 'transparent';
-    refreshBtn.style.color = (theme.headerStyle && theme.headerStyle.textColor) || theme.headerText || '#fff';
-    refreshBtn.style.border = 'none';
-    refreshBtn.style.padding = '8px';
-    refreshBtn.style.cursor = 'pointer';
-    refreshBtn.style.borderRadius = '6px';
-    refreshBtn.style.display = 'flex';
-    refreshBtn.style.alignItems = 'center';
-    refreshBtn.style.justifyContent = 'center';
-    refreshBtn.style.transition = 'background-color 0.2s ease-in-out';
-    refreshBtn.onmouseover = function () { 
-        if (!isFormShowing) {
-            refreshBtn.style.backgroundColor = 'rgba(255,255,255,0.1)'; 
-        }
-    };
-    refreshBtn.onmouseout = function () { 
-        refreshBtn.style.backgroundColor = 'transparent'; 
-    };
-    refreshBtn.onclick = function () {
-        // Don't allow reset when form is showing
-        if (isFormShowing) {
-            return;
-        }
-        
-        var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
-        var wasHandoverActive = msgs.some(function (msg) {
-            return msg.isSystemNotification && msg.notificationType === 'joined';
-        });
-
-        var storedSession = localStorage.getItem('simple-chat-session');
-        var sessionHandoverActive = false;
-        if (storedSession) {
-            try {
-                var sessionData = JSON.parse(storedSession);
-                sessionHandoverActive = sessionData.handoverOccurred === true;
-            } catch (error) {
-                console.log('Error reading session handover flag:', error);
+                // Enable appearance when form is not showing
+                refreshBtn.style.opacity = '1';
+                refreshBtn.style.cursor = 'pointer';
+                clearSessionBtn.style.opacity = '1';
+                clearSessionBtn.style.cursor = 'pointer';
             }
         }
 
-        localStorage.removeItem('simple-chat-messages');
-
-        if (!wasHandoverActive && !sessionHandoverActive) {
-            isHandoverActive = false;
-        } else {
-            isHandoverActive = true;
-        }
-
-
-        setupChatInput();
-        if (welcomeMessage) {
-            saveMessage(welcomeMessage, 'bot', 'welcomeMessage');
-        }
-        loadMessages();
-    };
-
-    // Create Clear Session button
-    var clearSessionBtn = document.createElement('button');
-    clearSessionBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>';
-    clearSessionBtn.title = 'Clear session & restart';
-    clearSessionBtn.style.background = 'transparent';
-    clearSessionBtn.style.color = (theme.headerStyle && theme.headerStyle.textColor) || theme.headerText || '#fff';
-    clearSessionBtn.style.border = 'none';
-    clearSessionBtn.style.padding = '8px';
-    clearSessionBtn.style.cursor = 'pointer';
-    clearSessionBtn.style.borderRadius = '6px';
-    clearSessionBtn.style.display = 'flex';
-    clearSessionBtn.style.alignItems = 'center';
-    clearSessionBtn.style.justifyContent = 'center';
-    clearSessionBtn.style.transition = 'background-color 0.2s ease-in-out';
-    clearSessionBtn.onmouseover = function () { 
-        if (!isFormShowing) {
-            clearSessionBtn.style.backgroundColor = 'rgba(255,255,255,0.1)'; 
-        }
-    };
-    clearSessionBtn.onmouseout = function () { 
-        clearSessionBtn.style.backgroundColor = 'transparent'; 
-    };
-    clearSessionBtn.onclick = function () {
-        // Don't allow session clear when form is showing
-        if (isFormShowing) {
-            return;
-        }
-        
-        // Clear all chat data
-        localStorage.removeItem('simple-chat-messages');
-        localStorage.removeItem('simple-chat-session');
-        localStorage.removeItem('simple-chat-leads');
-        localStorage.removeItem('simple-chat-user-guid');
-        
-        // Reset all flags
-        isHandoverActive = false;
-        isFormShowing = false;
-        window.__simpleChatEmbedLeadCaptured = false;
-        visitorInfo = null;
-        
-        // Close WebSocket connection
-        if (currentSocket) {
-            currentSocket.close();
-            currentSocket = null;
-            isWebSocketConnected = false;
-        }
-        
-        // Clear messages display
-        messages.innerHTML = '';
-        
-        // Check leadCapture setting
-        if (!leadCapture) {
-            // Lead capture disabled - create anonymous visitor and start fresh
-            window.__simpleChatEmbedLeadCaptured = true;
-            setupChatInput();
-            
-            createVisitor(null, null, null, null).then(() => {
-                if (welcomeMessage) {
-                    saveMessage(welcomeMessage, 'bot', 'welcomeMessage');
-                }
-                loadMessages();
-                connectWebSocket();
-            }).catch((error) => {
-                console.error('Failed to create anonymous visitor:', error);
-                if (welcomeMessage) {
-                    saveMessage(welcomeMessage, 'bot', 'welcomeMessage');
-                }
-                loadMessages();
-                connectWebSocket();
+        function generateChatId() {
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+                var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
             });
+        }
+
+        var chatContainer = document.createElement('div');
+        chatContainer.id = 'simple-chat-embed';
+        chatContainer.style.position = 'fixed';
+        chatContainer.style.bottom = '20px';
+
+        // Set horizontal position based on config
+        if (config.position === 'left') {
+            chatContainer.style.left = '20px';
+            chatContainer.style.right = 'auto';
         } else {
-            // Lead capture enabled - show form again
-            inputContainer.style.display = 'none';
-            showLeadCaptureInChat(function (lead) {
-                isFormShowing = false;
-                updateButtonStates();
-                window.__simpleChatEmbedLeadCaptured = true;
-                if (lead) {
-                    window.SimpleChatEmbedLead = lead;
+            chatContainer.style.right = '20px';
+            chatContainer.style.left = 'auto';
+        }
+        chatContainer.style.width = '384px';
+        chatContainer.style.height = '80vh';
+        chatContainer.style.maxHeight = '650px';
+        chatContainer.style.background = theme.containerBg || '#ffffff';
+        chatContainer.style.border = theme.containerBorderStyle || '1px solid #e2e8f0';
+        chatContainer.style.borderRadius = (theme.headerStyle && theme.headerStyle.borderRadius) || '12px';
+        chatContainer.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)';
+        chatContainer.style.fontFamily = theme.fontFamily + ', Inter, system-ui, sans-serif';
+        chatContainer.style.zIndex = theme.zIndex;
+        chatContainer.style.color = theme.text;
+        chatContainer.style.transition = 'transform 0.3s ease-in-out';
+        chatContainer.style.display = 'flex';
+        chatContainer.style.flexDirection = 'column';
+        chatContainer.style.overflow = 'hidden';
+
+        function setResponsive() {
+            if (window.innerWidth < 768) {
+                chatContainer.style.position = 'fixed';
+                chatContainer.style.top = '0';
+                chatContainer.style.left = '0';
+                chatContainer.style.right = '0';
+                chatContainer.style.bottom = '0';
+                chatContainer.style.width = '100%';
+                chatContainer.style.height = '100dvh'; // Dynamic viewport height for mobile browsers
+                chatContainer.style.borderRadius = '0';
+                // chatContainer.style.maxHeight = '100vh';
+                chatContainer.style.maxHeight = '100dvh';
+
+            } else {
+                chatContainer.style.position = 'fixed';
+                chatContainer.style.top = 'auto';
+
+                // Set horizontal position based on config
+                if (config.position === 'left') {
+                    chatContainer.style.left = '20px';
+                    chatContainer.style.right = 'auto';
+                } else {
+                    chatContainer.style.left = 'auto';
+                    chatContainer.style.right = '20px';
                 }
+
+                chatContainer.style.bottom = '20px';
+                chatContainer.style.width = '384px';
+                chatContainer.style.height = '80vh';
+                chatContainer.style.borderRadius = (theme.headerStyle && theme.headerStyle.borderRadius) || '12px';
+                chatContainer.style.maxHeight = '650px';
+            }
+        }
+        setResponsive();
+        window.addEventListener('resize', setResponsive);
+        var originalHeight = window.innerHeight;
+        function handleMobileKeyboard() {
+            if (isMobile && window.innerWidth < 768) {
+                var currentHeight = window.innerHeight;
+                var keyboardHeight = originalHeight - currentHeight;
+
+                // If keyboard is visible (height changed significantly)
+                if (keyboardHeight > 100) {
+                    chatContainer.style.height = currentHeight + 'px';
+                    chatContainer.style.maxHeight = currentHeight + 'px';
+
+                    // Scroll to show input
+                    setTimeout(function () {
+                        inputContainer.scrollIntoView({ behavior: 'smooth', block: 'end' });
+                    }, 100);
+                } else {
+                    // Keyboard hidden, restore original size
+                    chatContainer.style.height = '100vh';
+                    chatContainer.style.height = '100dvh';
+                    chatContainer.style.maxHeight = '100vh';
+                    chatContainer.style.maxHeight = '100dvh';
+                }
+            }
+        }
+
+        window.addEventListener('resize', handleMobileKeyboard);
+        window.visualViewport && window.visualViewport.addEventListener('resize', handleMobileKeyboard);
+
+
+        var header = document.createElement('div');
+        header.style.display = 'flex';
+        header.style.justifyContent = 'space-between';
+        header.style.alignItems = 'center';
+        header.style.background = (theme.headerStyle && theme.headerStyle.backgroundColor) || theme.headerBg || '#16a34a';
+        header.style.color = (theme.headerStyle && theme.headerStyle.textColor) || theme.headerText || '#fff';
+        header.style.padding = (theme.headerStyle && theme.headerStyle.padding) || '32px';
+        header.style.height = (theme.headerStyle && theme.headerStyle.height) || 'auto';
+        header.style.borderTopLeftRadius = (theme.headerStyle && theme.headerStyle.borderRadius) || '12px';
+        header.style.borderTopRightRadius = (theme.headerStyle && theme.headerStyle.borderRadius) || '12px';
+        header.style.fontWeight = (theme.headerStyle && theme.headerStyle.fontWeight) || '600';
+        header.style.fontFamily = (theme.headerStyle && theme.headerStyle.fontFamily) || theme.messageFontFamily || theme.fontFamily || 'sans-serif';
+        header.style.fontSize = (theme.headerStyle && theme.headerStyle.fontSize) || "18px";
+        header.style.lineHeight = '28px';
+        header.style.position = "sticky";
+        header.style.top = "0";
+
+        var headerTitleContainer = document.createElement('div');
+        headerTitleContainer.style.display = 'flex';
+        headerTitleContainer.style.alignItems = 'center';
+        headerTitleContainer.style.gap = '12px';
+
+        // Add logo if provided
+        var logoStyle = (theme.headerStyle && theme.headerStyle.logoStyle) || theme.headerStyle || {};
+        var logoUrl = logoStyle.logoUrl || (theme.headerStyle && theme.headerStyle.logoUrl) || '';
+
+        if (logoUrl) {
+            var headerLogo = document.createElement('img');
+            headerLogo.src = logoUrl;
+            headerLogo.alt = 'Logo';
+            headerLogo.style.width = logoStyle.logoWidth || (theme.headerStyle && theme.headerStyle.logoWidth) || '24px';
+            headerLogo.style.height = logoStyle.logoHeight || (theme.headerStyle && theme.headerStyle.logoHeight) || '24px';
+            headerLogo.style.borderRadius = logoStyle.borderRadius || '0';
+            headerLogo.style.objectFit = 'cover';
+            headerTitleContainer.appendChild(headerLogo);
+        }
+
+        var headerTitle = document.createElement('div');
+        headerTitle.innerText = config.title;
+        headerTitleContainer.appendChild(headerTitle);
+        header.appendChild(headerTitleContainer);
+
+        var headerActions = document.createElement('div');
+        headerActions.style.display = 'flex';
+        headerActions.style.gap = '4px';
+
+        var refreshBtn = document.createElement('button');
+        refreshBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="m21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg>';
+        refreshBtn.title = 'Clear chat history';
+        refreshBtn.style.background = 'transparent';
+        refreshBtn.style.color = (theme.headerStyle && theme.headerStyle.textColor) || theme.headerText || '#fff';
+        refreshBtn.style.border = 'none';
+        refreshBtn.style.padding = '8px';
+        refreshBtn.style.cursor = 'pointer';
+        refreshBtn.style.borderRadius = '6px';
+        refreshBtn.style.display = 'flex';
+        refreshBtn.style.alignItems = 'center';
+        refreshBtn.style.justifyContent = 'center';
+        refreshBtn.style.transition = 'background-color 0.2s ease-in-out';
+        refreshBtn.onmouseover = function () {
+            if (!isFormShowing) {
+                refreshBtn.style.backgroundColor = 'rgba(255,255,255,0.1)';
+            }
+        };
+        refreshBtn.onmouseout = function () {
+            refreshBtn.style.backgroundColor = 'transparent';
+        };
+        refreshBtn.onclick = function () {
+            // Don't allow reset when form is showing
+            if (isFormShowing) {
+                return;
+            }
+
+            var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
+            var wasHandoverActive = msgs.some(function (msg) {
+                return msg.isSystemNotification && msg.notificationType === 'joined';
+            });
+
+            var storedSession = localStorage.getItem('simple-chat-session');
+            var sessionHandoverActive = false;
+            if (storedSession) {
+                try {
+                    var sessionData = JSON.parse(storedSession);
+                    sessionHandoverActive = sessionData.handoverOccurred === true;
+                } catch (error) {
+                    console.log('Error reading session handover flag:', error);
+                }
+            }
+
+            localStorage.removeItem('simple-chat-messages');
+
+            if (!wasHandoverActive && !sessionHandoverActive) {
+                isHandoverActive = false;
+            } else {
+                isHandoverActive = true;
+            }
+
+
+            setupChatInput();
+            if (welcomeMessage) {
+                saveMessage(welcomeMessage, 'bot', 'welcomeMessage');
+            }
+            loadMessages();
+        };
+
+        // Create Clear Session button
+        var clearSessionBtn = document.createElement('button');
+        clearSessionBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>';
+        clearSessionBtn.title = 'Clear session & restart';
+        clearSessionBtn.style.background = 'transparent';
+        clearSessionBtn.style.color = (theme.headerStyle && theme.headerStyle.textColor) || theme.headerText || '#fff';
+        clearSessionBtn.style.border = 'none';
+        clearSessionBtn.style.padding = '8px';
+        clearSessionBtn.style.cursor = 'pointer';
+        clearSessionBtn.style.borderRadius = '6px';
+        clearSessionBtn.style.display = 'flex';
+        clearSessionBtn.style.alignItems = 'center';
+        clearSessionBtn.style.justifyContent = 'center';
+        clearSessionBtn.style.transition = 'background-color 0.2s ease-in-out';
+        clearSessionBtn.onmouseover = function () {
+            if (!isFormShowing) {
+                clearSessionBtn.style.backgroundColor = 'rgba(255,255,255,0.1)';
+            }
+        };
+        clearSessionBtn.onmouseout = function () {
+            clearSessionBtn.style.backgroundColor = 'transparent';
+        };
+        clearSessionBtn.onclick = function () {
+            // Don't allow session clear when form is showing
+            if (isFormShowing) {
+                return;
+            }
+            resetSession();
+        };
+
+        // Reusable function to fully reset the chat session
+        function resetSession() {
+            // Clear all chat data
+            localStorage.removeItem('simple-chat-messages');
+            localStorage.removeItem('simple-chat-session');
+            localStorage.removeItem('simple-chat-leads');
+            localStorage.removeItem('simple-chat-user-guid');
+
+            // Reset all flags
+            isHandoverActive = false;
+            isFormShowing = false;
+            window.__simpleChatEmbedLeadCaptured = false;
+            visitorInfo = null;
+            chatID = null;
+
+            // Close WebSocket connection and clear heartbeat
+            if (heartBeatInterval) {
+                clearInterval(heartBeatInterval);
+                heartBeatInterval = null;
+            }
+            if (currentSocket) {
+                currentSocket.close();
+                currentSocket = null;
+                isWebSocketConnected = false;
+            }
+
+            // Re-enable input in case it was disabled
+            input.disabled = false;
+            input.style.opacity = '1';
+            sendBtn.disabled = false;
+            sendBtn.style.opacity = '1';
+            sendBtn.style.cursor = 'pointer';
+
+            // Clear messages display
+            messages.innerHTML = '';
+
+            // Check leadCapture setting
+            if (!leadCapture) {
+                // Lead capture disabled - create anonymous visitor and start fresh
+                window.__simpleChatEmbedLeadCaptured = true;
                 setupChatInput();
 
-                if (welcomeMessage) {
-                    saveMessage(welcomeMessage, 'bot', 'welcomeMessage');
-                }
-                loadMessages();
-            });
+                createVisitor(null, null, null, null).then(() => {
+                    if (welcomeMessage) {
+                        saveMessage(welcomeMessage, 'bot', 'welcomeMessage');
+                    }
+                    loadMessages();
+                    connectWebSocket();
+                }).catch((error) => {
+                    console.error('Failed to create anonymous visitor:', error);
+                    if (welcomeMessage) {
+                        saveMessage(welcomeMessage, 'bot', 'welcomeMessage');
+                    }
+                    loadMessages();
+                    connectWebSocket();
+                });
+            } else {
+                // Lead capture enabled - show form again
+                inputContainer.style.display = 'none';
+                showLeadCaptureInChat(function (lead) {
+                    isFormShowing = false;
+                    updateButtonStates();
+                    window.__simpleChatEmbedLeadCaptured = true;
+                    if (lead) {
+                        window.SimpleChatEmbedLead = lead;
+                    }
+                    setupChatInput();
+
+                    if (welcomeMessage) {
+                        saveMessage(welcomeMessage, 'bot', 'welcomeMessage');
+                    }
+                    loadMessages();
+                });
+            }
         }
-    };
 
-    var closeBtn = document.createElement('button');
-    closeBtn.style.display = theme.closeBtnIconStyle.display || "flex"
-    closeBtn.setAttribute("id","close-btn")
-    closeBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>';
-    closeBtn.title = 'Close chat';
-    closeBtn.style.background = 'transparent';
-    closeBtn.style.color = (theme.headerStyle && theme.headerStyle.textColor) || theme.headerText || '#fff';
-    closeBtn.style.border = 'none';
-    closeBtn.style.padding = '8px';
-    closeBtn.style.cursor = 'pointer';
-    closeBtn.style.borderRadius = '6px';
-    closeBtn.style.alignItems = 'center';
-    closeBtn.style.justifyContent = 'center';
-    closeBtn.style.transition = 'background-color 0.2s ease-in-out';
-    closeBtn.onmouseover = function () { closeBtn.style.backgroundColor = 'rgba(255,255,255,0.1)'; };
-    closeBtn.onmouseout = function () { closeBtn.style.backgroundColor = 'transparent'; };
+        // Show a session-closed notification, then reset after a delay
+        function showSessionClosedNotification(message) {
+            var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
+            msgs.push({
+                text: message || 'This chat session has been closed.',
+                sender: 'system',
+                isWelcomeMessage: false,
+                isSystemNotification: true,
+                notificationType: 'session_closed',
+                created_at: formatTimeStamp(new Date().toISOString())
+            });
+            localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
+            loadMessages();
 
-    var chatCloseBtn = closeBtn;
+            // Disable input during the transition
+            input.disabled = true;
+            input.style.opacity = '0.5';
+            sendBtn.disabled = true;
+            sendBtn.style.opacity = '0.5';
+            sendBtn.style.cursor = 'not-allowed';
 
-    headerActions.appendChild(refreshBtn);
-    headerActions.appendChild(clearSessionBtn);
-    headerActions.appendChild(closeBtn);
-    header.appendChild(headerActions);
+            // Reset session after a short delay so user can read the notification
+            setTimeout(function () {
+                resetSession();
+            }, 3000);
+        }
 
-    chatContainer.appendChild(header);
+        var closeBtn = document.createElement('button');
+        closeBtn.style.display = theme.closeBtnIconStyle.display || "flex"
+        closeBtn.setAttribute("id", "close-btn")
+        closeBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>';
+        closeBtn.title = 'Close chat';
+        closeBtn.style.background = 'transparent';
+        closeBtn.style.color = (theme.headerStyle && theme.headerStyle.textColor) || theme.headerText || '#fff';
+        closeBtn.style.border = 'none';
+        closeBtn.style.padding = '8px';
+        closeBtn.style.cursor = 'pointer';
+        closeBtn.style.borderRadius = '6px';
+        closeBtn.style.alignItems = 'center';
+        closeBtn.style.justifyContent = 'center';
+        closeBtn.style.transition = 'background-color 0.2s ease-in-out';
+        closeBtn.onmouseover = function () { closeBtn.style.backgroundColor = 'rgba(255,255,255,0.1)'; };
+        closeBtn.onmouseout = function () { closeBtn.style.backgroundColor = 'transparent'; };
 
-    var messages = document.createElement('div');
-    messages.style.flex = '1 1 0%';
-    messages.style.overflowY = 'auto';
-    messages.style.overflowX = 'hidden';
-    messages.style.padding = theme.messagesContainerPadding || '16px';
-    messages.style.background = theme.messagesBg || '#ffffff';
-    messages.style.webkitOverflowScrolling = 'touch'; // Smooth scrolling on iOS
-    messages.id = 'chat-messages';
-    messages.style.display = 'flex';
-    messages.style.flexDirection = 'column';
-    messages.style.gap = '16px';
-    messages.style.scrollBehavior = 'smooth';
-    messages.style.scrollbarWidth = 'none';
-    messages.style.msOverflowStyle = 'none';
-    
-    
-    var style = document.createElement('style');
-    style.textContent = `
+        var chatCloseBtn = closeBtn;
+
+        headerActions.appendChild(refreshBtn);
+        headerActions.appendChild(clearSessionBtn);
+        headerActions.appendChild(closeBtn);
+        header.appendChild(headerActions);
+
+        chatContainer.appendChild(header);
+
+        var messages = document.createElement('div');
+        messages.style.flex = '1 1 0%';
+        messages.style.overflowY = 'auto';
+        messages.style.overflowX = 'hidden';
+        messages.style.padding = theme.messagesContainerPadding || '16px';
+        messages.style.background = theme.messagesBg || '#ffffff';
+        messages.style.webkitOverflowScrolling = 'touch'; // Smooth scrolling on iOS
+        messages.id = 'chat-messages';
+        messages.style.display = 'flex';
+        messages.style.flexDirection = 'column';
+        messages.style.gap = '16px';
+        messages.style.scrollBehavior = 'smooth';
+        messages.style.scrollbarWidth = 'none';
+        messages.style.msOverflowStyle = 'none';
+
+
+        var style = document.createElement('style');
+        style.textContent = `
         #chat-messages::-webkit-scrollbar { display: none; }
         #simple-chat-embed ul { list-style-type: disc !important; }
         #simple-chat-embed ol { list-style-type: decimal !important; }
@@ -496,455 +537,462 @@ function initializeChatEmbed() {
             }
         }
     `;
-    document.head.appendChild(style);
+        document.head.appendChild(style);
 
-    chatContainer.appendChild(messages);
+        chatContainer.appendChild(messages);
 
-    // Get scroll button styles from config
-    var scrollButtonStyle = theme.scrollButtonStyle || {};
-    var scrollIconColor = scrollButtonStyle.iconColor || '#ffffff';
-    var scrollBgColor = scrollButtonStyle.backgroundColor || theme.sendBtnBg || '#3b82f6';
-    var scrollHoverColor = scrollButtonStyle.hoverColor || theme.sendBtnHover || '#2563eb';
-    var scrollPosition = scrollButtonStyle.position || {};
-    var scrollRight = scrollPosition.right || '16px';
-    var scrollBottom = scrollPosition.bottom || '80px';
+        // Get scroll button styles from config
+        var scrollButtonStyle = theme.scrollButtonStyle || {};
+        var scrollIconColor = scrollButtonStyle.iconColor || '#ffffff';
+        var scrollBgColor = scrollButtonStyle.backgroundColor || theme.sendBtnBg || '#3b82f6';
+        var scrollHoverColor = scrollButtonStyle.hoverColor || theme.sendBtnHover || '#2563eb';
+        var scrollPosition = scrollButtonStyle.position || {};
+        var scrollRight = scrollPosition.right || '16px';
+        var scrollBottom = scrollPosition.bottom || '80px';
 
-    var scrollToBottomBtn = document.createElement('button');
-    scrollToBottomBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 13 5 5 5-5"/><path d="M12 18V6"/></svg>';
-    scrollToBottomBtn.title = 'Scroll to bottom';
-    scrollToBottomBtn.style.position = 'absolute';
-    scrollToBottomBtn.style.right = scrollRight;
-    scrollToBottomBtn.style.bottom = scrollBottom;
-    scrollToBottomBtn.style.width = '40px';
-    scrollToBottomBtn.style.height = '40px';
-    scrollToBottomBtn.style.borderRadius = '50%';
-    scrollToBottomBtn.style.background = scrollBgColor;
-    scrollToBottomBtn.style.color = scrollIconColor;
-    scrollToBottomBtn.style.border = 'none';
-    scrollToBottomBtn.style.cursor = 'pointer';
-    scrollToBottomBtn.style.display = 'none';
-    scrollToBottomBtn.style.alignItems = 'center';
-    scrollToBottomBtn.style.justifyContent = 'center';
-    scrollToBottomBtn.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
-    scrollToBottomBtn.style.transition = 'all 0.3s ease';
-    scrollToBottomBtn.style.zIndex = '10';
-
-    scrollToBottomBtn.addEventListener('mouseover', function () {
-        scrollToBottomBtn.style.backgroundColor = scrollHoverColor;
-        scrollToBottomBtn.style.transform = 'scale(1.1)';
-    });
-    scrollToBottomBtn.addEventListener('mouseout', function () {
-        scrollToBottomBtn.style.backgroundColor = scrollBgColor;
-        scrollToBottomBtn.style.transform = 'scale(1)';
-    });
-
-    scrollToBottomBtn.onclick = function () {
-        messages.scrollTop = messages.scrollHeight;
+        var scrollToBottomBtn = document.createElement('button');
+        scrollToBottomBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 13 5 5 5-5"/><path d="M12 18V6"/></svg>';
+        scrollToBottomBtn.title = 'Scroll to bottom';
+        scrollToBottomBtn.style.position = 'absolute';
+        scrollToBottomBtn.style.right = scrollRight;
+        scrollToBottomBtn.style.bottom = scrollBottom;
+        scrollToBottomBtn.style.width = '40px';
+        scrollToBottomBtn.style.height = '40px';
+        scrollToBottomBtn.style.borderRadius = '50%';
+        scrollToBottomBtn.style.background = scrollBgColor;
+        scrollToBottomBtn.style.color = scrollIconColor;
+        scrollToBottomBtn.style.border = 'none';
+        scrollToBottomBtn.style.cursor = 'pointer';
         scrollToBottomBtn.style.display = 'none';
-    };
+        scrollToBottomBtn.style.alignItems = 'center';
+        scrollToBottomBtn.style.justifyContent = 'center';
+        scrollToBottomBtn.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
+        scrollToBottomBtn.style.transition = 'all 0.3s ease';
+        scrollToBottomBtn.style.zIndex = '10';
 
-    chatContainer.appendChild(scrollToBottomBtn);
+        scrollToBottomBtn.addEventListener('mouseover', function () {
+            scrollToBottomBtn.style.backgroundColor = scrollHoverColor;
+            scrollToBottomBtn.style.transform = 'scale(1.1)';
+        });
+        scrollToBottomBtn.addEventListener('mouseout', function () {
+            scrollToBottomBtn.style.backgroundColor = scrollBgColor;
+            scrollToBottomBtn.style.transform = 'scale(1)';
+        });
 
-    // Get input container styles from config
-    var inputContainerStyle = theme.inputContainerStyle || {};
-    var inputContainerPadding = inputContainerStyle.padding || '16px';
-    var inputContainerBorderTop = inputContainerStyle.borderTop || '1px solid #ececec';
+        scrollToBottomBtn.onclick = function () {
+            messages.scrollTop = messages.scrollHeight;
+            scrollToBottomBtn.style.display = 'none';
+        };
 
-    var inputContainer = document.createElement('div');
-    inputContainer.style.padding = inputContainerPadding;
-    inputContainer.style.background = theme.inputContainerBg || '#ffffff';
-    inputContainer.style.display = 'flex';
-    inputContainer.style.flexDirection = 'column';
-    inputContainer.style.borderBottomLeftRadius = '12px';
-    inputContainer.style.borderBottomRightRadius = '12px';
+        chatContainer.appendChild(scrollToBottomBtn);
 
-    // Quick question buttons container (placed in messages area, below welcome message)
-    var quickButtonsContainer = document.createElement('div');
-    quickButtonsContainer.style.display = 'none'; // Initially hidden, shown after welcome message renders
-    quickButtonsContainer.style.flexDirection = 'row';
-    quickButtonsContainer.style.flexWrap = 'wrap';
-    quickButtonsContainer.style.gap = '8px';
-    quickButtonsContainer.style.paddingLeft = '44px';
-    quickButtonsContainer.style.width = 'auto';
+        // Get input container styles from config
+        var inputContainerStyle = theme.inputContainerStyle || {};
+        var inputContainerPadding = inputContainerStyle.padding || '16px';
+        var inputContainerBorderTop = inputContainerStyle.borderTop || '1px solid #ececec';
 
-    // Create quick question buttons if configured
-    if (config.quickQuestions && config.quickQuestions.length > 0) {
-        config.quickQuestions.forEach(function(question, index) {
-            var quickBtn = document.createElement('button');
-            quickBtn.innerText = question;
-            quickBtn.style.padding = '8px 16px';
-            quickBtn.style.background = '#ffffff';
-            quickBtn.style.color = '#6b7280';
-            quickBtn.style.border = '1px solid #e5e7eb';
-            quickBtn.style.borderRadius = '9999px';
-            quickBtn.style.cursor = 'pointer';
-            quickBtn.style.fontSize = '14px';
-            quickBtn.style.fontWeight = '500';
-            quickBtn.style.transition = 'all 0.2s ease-in-out';
-            quickBtn.style.width = 'auto';
-            quickBtn.style.textAlign = 'center';
-            quickBtn.style.boxSizing = 'border-box';
-            quickBtn.style.whiteSpace = 'nowrap';
+        var inputContainer = document.createElement('div');
+        inputContainer.style.padding = inputContainerPadding;
+        inputContainer.style.background = theme.inputContainerBg || '#ffffff';
+        inputContainer.style.display = 'flex';
+        inputContainer.style.flexDirection = 'column';
+        inputContainer.style.borderBottomLeftRadius = '12px';
+        inputContainer.style.borderBottomRightRadius = '12px';
 
-            quickBtn.addEventListener('mouseover', function() {
-                quickBtn.style.borderColor = theme.primary || '#8349FF';
-                quickBtn.style.color = theme.primary || '#8349FF';
-                quickBtn.style.background = '#ffffff';
-            });
+        // Quick question buttons container (placed in messages area, below welcome message)
+        var quickButtonsContainer = document.createElement('div');
+        quickButtonsContainer.style.display = 'none'; // Initially hidden, shown after welcome message renders
+        quickButtonsContainer.style.flexDirection = 'row';
+        quickButtonsContainer.style.flexWrap = 'wrap';
+        quickButtonsContainer.style.gap = '8px';
+        quickButtonsContainer.style.paddingLeft = '44px';
+        quickButtonsContainer.style.width = 'auto';
 
-            quickBtn.addEventListener('mouseout', function() {
+        // Create quick question buttons if configured
+        if (config.quickQuestions && config.quickQuestions.length > 0) {
+            config.quickQuestions.forEach(function (question, index) {
+                var quickBtn = document.createElement('button');
+                quickBtn.innerText = question;
+                quickBtn.style.padding = '8px 16px';
                 quickBtn.style.background = '#ffffff';
                 quickBtn.style.color = '#6b7280';
-                quickBtn.style.borderColor = '#e5e7eb';
-            });
+                quickBtn.style.border = '1px solid #e5e7eb';
+                quickBtn.style.borderRadius = '9999px';
+                quickBtn.style.cursor = 'pointer';
+                quickBtn.style.fontSize = '14px';
+                quickBtn.style.fontWeight = '500';
+                quickBtn.style.transition = 'all 0.2s ease-in-out';
+                quickBtn.style.width = 'auto';
+                quickBtn.style.textAlign = 'center';
+                quickBtn.style.boxSizing = 'border-box';
+                quickBtn.style.whiteSpace = 'nowrap';
 
-            quickBtn.addEventListener('click', function() {
-                input.value = question;
-                sendMessage();
-                // Hide quick buttons after first use if not permanent
-                if (!config.quickQuestionsPermanent) {
-                    quickButtonsContainer.style.display = 'none';
-                }
-            });
+                quickBtn.addEventListener('mouseover', function () {
+                    quickBtn.style.borderColor = theme.primary || '#8349FF';
+                    quickBtn.style.color = theme.primary || '#8349FF';
+                    quickBtn.style.background = '#ffffff';
+                });
 
-            quickButtonsContainer.appendChild(quickBtn);
+                quickBtn.addEventListener('mouseout', function () {
+                    quickBtn.style.background = '#ffffff';
+                    quickBtn.style.color = '#6b7280';
+                    quickBtn.style.borderColor = '#e5e7eb';
+                });
+
+                quickBtn.addEventListener('click', function () {
+                    input.value = question;
+                    sendMessage();
+                    // Hide quick buttons after first use if not permanent
+                    if (!config.quickQuestionsPermanent) {
+                        quickButtonsContainer.style.display = 'none';
+                    }
+                });
+
+                quickButtonsContainer.appendChild(quickBtn);
+            });
+        }
+
+        chatContainer.appendChild(inputContainer);
+
+        var inputForm = document.createElement('div');
+        inputForm.style.display = 'grid';
+        inputForm.style.gridTemplateColumns = '1fr auto';
+        inputForm.style.gap = '16px';
+        inputForm.style.alignItems = 'center';
+        inputForm.style.width = '100%';
+
+        var input = document.createElement('input');
+        input.type = 'text';
+        input.placeholder = 'Type your message...';
+        input.style.padding = '12px 16px';
+        input.style.border = theme.inputContainerStyle?.inputStyle?.border || '1px solid #d1d5db';
+        input.style.borderRadius = '6px';
+        input.style.background = '#ffffff';
+        input.style.color = '#374151';
+        input.style.fontSize = '14px';
+        input.style.lineHeight = '20px';
+        input.style.outline = theme.inputContainerStyle?.inputStyle?.outline || 'none';
+        input.style.transition = theme.inputContainerStyle?.inputStyle?.transition || 'border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out';
+        input.style.fontFamily = theme.messageFontFamily || theme.fontFamily || 'sans-serif';
+
+        input.addEventListener('focus', function () {
+            input.style.border = theme.inputContainerStyle?.inputStyle?.borderOnFocus || '1px solid #3b82f6';
+            input.style.boxShadow = theme.inputContainerStyle?.inputStyle?.boxShadowOnFocus || '0 0 0 3px rgba(59, 130, 246, 0.1)';
         });
-    }
+        input.addEventListener('blur', function () {
+            input.style.border = theme.inputContainerStyle?.inputStyle?.borderOnBlur || '1px solid #d1d5db';
+            input.style.boxShadow = theme.inputContainerStyle?.inputStyle?.boxShadowOnBlur || 'none';
+        });
 
-    chatContainer.appendChild(inputContainer);
+        // Enable/disable send button based on input value
+        input.addEventListener('input', function () {
+            if (input.value.trim()) {
+                sendBtn.disabled = false;
+                sendBtn.style.opacity = '1';
+                sendBtn.style.cursor = 'pointer';
+            } else {
+                sendBtn.disabled = true;
+                sendBtn.style.opacity = '0.5';
+                sendBtn.style.cursor = 'not-allowed';
+            }
+        });
 
-    var inputForm = document.createElement('div');
-    inputForm.style.display = 'grid';
-    inputForm.style.gridTemplateColumns = '1fr auto';
-    inputForm.style.gap = '16px';
-    inputForm.style.alignItems = 'center';
-    inputForm.style.width = '100%';
+        // Create the “Send” <button> field
+        var sendBtn = document.createElement('button');
+        sendBtn.title = 'Send';
+        var sendBtnSvgColor = theme.sendBtnSvgColor || '#fff';
+        sendBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="' + sendBtnSvgColor + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>';
+        sendBtn.style.padding = '12px';
+        sendBtn.style.background = theme.sendBtnBg || '#3b82f6';
+        sendBtn.style.color = '#ffffff';
+        sendBtn.style.border = 'none';
+        sendBtn.style.borderRadius = '6px';
+        sendBtn.style.cursor = 'pointer';
+        sendBtn.style.display = 'flex';
+        sendBtn.style.alignItems = 'center';
+        sendBtn.style.justifyContent = 'center';
+        sendBtn.style.transition = 'background-color 0.2s ease-in-out, opacity 0.2s ease-in-out';
+        sendBtn.disabled = true;
+        sendBtn.style.opacity = '0.5';
+        sendBtn.style.cursor = 'not-allowed';
 
-    var input = document.createElement('input');
-    input.type = 'text';
-    input.placeholder = 'Type your message...';
-    input.style.padding = '12px 16px';
-    input.style.border = theme.inputContainerStyle?.inputStyle?.border || '1px solid #d1d5db';
-    input.style.borderRadius = '6px';
-    input.style.background = '#ffffff';
-    input.style.color = '#374151';
-    input.style.fontSize = '14px';
-    input.style.lineHeight = '20px';
-    input.style.outline = theme.inputContainerStyle?.inputStyle?.outline || 'none';
-    input.style.transition = theme.inputContainerStyle?.inputStyle?.transition || 'border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out';
-    input.style.fontFamily = theme.messageFontFamily || theme.fontFamily || 'sans-serif';
+        sendBtn.addEventListener('mouseover', function () {
+            if (!sendBtn.disabled) {
+                sendBtn.style.backgroundColor = theme.sendBtnHover || '#2563eb';
+            }
+        });
+        sendBtn.addEventListener('mouseout', function () {
+            if (!sendBtn.disabled) {
+                sendBtn.style.backgroundColor = theme.sendBtnBg || '#3b82f6';
+            }
+        });
 
-    input.addEventListener('focus', function () {
-        input.style.border = theme.inputContainerStyle?.inputStyle?.borderOnFocus || '1px solid #3b82f6';
-        input.style.boxShadow = theme.inputContainerStyle?.inputStyle?.boxShadowOnFocus ||  '0 0 0 3px rgba(59, 130, 246, 0.1)';
-    });
-    input.addEventListener('blur', function () {
-        input.style.border = theme.inputContainerStyle?.inputStyle?.borderOnBlur || '1px solid #d1d5db';
-        input.style.boxShadow = theme.inputContainerStyle?.inputStyle?.boxShadowOnBlur || 'none';
-    });
+        inputForm.appendChild(input);
+        inputForm.appendChild(sendBtn);
 
-    // Enable/disable send button based on input value
-    input.addEventListener('input', function () {
-        if (input.value.trim()) {
-            sendBtn.disabled = false;
-            sendBtn.style.opacity = '1';
-            sendBtn.style.cursor = 'pointer';
-        } else {
-            sendBtn.disabled = true;
-            sendBtn.style.opacity = '0.5';
-            sendBtn.style.cursor = 'not-allowed';
+        inputContainer.appendChild(inputForm);
+        chatContainer.appendChild(inputContainer);
+
+        document.body.appendChild(chatContainer);
+
+        // Helper function to check if string is image data URL
+        function isImageDataUrl(str) {
+            return typeof str === 'string' && str.startsWith('data:image/');
         }
-    });
 
-    // Create the “Send” <button> field
-    var sendBtn = document.createElement('button');
-    sendBtn.title = 'Send';
-    var sendBtnSvgColor = theme.sendBtnSvgColor || '#fff';
-    sendBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="' + sendBtnSvgColor + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>';
-    sendBtn.style.padding = '12px';
-    sendBtn.style.background = theme.sendBtnBg || '#3b82f6';
-    sendBtn.style.color = '#ffffff';
-    sendBtn.style.border = 'none';
-    sendBtn.style.borderRadius = '6px';
-    sendBtn.style.cursor = 'pointer';
-    sendBtn.style.display = 'flex';
-    sendBtn.style.alignItems = 'center';
-    sendBtn.style.justifyContent = 'center';
-    sendBtn.style.transition = 'background-color 0.2s ease-in-out, opacity 0.2s ease-in-out';
-    sendBtn.disabled = true;
-    sendBtn.style.opacity = '0.5';
-    sendBtn.style.cursor = 'not-allowed';
-
-    sendBtn.addEventListener('mouseover', function () {
-        if (!sendBtn.disabled) {
-            sendBtn.style.backgroundColor = theme.sendBtnHover || '#2563eb';
-        }
-    });
-    sendBtn.addEventListener('mouseout', function () {
-        if (!sendBtn.disabled) {
-            sendBtn.style.backgroundColor = theme.sendBtnBg || '#3b82f6';
-        }
-    });
-
-    inputForm.appendChild(input);
-    inputForm.appendChild(sendBtn);
-
-    inputContainer.appendChild(inputForm);
-    chatContainer.appendChild(inputContainer);
-
-    document.body.appendChild(chatContainer);
-
-    // Helper function to check if string is image data URL
-    function isImageDataUrl(str) {
-        return typeof str === 'string' && str.startsWith('data:image/');
-    }
-
-    function createBouncingDots() {
-        var loader = document.createElement('span');
-        loader.style.display = 'inline-flex';
-        loader.style.alignItems = 'center';
-        loader.style.height = '1.5em';
-        var dotColor = theme.botText || '#4a4e69';
-        loader.innerHTML = `
+        function createBouncingDots() {
+            var loader = document.createElement('span');
+            loader.style.display = 'inline-flex';
+            loader.style.alignItems = 'center';
+            loader.style.height = '1.5em';
+            var dotColor = theme.botText || '#4a4e69';
+            loader.innerHTML = `
       <span style="display:inline-block;width:8px;height:8px;margin:0 2px;background:${dotColor};border-radius:50%;animation:bounce 1s infinite alternate;"></span>
       <span style="display:inline-block;width:8px;height:8px;margin:0 2px;background:${dotColor};border-radius:50%;animation:bounce 1s 0.2s infinite alternate;"></span>
       <span style="display:inline-block;width:8px;height:8px;margin:0 2px;background:${dotColor};border-radius:50%;animation:bounce 1s 0.4s infinite alternate;"></span>
     `;
-        // Add keyframes if not already present
-        if (!document.getElementById('simple-chat-bounce-style')) {
-            var style = document.createElement('style');
-            style.id = 'simple-chat-bounce-style';
-            style.innerHTML = `@keyframes bounce { 0% { transform: translateY(0); } 100% { transform: translateY(-7px); } }`;
-            document.head.appendChild(style);
-        }
-        return loader;
-    }
-
-    // Helper: convert markdown to HTML using marked.js library
-    function markdownToHtml(text, isStreaming = false) {
-        if (!text) return '';
-
-        // Always use marked.js for consistent processing, whether streaming or not
-        try {
-            // Check if marked is available
-            if (typeof marked === 'undefined') {
-                throw new Error('marked.js not available');
+            // Add keyframes if not already present
+            if (!document.getElementById('simple-chat-bounce-style')) {
+                var style = document.createElement('style');
+                style.id = 'simple-chat-bounce-style';
+                style.innerHTML = `@keyframes bounce { 0% { transform: translateY(0); } 100% { transform: translateY(-7px); } }`;
+                document.head.appendChild(style);
             }
-            
-            // Use marked with minimal configuration first to test
-            var result = marked.parse(text, {
-                breaks: true, // Convert single line breaks to <br>
-                gfm: true // GitHub flavored markdown
-            });
-            
-            // Post-process to add our custom styles to links
-            if (typeof result === 'string') {
-                // Add custom styling to p tags for AI messages
-                result = result.replace(/<p>/g, '<p style="font-size:inherit;line-height:inherit;font-family:inherit;font-weight:inherit;margin:0;">');
-                
-                // Add custom styling to links
-                result = result.replace(/<a\s+href="([^"]*)"([^>]*)>([^<]*)<\/a>/g, function(match, href, attrs, text) {
-                    return '<a href="' + href + '" target="_blank" style="font-weight:bold;color:' + (theme.botText || '#4a4e69') + ';text-decoration:underline;cursor:pointer;">' + text + '</a>';
-                });
-                
-                // Add custom styling to lists
-                result = result.replace(/<ul>/g, '<ul style="margin:8px 0;padding-left:24px;">');
-                result = result.replace(/<ol>/g, '<ol style="margin:8px 0;padding-left:24px;">');
-                result = result.replace(/<li>/g, '<li style="margin:4px 0;">');
-                
-                // Add custom styling to code blocks
-                result = result.replace(/<pre><code>/g, '<pre style="background:#f6f8fa;border:1px solid #e1e4e8;border-radius:6px;padding:16px;margin:8px 0;overflow-x:auto;font-family:ui-monospace,SFMono-Regular,\'SF Mono\',Consolas,\'Liberation Mono\',Menlo,monospace;font-size:13px;line-height:1.45;"><code>');
-                result = result.replace(/<code>/g, '<code style="background:#f6f8fa;border-radius:3px;padding:2px 4px;font-family:ui-monospace,SFMono-Regular,\'SF Mono\',Consolas,\'Liberation Mono\',Menlo,monospace;font-size:85%;">');
-                
-                // Add custom styling to strong/em
-                result = result.replace(/<strong>/g, '<strong style="font-weight:600;">');
-                result = result.replace(/<em>/g, '<em style="font-style:italic;">');
-                
-                return result;
-            }
-            
-            return String(result);
-            
-        } catch (error) {
-            console.error('Markdown parsing error:', error);
-            // Fallback to escaped text with line breaks
-            return escapeHtml(text).replace(/\n/g, '<br>');
-        }
-    }
-
-    // Helper function to escape HTML
-    function escapeHtml(text) {
-        var div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-
-    // Load messages from localStorage
-    // Load messages with modern avatar design like ChatWindowComponent
-    function loadMessages() {
-        var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
-        messages.innerHTML = '';
-
-        // Check if handover has already occurred by looking for handover messages
-        var hasHandoverMessage = msgs.some(function (msg) {
-            return msg.isSystemNotification && msg.notificationType === 'joined';
-        });
-
-        // Set handover flag if handover message exists in chat history
-        if (hasHandoverMessage) {
-            isHandoverActive = true;
+            return loader;
         }
 
-        for (var i = 0; i < msgs.length; i++) {
-            var msg = msgs[i];
+        // Helper: convert markdown to HTML using marked.js library
+        function markdownToHtml(text, isStreaming = false) {
+            if (!text) return '';
 
-            // Handle system notifications (like handover messages) differently
-            if (msg.isSystemNotification) {
-                var notificationContainer = document.createElement('div');
-                notificationContainer.style.display = 'flex';
-                notificationContainer.style.justifyContent = 'center';
-                notificationContainer.style.margin = '16px 0';
-                notificationContainer.style.animation = 'fadeInUp 0.5s ease-out';
-
-                var notification = document.createElement('div');
-                notification.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
-                notification.style.color = '#ffffff';
-                notification.style.padding = '12px 24px';
-                notification.style.borderRadius = '20px';
-                notification.style.fontSize = '14px';
-                notification.style.fontWeight = '500';
-                notification.style.display = 'flex';
-                notification.style.alignItems = 'center';
-                notification.style.gap = '8px';
-                notification.style.maxWidth = '80%';
-                notification.style.textAlign = 'center';
-
-                // Add icon based on notification type
-                var icon = document.createElement('span');
-                if (msg.notificationType === 'joined') {
-                    icon.innerHTML = '👋';
-                    notification.style.background = theme.handoverNotificationBg || '#E4E7FC';
-                    notification.style.color = theme.handoverNotificationText || '#334155';
-                    notification.style.border = '1px solid ' + (theme.handoverNotificationBorder || '#8349FF');
-                } else {
-                    icon.innerHTML = '💬';
+            // Always use marked.js for consistent processing, whether streaming or not
+            try {
+                // Check if marked is available
+                if (typeof marked === 'undefined') {
+                    throw new Error('marked.js not available');
                 }
-                icon.style.fontSize = '16px';
 
-                notification.appendChild(icon);
-                notification.appendChild(document.createTextNode(msg.text));
-                notificationContainer.appendChild(notification);
+                // Use marked with minimal configuration first to test
+                var result = marked.parse(text, {
+                    breaks: true, // Convert single line breaks to <br>
+                    gfm: true // GitHub flavored markdown
+                });
 
-                // Add fade-in animation if not already present
-                if (!document.getElementById('system-notification-style')) {
-                    var style = document.createElement('style');
-                    style.id = 'system-notification-style';
-                    style.innerHTML = `
+                // Post-process to add our custom styles to links
+                if (typeof result === 'string') {
+                    // Add custom styling to p tags for AI messages
+                    result = result.replace(/<p>/g, '<p style="font-size:inherit;line-height:inherit;font-family:inherit;font-weight:inherit;margin:0;">');
+
+                    // Add custom styling to links
+                    result = result.replace(/<a\s+href="([^"]*)"([^>]*)>([^<]*)<\/a>/g, function (match, href, attrs, text) {
+                        return '<a href="' + href + '" target="_blank" style="font-weight:bold;color:' + (theme.botText || '#4a4e69') + ';text-decoration:underline;cursor:pointer;">' + text + '</a>';
+                    });
+
+                    // Add custom styling to lists
+                    result = result.replace(/<ul>/g, '<ul style="margin:8px 0;padding-left:24px;">');
+                    result = result.replace(/<ol>/g, '<ol style="margin:8px 0;padding-left:24px;">');
+                    result = result.replace(/<li>/g, '<li style="margin:4px 0;">');
+
+                    // Add custom styling to code blocks
+                    result = result.replace(/<pre><code>/g, '<pre style="background:#f6f8fa;border:1px solid #e1e4e8;border-radius:6px;padding:16px;margin:8px 0;overflow-x:auto;font-family:ui-monospace,SFMono-Regular,\'SF Mono\',Consolas,\'Liberation Mono\',Menlo,monospace;font-size:13px;line-height:1.45;"><code>');
+                    result = result.replace(/<code>/g, '<code style="background:#f6f8fa;border-radius:3px;padding:2px 4px;font-family:ui-monospace,SFMono-Regular,\'SF Mono\',Consolas,\'Liberation Mono\',Menlo,monospace;font-size:85%;">');
+
+                    // Add custom styling to strong/em
+                    result = result.replace(/<strong>/g, '<strong style="font-weight:600;">');
+                    result = result.replace(/<em>/g, '<em style="font-style:italic;">');
+
+                    return result;
+                }
+
+                return String(result);
+
+            } catch (error) {
+                console.error('Markdown parsing error:', error);
+                // Fallback to escaped text with line breaks
+                return escapeHtml(text).replace(/\n/g, '<br>');
+            }
+        }
+
+        // Helper function to escape HTML
+        function escapeHtml(text) {
+            var div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Load messages from localStorage
+        // Load messages with modern avatar design like ChatWindowComponent
+        function loadMessages() {
+            var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
+            messages.innerHTML = '';
+
+            // Check if handover has already occurred by looking for handover messages
+            var hasHandoverMessage = msgs.some(function (msg) {
+                return msg.isSystemNotification && msg.notificationType === 'joined';
+            });
+
+            // Set handover flag if handover message exists in chat history
+            if (hasHandoverMessage) {
+                isHandoverActive = true;
+            }
+
+            for (var i = 0; i < msgs.length; i++) {
+                var msg = msgs[i];
+
+                // Handle system notifications (like handover messages) differently
+                if (msg.isSystemNotification) {
+                    var notificationContainer = document.createElement('div');
+                    notificationContainer.style.display = 'flex';
+                    notificationContainer.style.justifyContent = 'center';
+                    notificationContainer.style.margin = '16px 0';
+                    notificationContainer.style.animation = 'fadeInUp 0.5s ease-out';
+
+                    var notification = document.createElement('div');
+                    notification.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+                    notification.style.color = '#ffffff';
+                    notification.style.padding = '12px 24px';
+                    notification.style.borderRadius = '20px';
+                    notification.style.fontSize = '14px';
+                    notification.style.fontWeight = '500';
+                    notification.style.display = 'flex';
+                    notification.style.alignItems = 'center';
+                    notification.style.gap = '8px';
+                    notification.style.maxWidth = '80%';
+                    notification.style.textAlign = 'center';
+
+                    // Add icon based on notification type
+                    var icon = document.createElement('span');
+                    if (msg.notificationType === 'session_closed') {
+                        icon.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#991B1B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>';
+                        icon.style.display = 'flex';
+                        icon.style.alignItems = 'center';
+                        notification.style.background = '#FEE2E2';
+                        notification.style.color = '#991B1B';
+                        notification.style.border = '1px solid #F87171';
+                    } else if (msg.notificationType === 'joined') {
+                        icon.innerHTML = '👋';
+                        notification.style.background = theme.handoverNotificationBg || '#E4E7FC';
+                        notification.style.color = theme.handoverNotificationText || '#334155';
+                        notification.style.border = '1px solid ' + (theme.handoverNotificationBorder || '#8349FF');
+                    } else {
+                        icon.innerHTML = '💬';
+                    }
+                    icon.style.fontSize = '16px';
+
+                    notification.appendChild(icon);
+                    notification.appendChild(document.createTextNode(msg.text));
+                    notificationContainer.appendChild(notification);
+
+                    // Add fade-in animation if not already present
+                    if (!document.getElementById('system-notification-style')) {
+                        var style = document.createElement('style');
+                        style.id = 'system-notification-style';
+                        style.innerHTML = `
                         @keyframes fadeInUp {
                             0% { opacity: 0; transform: translateY(20px); }
                             100% { opacity: 1; transform: translateY(0); }
                         }
                     `;
-                    document.head.appendChild(style);
+                        document.head.appendChild(style);
+                    }
+
+                    messages.appendChild(notificationContainer);
+                    continue;
                 }
 
-                messages.appendChild(notificationContainer);
-                continue;
-            }
+                // Create message container with flex layout
+                var messageContainer = document.createElement('div');
+                messageContainer.style.display = 'flex';
+                messageContainer.style.flexDirection = 'column';
+                messageContainer.style.marginBottom = '16px';
 
-            // Create message container with flex layout
-            var messageContainer = document.createElement('div');
-            messageContainer.style.display = 'flex';
-            messageContainer.style.flexDirection = 'column';
-            messageContainer.style.marginBottom = '16px';
+                // Create avatar and message wrapper
+                var messageWrapper = document.createElement('div');
+                messageWrapper.style.display = 'flex';
+                messageWrapper.style.gap = '8px';
 
-            // Create avatar and message wrapper
-            var messageWrapper = document.createElement('div');
-            messageWrapper.style.display = 'flex';
-            messageWrapper.style.gap = '8px';
+                // Reverse layout for user messages only (bot and sales_rep start from left)
+                if (msg.sender === 'user') {
+                    messageWrapper.style.flexDirection = 'row-reverse';
+                    messageWrapper.style.justifyContent = 'flex-start';
+                }
 
-            // Reverse layout for user messages only (bot and sales_rep start from left)
-            if (msg.sender === 'user') {
-                messageWrapper.style.flexDirection = 'row-reverse';
-                messageWrapper.style.justifyContent = 'flex-start';
-            }
+                // Create avatar for user, sales_rep, and bot messages
+                var avatar = null;
+                if (msg.sender === 'user') {
+                    avatar = document.createElement('div');
+                    avatar.style.width = '40px';
+                    avatar.style.height = '40px';
+                    avatar.style.borderRadius = '50%';
+                    avatar.style.display = 'flex';
+                    avatar.style.alignItems = 'center';
+                    avatar.style.justifyContent = 'center';
+                    avatar.style.background = theme.userAvatar || '#8349ff';
+                    avatar.style.border = theme.userAvatarBorder || 'none';
 
-            // Create avatar for user, sales_rep, and bot messages
-            var avatar = null;
-            if (msg.sender === 'user') {
-                avatar = document.createElement('div');
-                avatar.style.width = '40px';
-                avatar.style.height = '40px';
-                avatar.style.borderRadius = '50%';
-                avatar.style.display = 'flex';
-                avatar.style.alignItems = 'center';
-                avatar.style.justifyContent = 'center';
-                avatar.style.background = theme.userAvatar || '#8349ff';
-                avatar.style.border = theme.userAvatarBorder || 'none';
-
-                // Load user SVG from assets
-                var userSvg = document.createElement('div');
-                var userSvgColor = theme.userAvatarSvgColor || '#fff';
-                userSvg.innerHTML = `
+                    // Load user SVG from assets
+                    var userSvg = document.createElement('div');
+                    var userSvgColor = theme.userAvatarSvgColor || '#fff';
+                    userSvg.innerHTML = `
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M19 21V19C19 17.9391 18.5786 16.9217 17.8284 16.1716C17.0783 15.4214 16.0609 15 15 15H9C7.93913 15 6.92172 15.4214 6.17157 16.1716C5.42143 16.9217 5 17.9391 5 19V21" stroke="${userSvgColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                         <path d="M12 11C14.2091 11 16 9.20914 16 7C16 4.79086 14.2091 3 12 3C9.79086 3 8 4.79086 8 7C8 9.20914 9.79086 11 12 11Z" stroke="${userSvgColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
                 `;
-                avatar.appendChild(userSvg);
-            } else if (msg.sender === 'sales_rep') {
-                avatar = document.createElement('div');
-                avatar.style.width = '40px';
-                avatar.style.height = '40px';
-                avatar.style.borderRadius = '50%';
-                avatar.style.display = 'flex';
-                avatar.style.alignItems = 'center';
-                avatar.style.justifyContent = 'center';
-                avatar.style.background = theme.salesRepAvatar || '#E4E7FC';
-                avatar.style.border = theme.salesRepAvatarBorder || 'none';
-                var iconColor = theme.salesRepAvatarSvgColor || theme.primary || '#8349FF';
-                avatar.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" style="width:26px;height:26px;color:' + iconColor + ';" width="200" height="200" viewBox="0 0 24 24"><path fill="currentColor" d="M19.938 8H21a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-1.062A8.001 8.001 0 0 1 12 23v-2a6 6 0 0 0 6-6V9A6 6 0 0 0 6 9v7H3a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h1.062a8.001 8.001 0 0 1 15.876 0ZM3 10v4h1v-4H3Zm17 0v4h1v-4h-1ZM7.76 15.785l1.06-1.696A5.972 5.972 0 0 0 12 15a5.972 5.972 0 0 0 3.18-.911l1.06 1.696A7.963 7.963 0 0 1 12 17a7.962 7.962 0 0 1-4.24-1.215Z"/></svg>'; // Sales rep icon
-            } else if (msg.sender === 'bot' || msg.sender === 'ai') {
-                avatar = document.createElement('div');
-                avatar.style.width = '40px';
-                avatar.style.height = '40px';
-                avatar.style.borderRadius = '50%';
-                avatar.style.display = 'flex';
-                avatar.style.alignItems = 'center';
-                avatar.style.justifyContent = 'center';
-                avatar.style.background = theme.botAvatar || '#E4E7FC';
-                avatar.style.border = theme.botAvatarBorder || 'none';
-                avatar.style.overflow = "hidden";
+                    avatar.appendChild(userSvg);
+                } else if (msg.sender === 'sales_rep') {
+                    avatar = document.createElement('div');
+                    avatar.style.width = '40px';
+                    avatar.style.height = '40px';
+                    avatar.style.borderRadius = '50%';
+                    avatar.style.display = 'flex';
+                    avatar.style.alignItems = 'center';
+                    avatar.style.justifyContent = 'center';
+                    avatar.style.background = theme.salesRepAvatar || '#E4E7FC';
+                    avatar.style.border = theme.salesRepAvatarBorder || 'none';
+                    var iconColor = theme.salesRepAvatarSvgColor || theme.primary || '#8349FF';
+                    avatar.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" style="width:26px;height:26px;color:' + iconColor + ';" width="200" height="200" viewBox="0 0 24 24"><path fill="currentColor" d="M19.938 8H21a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-1.062A8.001 8.001 0 0 1 12 23v-2a6 6 0 0 0 6-6V9A6 6 0 0 0 6 9v7H3a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h1.062a8.001 8.001 0 0 1 15.876 0ZM3 10v4h1v-4H3Zm17 0v4h1v-4h-1ZM7.76 15.785l1.06-1.696A5.972 5.972 0 0 0 12 15a5.972 5.972 0 0 0 3.18-.911l1.06 1.696A7.963 7.963 0 0 1 12 17a7.962 7.962 0 0 1-4.24-1.215Z"/></svg>'; // Sales rep icon
+                } else if (msg.sender === 'bot' || msg.sender === 'ai') {
+                    avatar = document.createElement('div');
+                    avatar.style.width = '40px';
+                    avatar.style.height = '40px';
+                    avatar.style.borderRadius = '50%';
+                    avatar.style.display = 'flex';
+                    avatar.style.alignItems = 'center';
+                    avatar.style.justifyContent = 'center';
+                    avatar.style.background = theme.botAvatar || '#E4E7FC';
+                    avatar.style.border = theme.botAvatarBorder || 'none';
+                    avatar.style.overflow = "hidden";
 
-                // Load bot icon - either custom URL or default SVG
-                var botSvg = document.createElement('div');
-                var botIconConfig = theme.botIcon || config.botIcon || {};
-                
-                // Container dimensions for botSvg
-                var containerWidth = botIconConfig.width || '24px';
-                var containerHeight = botIconConfig.height || '24px';
-                
-                // SVG/Image element dimensions
-                var svgWidth = botIconConfig.svgWidth || botIconConfig.width || '24px';
-                var svgHeight = botIconConfig.svgHeight || botIconConfig.height || '24px';
-                
-                var objectFit = botIconConfig.objectFit || 'contain';
-                var botAvatarUrl = botIconConfig.botAvatarUrl;
+                    // Load bot icon - either custom URL or default SVG
+                    var botSvg = document.createElement('div');
+                    var botIconConfig = theme.botIcon || config.botIcon || {};
 
-                // Set botSvg container dimensions
-                botSvg.style.width = containerWidth;
-                botSvg.style.height = containerHeight;
-                botSvg.style.display = 'flex';
-                botSvg.style.alignItems = 'center';
-                botSvg.style.justifyContent = 'center';
+                    // Container dimensions for botSvg
+                    var containerWidth = botIconConfig.width || '24px';
+                    var containerHeight = botIconConfig.height || '24px';
 
-                if (botAvatarUrl) {
-                    // Use custom image URL
-                    botSvg.innerHTML = `<img src="${botAvatarUrl}" alt="Bot" style="width: ${svgWidth}; height: ${svgHeight}; object-fit: ${objectFit};" />`;
-                } else {
-                    // Use default SVG
-                    var iconColor = theme.botAvatarSvgColor || theme.primary || '#8349ff';
-                    botSvg.innerHTML = `
+                    // SVG/Image element dimensions
+                    var svgWidth = botIconConfig.svgWidth || botIconConfig.width || '24px';
+                    var svgHeight = botIconConfig.svgHeight || botIconConfig.height || '24px';
+
+                    var objectFit = botIconConfig.objectFit || 'contain';
+                    var botAvatarUrl = botIconConfig.botAvatarUrl;
+
+                    // Set botSvg container dimensions
+                    botSvg.style.width = containerWidth;
+                    botSvg.style.height = containerHeight;
+                    botSvg.style.display = 'flex';
+                    botSvg.style.alignItems = 'center';
+                    botSvg.style.justifyContent = 'center';
+
+                    if (botAvatarUrl) {
+                        // Use custom image URL
+                        botSvg.innerHTML = `<img src="${botAvatarUrl}" alt="Bot" style="width: ${svgWidth}; height: ${svgHeight}; object-fit: ${objectFit};" />`;
+                    } else {
+                        // Use default SVG
+                        var iconColor = theme.botAvatarSvgColor || theme.primary || '#8349ff';
+                        botSvg.innerHTML = `
                         <svg width="${svgWidth}" height="${svgHeight}" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <g clip-path="url(#clip0_4_4929)">
                                 <path d="M19 11H5C3.89543 11 3 11.8954 3 13V19C3 20.1046 3.89543 21 5 21H19C20.1046 21 21 20.1046 21 19V13C21 11.8954 20.1046 11 19 11Z" stroke="${iconColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -958,535 +1006,563 @@ function initializeChatEmbed() {
                             </defs>
                         </svg>
                     `;
-                }
-                avatar.appendChild(botSvg);
-            }
-
-            // Create message content container
-            var contentContainer = document.createElement('div');
-            contentContainer.style.display = 'flex';
-            contentContainer.style.flexDirection = 'column';
-            contentContainer.style.gap = '8px';
-            contentContainer.style.maxWidth = msg.sender === 'user' ? '70%' : '70%'; // All message types now have avatars
-
-            var msgDiv = document.createElement('div');
-            msgDiv.style.padding = '12px 16px';
-            msgDiv.style.wordBreak = 'break-word';
-            msgDiv.style.fontSize = '14px';
-            msgDiv.style.lineHeight = '20px';
-            msgDiv.style.fontFamily = theme.messageFontFamily || theme.fontFamily || 'sans-serif';
-            msgDiv.style.position = 'relative';
-
-            if (msg.sender === 'user') {
-                // User message styling
-                msgDiv.style.background = theme.userBubble || '#dbeafe';
-                msgDiv.style.color = theme.userText || '#1e40af';
-                msgDiv.style.alignSelf = 'flex-end';
-                msgDiv.style.borderRadius = '16px 16px 4px 16px';
-                msgDiv.style.boxShadow = '0 2px 8px rgba(59, 130, 246, 0.15)';
-            } else if (msg.sender === 'sales_rep') {
-                msgDiv.style.background = theme.salesRepBubble || '#f1f5f9';
-                msgDiv.style.color = theme.salesRepText || '#475569';
-                msgDiv.style.alignSelf = 'flex-start';
-                msgDiv.style.borderRadius = '16px 16px 16px 4px';
-            } else {
-                msgDiv.style.background = theme.botBubble || '#f1f5f9';
-                msgDiv.style.color = theme.botText || '#475569';
-                msgDiv.style.alignSelf = 'flex-start';
-                msgDiv.style.borderRadius = '16px 16px 16px 4px';
-                msgDiv.style.boxShadow = '0 2px 8px rgba(71, 85, 105, 0.1)';
-            }
-
-            // Handle different message types
-            if (msg.text === '' && i === msgs.length - 1) {
-                // Empty message - show typing indicator
-                msgDiv.appendChild(createBouncingDots());
-            } else if (msg.text === '[Image]' && i > 0 && isImageDataUrl(msgs[i - 1].text)) {
-                var img = document.createElement('img');
-                img.src = msgs[i - 1].text;
-                img.style.maxWidth = '200px';
-                img.style.maxHeight = '150px';
-                img.style.borderRadius = '8px';
-                img.style.display = 'block';
-                msgDiv.appendChild(img);
-            } else {
-                // Content wrapper for all messages
-                var contentWrapper = document.createElement('div');
-
-                // Use markdown conversion for bot messages, plain text for others
-                if (msg.sender === 'bot' || msg.sender === 'ai') {
-                    var html = markdownToHtml(msg.text);
-
-                    // Apply welcomeMessageStyle to welcome message paragraphs
-                    if (msg.isWelcomeMessage && welcomeMessageStyle) {
-                        var tempDiv = document.createElement('div');
-                        tempDiv.innerHTML = html;
-                        var paragraphs = tempDiv.querySelectorAll('p');
-
-                        // Apply container lineHeight to all paragraphs
-                        if (welcomeMessageStyle.lineHeight) {
-                            for (var pi = 0; pi < paragraphs.length; pi++) {
-                                paragraphs[pi].style.lineHeight = welcomeMessageStyle.lineHeight;
-                            }
-                        }
-
-                        // Apply body style (marginTop, color) to the middle paragraph(s)
-                        if (welcomeMessageStyle.body && paragraphs.length > 1) {
-                            for (var bi = 1; bi < paragraphs.length - 1; bi++) {
-                                if (welcomeMessageStyle.body.marginTop) {
-                                    paragraphs[bi].style.marginTop = welcomeMessageStyle.body.marginTop;
-                                }
-                                if (welcomeMessageStyle.body.color) {
-                                    paragraphs[bi].style.color = welcomeMessageStyle.body.color;
-                                }
-                            }
-                        }
-
-                        // Apply closing style (marginTop) to the last paragraph
-                        if (welcomeMessageStyle.closing && paragraphs.length > 2) {
-                            var lastP = paragraphs[paragraphs.length - 1];
-                            if (welcomeMessageStyle.closing.marginTop) {
-                                lastP.style.marginTop = welcomeMessageStyle.closing.marginTop;
-                            }
-                        }
-
-                        html = tempDiv.innerHTML;
                     }
+                    avatar.appendChild(botSvg);
+                }
 
-                    contentWrapper.innerHTML = html;
+                // Create message content container
+                var contentContainer = document.createElement('div');
+                contentContainer.style.display = 'flex';
+                contentContainer.style.flexDirection = 'column';
+                contentContainer.style.gap = '8px';
+                contentContainer.style.maxWidth = msg.sender === 'user' ? '70%' : '70%'; // All message types now have avatars
+
+                var msgDiv = document.createElement('div');
+                msgDiv.style.padding = '12px 16px';
+                msgDiv.style.wordBreak = 'break-word';
+                msgDiv.style.fontSize = '14px';
+                msgDiv.style.lineHeight = '20px';
+                msgDiv.style.fontFamily = theme.messageFontFamily || theme.fontFamily || 'sans-serif';
+                msgDiv.style.position = 'relative';
+
+                if (msg.sender === 'user') {
+                    // User message styling
+                    msgDiv.style.background = theme.userBubble || '#dbeafe';
+                    msgDiv.style.color = theme.userText || '#1e40af';
+                    msgDiv.style.alignSelf = 'flex-end';
+                    msgDiv.style.borderRadius = '16px 16px 4px 16px';
+                    msgDiv.style.boxShadow = '0 2px 8px rgba(59, 130, 246, 0.15)';
                 } else if (msg.sender === 'sales_rep') {
-                    // Sales rep messages with clean formatting and sender name at top
-                    var messageText = escapeHtml(msg.text).replace(/\n/g, '<br>');
-                    var senderName = 'Sales Representative';
+                    msgDiv.style.background = theme.salesRepBubble || '#f1f5f9';
+                    msgDiv.style.color = theme.salesRepText || '#475569';
+                    msgDiv.style.alignSelf = 'flex-start';
+                    msgDiv.style.borderRadius = '16px 16px 16px 4px';
+                } else {
+                    msgDiv.style.background = theme.botBubble || '#f1f5f9';
+                    msgDiv.style.color = theme.botText || '#475569';
+                    msgDiv.style.alignSelf = 'flex-start';
+                    msgDiv.style.borderRadius = '16px 16px 16px 4px';
+                    msgDiv.style.boxShadow = '0 2px 8px rgba(71, 85, 105, 0.1)';
+                }
 
-                    // Safely extract sender name
-                    if (msg.senderName) {
-                        if (typeof msg.senderName === 'string') {
-                            senderName = msg.senderName;
-                        } else if (msg.senderName.name) {
-                            senderName = msg.senderName.name;
+                // Handle different message types
+                if (msg.text === '' && i === msgs.length - 1) {
+                    // Empty message - show typing indicator
+                    msgDiv.appendChild(createBouncingDots());
+                } else if (msg.text === '[Image]' && i > 0 && isImageDataUrl(msgs[i - 1].text)) {
+                    var img = document.createElement('img');
+                    img.src = msgs[i - 1].text;
+                    img.style.maxWidth = '200px';
+                    img.style.maxHeight = '150px';
+                    img.style.borderRadius = '8px';
+                    img.style.display = 'block';
+                    msgDiv.appendChild(img);
+                } else {
+                    // Content wrapper for all messages
+                    var contentWrapper = document.createElement('div');
+
+                    // Use markdown conversion for bot messages, plain text for others
+                    if (msg.sender === 'bot' || msg.sender === 'ai') {
+                        var html = markdownToHtml(msg.text);
+
+                        // Apply welcomeMessageStyle to welcome message paragraphs
+                        if (msg.isWelcomeMessage && welcomeMessageStyle) {
+                            var tempDiv = document.createElement('div');
+                            tempDiv.innerHTML = html;
+                            var paragraphs = tempDiv.querySelectorAll('p');
+
+                            // Apply container lineHeight to all paragraphs
+                            if (welcomeMessageStyle.lineHeight) {
+                                for (var pi = 0; pi < paragraphs.length; pi++) {
+                                    paragraphs[pi].style.lineHeight = welcomeMessageStyle.lineHeight;
+                                }
+                            }
+
+                            // Apply body style (marginTop, color) to the middle paragraph(s)
+                            if (welcomeMessageStyle.body && paragraphs.length > 1) {
+                                for (var bi = 1; bi < paragraphs.length - 1; bi++) {
+                                    if (welcomeMessageStyle.body.marginTop) {
+                                        paragraphs[bi].style.marginTop = welcomeMessageStyle.body.marginTop;
+                                    }
+                                    if (welcomeMessageStyle.body.color) {
+                                        paragraphs[bi].style.color = welcomeMessageStyle.body.color;
+                                    }
+                                }
+                            }
+
+                            // Apply closing style (marginTop) to the last paragraph
+                            if (welcomeMessageStyle.closing && paragraphs.length > 2) {
+                                var lastP = paragraphs[paragraphs.length - 1];
+                                if (welcomeMessageStyle.closing.marginTop) {
+                                    lastP.style.marginTop = welcomeMessageStyle.closing.marginTop;
+                                }
+                            }
+
+                            html = tempDiv.innerHTML;
                         }
+
+                        contentWrapper.innerHTML = html;
+                    } else if (msg.sender === 'sales_rep') {
+                        // Sales rep messages with clean formatting and sender name at top
+                        var messageText = escapeHtml(msg.text).replace(/\n/g, '<br>');
+                        var senderName = 'Sales Representative';
+
+                        // Safely extract sender name
+                        if (msg.senderName) {
+                            if (typeof msg.senderName === 'string') {
+                                senderName = msg.senderName;
+                            } else if (msg.senderName.name) {
+                                senderName = msg.senderName.name;
+                            }
+                        }
+
+                        // Create message content with sender name at the top
+                        contentWrapper.innerHTML =
+                            '<div style=" padding-bottom: 6px; font-size: 12px; color: #6b7280; font-weight: 500;">~ ' +
+                            senderName + '</div>' + messageText;
+
+                        contentWrapper.style.fontWeight = '500';
+                        contentWrapper.style.lineHeight = '1.4';
+                        contentWrapper.style.display = 'block';
+                        contentWrapper.style.width = '100%';
+                    } else {
+                        // User messages
+                        contentWrapper.innerHTML = escapeHtml(msg.text).replace(/\n/g, '<br>');
                     }
 
-                    // Create message content with sender name at the top
-                    contentWrapper.innerHTML =
-                        '<div style=" padding-bottom: 6px; font-size: 12px; color: #6b7280; font-weight: 500;">~ ' +
-                        senderName + '</div>' + messageText;
-
-                    contentWrapper.style.fontWeight = '500';
-                    contentWrapper.style.lineHeight = '1.4';
-                    contentWrapper.style.display = 'block';
-                    contentWrapper.style.width = '100%';
-                } else {
-                    // User messages
-                    contentWrapper.innerHTML = escapeHtml(msg.text).replace(/\n/g, '<br>');
+                    msgDiv.appendChild(contentWrapper);
                 }
 
-                msgDiv.appendChild(contentWrapper);
+                // Assemble the message
+                contentContainer.appendChild(msgDiv);
+
+                if (!msg.isWelcomeMessage) {
+                    var timestamp = document.createElement('div');
+                    timestamp.style.fontSize = '12px';
+                    timestamp.style.color = theme.timestampColor || '#9ca3af';
+                    timestamp.style.alignSelf = msg.sender === 'user' ? 'flex-end' : 'flex-start';
+                    timestamp.innerText = msg.created_at;
+                    contentContainer.appendChild(timestamp);
+                }
+                // Only append avatar if it exists (user messages only)
+                if (avatar) {
+                    messageWrapper.appendChild(avatar);
+                }
+                messageWrapper.appendChild(contentContainer);
+                messageContainer.appendChild(messageWrapper);
+                messages.appendChild(messageContainer);
             }
 
-            // Assemble the message
-            contentContainer.appendChild(msgDiv);
+            // Append quick buttons after all messages are rendered
+            if (config.quickQuestions && config.quickQuestions.length > 0) {
+                messages.appendChild(quickButtonsContainer);
+                var isFirstSession = msgs.length === 0 || (msgs.length === 1 && msgs[0].isWelcomeMessage);
 
-            if (!msg.isWelcomeMessage) {
-                var timestamp = document.createElement('div');
-                timestamp.style.fontSize = '12px';
-                timestamp.style.color = theme.timestampColor || '#9ca3af';
-                timestamp.style.alignSelf = msg.sender === 'user' ? 'flex-end' : 'flex-start';
-                timestamp.innerText = msg.created_at;
-                contentContainer.appendChild(timestamp);
+                if (config.quickQuestionsPermanent || isFirstSession) {
+                    quickButtonsContainer.style.display = 'flex';
+                } else {
+                    quickButtonsContainer.style.display = 'none';
+                }
             }
-            // Only append avatar if it exists (user messages only)
-            if (avatar) {
-                messageWrapper.appendChild(avatar);
-            }
-            messageWrapper.appendChild(contentContainer);
-            messageContainer.appendChild(messageWrapper);
-            messages.appendChild(messageContainer);
-        }
 
-        // Append quick buttons after all messages are rendered
-        if (config.quickQuestions && config.quickQuestions.length > 0) {
-            messages.appendChild(quickButtonsContainer);
-            var isFirstSession = msgs.length === 0 || (msgs.length === 1 && msgs[0].isWelcomeMessage);
-            
-            if (config.quickQuestionsPermanent || isFirstSession) {
-                quickButtonsContainer.style.display = 'flex';
-            } else {
-                quickButtonsContainer.style.display = 'none';
-            }
-        }
-
-        messages.scrollTop = messages.scrollHeight;
-
-        // Check if scroll button should be visible with a small delay to ensure proper rendering
-        setTimeout(function () {
-            // Force scroll to bottom again to ensure it works
             messages.scrollTop = messages.scrollHeight;
-            checkScrollPosition();
-        }, 100);
-    }
 
-    // Function to check scroll position and show/hide scroll button
-    function checkScrollPosition() {
-        // Add a small threshold to account for rounding differences
-        var scrollThreshold = 100;
-        var isScrolledToBottom = messages.scrollHeight - messages.scrollTop <= messages.clientHeight + scrollThreshold;
-
-        if (isScrolledToBottom) {
-            scrollToBottomBtn.style.display = 'none';
-        } else {
-            scrollToBottomBtn.style.display = 'flex';
-        }
-    }
-
-    // Function to force scroll to bottom with retries
-    function forceScrollToBottom() {
-        var attempts = 0;
-        var maxAttempts = 5;
-
-        function tryScroll() {
-            messages.scrollTop = messages.scrollHeight;
-            attempts++;
-
-            if (attempts < maxAttempts && messages.scrollTop < messages.scrollHeight - messages.clientHeight - 10) {
-                setTimeout(tryScroll, 50);
-            } else {
+            // Check if scroll button should be visible with a small delay to ensure proper rendering
+            setTimeout(function () {
+                // Force scroll to bottom again to ensure it works
+                messages.scrollTop = messages.scrollHeight;
                 checkScrollPosition();
+            }, 100);
+        }
+
+        // Function to check scroll position and show/hide scroll button
+        function checkScrollPosition() {
+            // Add a small threshold to account for rounding differences
+            var scrollThreshold = 100;
+            var isScrolledToBottom = messages.scrollHeight - messages.scrollTop <= messages.clientHeight + scrollThreshold;
+
+            if (isScrolledToBottom) {
+                scrollToBottomBtn.style.display = 'none';
+            } else {
+                scrollToBottomBtn.style.display = 'flex';
             }
         }
 
-        tryScroll();
-    }
+        // Function to force scroll to bottom with retries
+        function forceScrollToBottom() {
+            var attempts = 0;
+            var maxAttempts = 5;
 
-    // Add scroll event listener to messages container
-    messages.addEventListener('scroll', function () {
-        checkScrollPosition();
-    });
+            function tryScroll() {
+                messages.scrollTop = messages.scrollHeight;
+                attempts++;
 
-    // Save message to localStorage
-    function saveMessage(msg, sender, type = "") {
-        var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
-        if (type === "welcomeMessage") {
-            const getWelcomeMessageInd = msgs.findIndex(m => m.isWelcomeMessage)
-            if (getWelcomeMessageInd !== -1) msgs[getWelcomeMessageInd].text = msg
-            else msgs.push({ text: msg, isWelcomeMessage: true, sender: sender });
-
-        }
-        else {
-            msgs.push({ text: msg, isWelcomeMessage: false, sender, created_at: formatTimeStamp(new Date().toISOString()) });
-        }
-        localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
-    }
-
-    async function connectWebSocket() {
-        if (isWebSocketConnected || currentSocket) return;
-
-        // Try to get stored session data first
-        var storedSession = localStorage.getItem('simple-chat-session');
-
-        if (storedSession) {
-            try {
-                var sessionData = JSON.parse(storedSession);
-                // Check if session data is complete and not too old (optional: 24 hours)
-                if (sessionData.chatID && sessionData.visitorInfo) {
-                    chatID = sessionData.chatID;
-                    visitorInfo = sessionData.visitorInfo;
+                if (attempts < maxAttempts && messages.scrollTop < messages.scrollHeight - messages.clientHeight - 10) {
+                    setTimeout(tryScroll, 50);
                 } else {
-                    // Session is invalid or expired, generate new data
-                    throw new Error('Invalid or expired session');
+                    checkScrollPosition();
                 }
-            } catch (error) {
-                console.log('Invalid session data, generating new session');
-                // Clear invalid session data
-                localStorage.removeItem('simple-chat-session');
-                storedSession = null;
             }
+
+            tryScroll();
         }
 
-        if (!storedSession) {
-            // Generate new session data if not stored or invalid
-            chatID = generateChatId();
-
-            // Store session data (with or without visitor info based on leadCapture setting)
-            var chatSessionData = {
-                chatID: chatID,
-                timestamp: new Date().toISOString()
-            };
-            
-            // Only include visitor info if lead capture is enabled and we have the info
-            if (leadCapture && visitorInfo) {
-                chatSessionData.visitorInfo = visitorInfo;
-            }
-            
-            localStorage.setItem('simple-chat-session', JSON.stringify(chatSessionData));
-        }
-
-        // Collect browser metadata for websocket connection
-        const browserMetadata = collectBrowserMetadata();
-        var wsUrl = `${socketUrl}${config.org_id}/?visitor_info=${JSON.stringify(visitorInfo)}&browser_metadata=${encodeURIComponent(JSON.stringify(browserMetadata))}`;
-        try {
-            currentSocket = new WebSocket(wsUrl);
-            currentSocket.onopen = function () {
-                isWebSocketConnected = true;
-                startHeartBeat()
-            };
-            currentSocket.onmessage = function (event) {
-                var msgData = JSON.parse(event.data);
-
-                if(msgData?.room_name && msgData?.room_name === chatID){
-                    
-                                    // Skip unread messages but allow broadcast messages
-                                    if (msgData?.message_type === "unread_message") {
-                                        return;
-                                    }
-                                    if (msgData?.message_type === "handover_requested") {
-                                        return;
-                                    }
-                    
-                                    if (msgData?.message_type === "handover_message") {
-                    
-                                        // Set handover flag to stop showing typing indicators
-                                        isHandoverActive = true;
-                    
-                                        // Store handover flag in session data for persistence
-                                        var storedSession = localStorage.getItem('simple-chat-session');
-                                        if (storedSession) {
-                                            try {
-                                                var sessionData = JSON.parse(storedSession);
-                                                sessionData.handoverOccurred = true;
-                                                localStorage.setItem('simple-chat-session', JSON.stringify(sessionData));
-                                            } catch (error) {
-                                                console.log('Error updating session with handover flag:', error);
-                                            }
-                                        }
-                    
-                                        // Store handover message in localStorage like other messages
-                                        var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
-                                        msgs.push({
-                                            text: msgData.sender?.name + ' has entered the chat',
-                                            sender: 'system',
-                                            isWelcomeMessage: false,
-                                            isSystemNotification: true,
-                                            notificationType: 'joined',
-                                            created_at: formatTimeStamp(msgData.created_at || new Date().toISOString())
-                                        });
-                                        localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
-                    
-                                        // Reload messages to show the stored handover message
-                                        loadMessages();
-                                        return;
-                                    }
-                    
-                                    // Handle AI/bot messages (both streaming and regular) - only if handover is not active
-                                    if ((msgData.sender_type === 'ai' || msgData.sender === 'ai' || msgData.sender_type === 'bot' || msgData.sender === 'bot') && !isHandoverActive) {
-                    
-                                        var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
-                                        var lastMessage = msgs[msgs.length - 1];
-                    
-                                        // Remove typing indicator if present
-                                        if (lastMessage && lastMessage.text === '' && (lastMessage.sender === 'bot' || lastMessage.sender === 'ai')) {
-                                            msgs.pop();
-                                            lastMessage = msgs[msgs.length - 1] || null;
-                                        }
-                    
-                                        var content = msgData.content || msgData.message || '';
-                    
-                                        // Handle completion signal (empty content with is_complete flag)
-                                        if (msgData.is_complete === true && content === '') {
-                                            if (lastMessage && lastMessage.isStreaming) {
-                                                console.log('Stream completed');
-                                                lastMessage.isStreaming = false;
-                                                msgs[msgs.length - 1] = lastMessage;
-                                                localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
-                                                // No need to reload - already processed correctly
-                                            }
-                                            return;
-                                        }
-                    
-                                        // Handle any content from AI (treat all as streaming chunks)
-                                        if (content) {
-                                            // Check if we should append to existing message or create new one
-                                            if (lastMessage &&
-                                                (lastMessage.sender === 'bot' || lastMessage.sender === 'ai') &&
-                                                lastMessage.isStreaming === true) {
-                                                // Append to existing streaming message
-                                                lastMessage.text += content;
-                                                lastMessage.lastChunkTime = Date.now(); // Track when last chunk arrived
-                                                msgs[msgs.length - 1] = lastMessage;
-                                            } else {
-                                                // Create new streaming message
-                                                msgs.push({
-                                                    text: content,
-                                                    sender: 'bot',
-                                                    isWelcomeMessage: false,
-                                                    isStreaming: true,
-                                                    messageId: msgData.message_id,
-                                                    created_at: formatTimeStamp(msgData.created_at),
-                                                    lastChunkTime: Date.now() // Track when last chunk arrived
-                                                });
-                                            }
-                                            localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
-                                            loadMessages(); // Use immediate loading for streaming
-                                        }
-                                    } else if ((msgData.sender_type === "sales_rep" || msgData.sender === "sales_rep")) {
-                                        var content = msgData.content || '';
-                    
-                                        // Ignore empty sales_rep messages completely - these should not create typing indicators
-                                        if (!content || !content.trim()) {
-                                            return;
-                                        }
-                    
-                                        var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
-                                        msgs.push({
-                                            text: content,
-                                            sender: msgData.sender_type,
-                                            senderName: msgData.sender || msgData.sender_name || 'Sales Representative', // Capture sender name
-                                            isWelcomeMessage: false,
-                                            created_at: formatTimeStamp(msgData.created_at)
-                                        });
-                                        localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
-                                        loadMessages();
-                                    }
-                                };
-
-                }
-
-            currentSocket.onclose = function () {
-                console.error('WebSocket connection closed unexpectedly...');
-                isWebSocketConnected = false;
-                currentSocket = null;
-            if (heartBeatInterval) clearInterval(heartBeatInterval);
-            heartBeatInterval = null
-
-                // Stop enhanced presence tracking
-            };
-            currentSocket.onerror = function (error) {
-                console.error('WebSocket error:', error);
-                isWebSocketConnected = false;
-                currentSocket = null;
-            if (heartBeatInterval) clearInterval(heartBeatInterval);
-            heartBeatInterval = null
-
-                // Stop enhanced presence tracking
-            };
-        } catch (error) {
-            console.error('Failed to create WebSocket connection:', error);
-            isWebSocketConnected = false;
-            currentSocket = null;
-            if (heartBeatInterval) clearInterval(heartBeatInterval);
-            heartBeatInterval = null
-        }
-    }
-
-    function startHeartBeat() {
-        if (currentSocket.readyState === WebSocket.OPEN) {
-              const heartbeatMessage = {
-          message_type: 'heartbeat',
-          timestamp: Date.now()
-        };
-            heartBeatInterval = setInterval(function () {
-                currentSocket.send(JSON.stringify(heartbeatMessage));
-            }, 2500); // Send heartbeat every 2.5 seconds
-        }
-    }
-
-    function formatTimeStamp(timestamp) {
-        const createdAt = new Date(timestamp)// or your date value
-        const formattedTime = createdAt.toLocaleTimeString("en-US", {
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: true
+        // Add scroll event listener to messages container
+        messages.addEventListener('scroll', function () {
+            checkScrollPosition();
         });
-        return formattedTime;
 
-    }
+        // Save message to localStorage
+        function saveMessage(msg, sender, type = "") {
+            var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
+            if (type === "welcomeMessage") {
+                const getWelcomeMessageInd = msgs.findIndex(m => m.isWelcomeMessage)
+                if (getWelcomeMessageInd !== -1) msgs[getWelcomeMessageInd].text = msg
+                else msgs.push({ text: msg, isWelcomeMessage: true, sender: sender });
 
-
-
-    // --- Message sending logic update ---
-    // This function now uses WebSocket instead of API calls
-    function sendMessage(value) {
-        var val = input.value.trim() || value
-        if (!val) return;
-        // Save user message immediately
-        saveMessage(val, 'user');
-        input.value = '';
-        // Disable send button after clearing input
-        sendBtn.disabled = true;
-        sendBtn.style.opacity = '0.5';
-        sendBtn.style.cursor = 'not-allowed';
-        loadMessages();
-
-        // Show typing indicator only if handover is not active
-        if (!isHandoverActive) {
-            saveMessage('', 'bot');
-            loadMessages();
+            }
+            else {
+                msgs.push({ text: msg, isWelcomeMessage: false, sender, created_at: formatTimeStamp(new Date().toISOString()) });
+            }
+            localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
         }
 
-        if (!isWebSocketConnected || !currentSocket || currentSocket.readyState !== WebSocket.OPEN) {
-            connectWebSocket();
-            // Wait for connection and then send message
-            var checkConnection = function () {
-                if (currentSocket && currentSocket.readyState === WebSocket.OPEN) {
+        async function connectWebSocket() {
+            if (isWebSocketConnected || currentSocket) return;
+
+            // Try to get stored session data first
+            var storedSession = localStorage.getItem('simple-chat-session');
+
+            if (storedSession) {
+                try {
+                    var sessionData = JSON.parse(storedSession);
+                    // Check if session data is complete and not too old (optional: 24 hours)
+                    if (sessionData.chatID && sessionData.visitorInfo) {
+                        chatID = sessionData.chatID;
+                        visitorInfo = sessionData.visitorInfo;
+
+                        // Validate that the stored session is still active on the backend
+                        var isValid = await validateSession(chatID);
+                        if (!isValid) {
+                            showSessionClosedNotification('This chat session has been closed.');
+                            return;
+                        }
+                    } else {
+                        // Session is invalid or expired, generate new data
+                        throw new Error('Invalid or expired session');
+                    }
+                } catch (error) {
+                    console.log('Invalid session data, generating new session');
+                    // Clear invalid session data
+                    localStorage.removeItem('simple-chat-session');
+                    storedSession = null;
+                }
+            }
+
+            if (!storedSession) {
+                // Generate new session data if not stored or invalid
+                chatID = generateChatId();
+
+                // Store session data (with or without visitor info based on leadCapture setting)
+                var chatSessionData = {
+                    chatID: chatID,
+                    timestamp: new Date().toISOString()
+                };
+
+                // Only include visitor info if lead capture is enabled and we have the info
+                if (leadCapture && visitorInfo) {
+                    chatSessionData.visitorInfo = visitorInfo;
+                }
+
+                localStorage.setItem('simple-chat-session', JSON.stringify(chatSessionData));
+            }
+
+            // Collect browser metadata for websocket connection
+            const browserMetadata = collectBrowserMetadata();
+            var wsUrl = `${socketUrl}${config.org_id}/?visitor_info=${JSON.stringify(visitorInfo)}&browser_metadata=${encodeURIComponent(JSON.stringify(browserMetadata))}`;
+            try {
+                currentSocket = new WebSocket(wsUrl);
+                currentSocket.onopen = function () {
+                    isWebSocketConnected = true;
+                    startHeartBeat()
+                };
+                currentSocket.onmessage = function (event) {
+                    var msgData = JSON.parse(event.data);
+
+                    if (msgData?.room_name && msgData?.room_name === chatID) {
+
+                        // Handle session closed by backend
+                        if (msgData?.message_type === "error_message") {
+                            showSessionClosedNotification(
+                                msgData.content || msgData.message || 'This chat session has been closed.'
+                            );
+                            return;
+                        }
+
+                        // Skip unread messages but allow broadcast messages
+                        if (msgData?.message_type === "unread_message") {
+                            return;
+                        }
+                        if (msgData?.message_type === "handover_requested") {
+                            return;
+                        }
+
+                        if (msgData?.message_type === "handover_message") {
+
+                            // Set handover flag to stop showing typing indicators
+                            isHandoverActive = true;
+
+                            // Store handover flag in session data for persistence
+                            var storedSession = localStorage.getItem('simple-chat-session');
+                            if (storedSession) {
+                                try {
+                                    var sessionData = JSON.parse(storedSession);
+                                    sessionData.handoverOccurred = true;
+                                    localStorage.setItem('simple-chat-session', JSON.stringify(sessionData));
+                                } catch (error) {
+                                    console.log('Error updating session with handover flag:', error);
+                                }
+                            }
+
+                            // Store handover message in localStorage like other messages
+                            var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
+                            msgs.push({
+                                text: msgData.sender?.name + ' has entered the chat',
+                                sender: 'system',
+                                isWelcomeMessage: false,
+                                isSystemNotification: true,
+                                notificationType: 'joined',
+                                created_at: formatTimeStamp(msgData.created_at || new Date().toISOString())
+                            });
+                            localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
+
+                            // Reload messages to show the stored handover message
+                            loadMessages();
+                            return;
+                        }
+
+                        // Handle AI/bot messages (both streaming and regular) - only if handover is not active
+                        if ((msgData.sender_type === 'ai' || msgData.sender === 'ai' || msgData.sender_type === 'bot' || msgData.sender === 'bot') && !isHandoverActive) {
+
+                            var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
+                            var lastMessage = msgs[msgs.length - 1];
+
+                            // Remove typing indicator if present
+                            if (lastMessage && lastMessage.text === '' && (lastMessage.sender === 'bot' || lastMessage.sender === 'ai')) {
+                                msgs.pop();
+                                lastMessage = msgs[msgs.length - 1] || null;
+                            }
+
+                            var content = msgData.content || msgData.message || '';
+
+                            // Handle completion signal (empty content with is_complete flag)
+                            if (msgData.is_complete === true && content === '') {
+                                if (lastMessage && lastMessage.isStreaming) {
+                                    lastMessage.isStreaming = false;
+                                    msgs[msgs.length - 1] = lastMessage;
+                                    localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
+                                    // No need to reload - already processed correctly
+                                }
+                                return;
+                            }
+
+                            // Handle any content from AI (treat all as streaming chunks)
+                            if (content) {
+                                // Check if we should append to existing message or create new one
+                                if (lastMessage &&
+                                    (lastMessage.sender === 'bot' || lastMessage.sender === 'ai') &&
+                                    lastMessage.isStreaming === true) {
+                                    // Append to existing streaming message
+                                    lastMessage.text += content;
+                                    lastMessage.lastChunkTime = Date.now(); // Track when last chunk arrived
+                                    msgs[msgs.length - 1] = lastMessage;
+                                } else {
+                                    // Create new streaming message
+                                    msgs.push({
+                                        text: content,
+                                        sender: 'bot',
+                                        isWelcomeMessage: false,
+                                        isStreaming: true,
+                                        messageId: msgData.message_id,
+                                        created_at: formatTimeStamp(msgData.created_at),
+                                        lastChunkTime: Date.now() // Track when last chunk arrived
+                                    });
+                                }
+                                localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
+                                loadMessages(); // Use immediate loading for streaming
+                            }
+                        } else if ((msgData.sender_type === "sales_rep" || msgData.sender === "sales_rep")) {
+                            var content = msgData.content || '';
+
+                            // Ignore empty sales_rep messages completely - these should not create typing indicators
+                            if (!content || !content.trim()) {
+                                return;
+                            }
+
+                            var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
+                            msgs.push({
+                                text: content,
+                                sender: msgData.sender_type,
+                                senderName: msgData.sender || msgData.sender_name || 'Sales Representative', // Capture sender name
+                                isWelcomeMessage: false,
+                                created_at: formatTimeStamp(msgData.created_at)
+                            });
+                            localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
+                            loadMessages();
+                        }
+                    };
+                    // Fallback: handle error_message broadcast without room_name
+                    if (msgData?.message_type === "error_message" && !msgData?.room_name) {
+                        showSessionClosedNotification(
+                            msgData.content || msgData.message || 'This chat session has been closed.'
+                        );
+                        return;
+                    }
+
+
+                }
+
+
+
+                currentSocket.onclose = function () {
+                    console.error('WebSocket connection closed unexpectedly...');
+                    isWebSocketConnected = false;
+                    currentSocket = null;
+                    if (heartBeatInterval) clearInterval(heartBeatInterval);
+                    heartBeatInterval = null
+
+                    // Stop enhanced presence tracking
+                };
+                currentSocket.onerror = function (error) {
+                    console.error('WebSocket error:', error);
+                    isWebSocketConnected = false;
+                    currentSocket = null;
+                    if (heartBeatInterval) clearInterval(heartBeatInterval);
+                    heartBeatInterval = null
+
+                    // Stop enhanced presence tracking
+                };
+            } catch (error) {
+                console.error('Failed to create WebSocket connection:', error);
+                isWebSocketConnected = false;
+                currentSocket = null;
+                if (heartBeatInterval) clearInterval(heartBeatInterval);
+                heartBeatInterval = null
+            }
+        }
+
+        function startHeartBeat() {
+            if (currentSocket.readyState === WebSocket.OPEN) {
+                const heartbeatMessage = {
+                    message_type: 'heartbeat',
+                    timestamp: Date.now()
+                };
+                heartBeatInterval = setInterval(function () {
+                    currentSocket.send(JSON.stringify(heartbeatMessage));
+                }, 2500); // Send heartbeat every 2.5 seconds
+            }
+        }
+
+        function formatTimeStamp(timestamp) {
+            const createdAt = new Date(timestamp)// or your date value
+            const formattedTime = createdAt.toLocaleTimeString("en-US", {
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: true
+            });
+            return formattedTime;
+
+        }
+
+
+
+        // --- Message sending logic update ---
+        // This function now uses WebSocket instead of API calls
+        function sendMessage(value) {
+            var val = input.value.trim() || value
+            if (!val) return;
+            // Save user message immediately
+            saveMessage(val, 'user');
+            input.value = '';
+            // Disable send button after clearing input
+            sendBtn.disabled = true;
+            sendBtn.style.opacity = '0.5';
+            sendBtn.style.cursor = 'not-allowed';
+            loadMessages();
+
+            // Show typing indicator only if handover is not active
+            if (!isHandoverActive) {
+                saveMessage('', 'bot');
+                loadMessages();
+            }
+
+            if (!isWebSocketConnected || !currentSocket || currentSocket.readyState !== WebSocket.OPEN) {
+                connectWebSocket();
+                // Wait for connection and then send message
+                var checkConnection = function () {
+                    // Guard: session was reset during reconnection
+                    if (!chatID || !currentSocket) {
+                        return;
+                    }
+                    if (currentSocket && currentSocket.readyState === WebSocket.OPEN) {
+                        currentSocket.send(JSON.stringify({
+                            'message': val,
+                            'message_type': "text",
+                            "room_name": chatID
+                        }));
+                    } else if (currentSocket && currentSocket.readyState === WebSocket.CONNECTING) {
+                        // Still connecting, wait a bit more
+                        setTimeout(checkConnection, 100);
+                    } else {
+                        // Connection failed - remove typing indicator and show error
+                        var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
+                        if (msgs.length > 0 && msgs[msgs.length - 1].text === '') {
+                            msgs.pop(); // Remove typing indicator
+                        }
+                        msgs.push({
+                            text: 'Error: Could not connect to chat service.',
+                            sender: 'bot',
+                            isWelcomeMessage: false
+                        });
+                        localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
+                        loadMessages();
+                    }
+                };
+                // Give some time for connection to establish
+                setTimeout(checkConnection, 500);
+            } else {
+                // Connection is ready, send message immediately
+                try {
                     currentSocket.send(JSON.stringify({
                         'message': val,
                         'message_type': "text",
-                        "room_name": chatID
+                        room_name: chatID
                     }));
-                } else if (currentSocket && currentSocket.readyState === WebSocket.CONNECTING) {
-                    // Still connecting, wait a bit more
-                    setTimeout(checkConnection, 100);
-                } else {
-                    // Connection failed - remove typing indicator and show error
+                } catch (error) {
+                    console.error('Error sending message:', error);
+                    // Remove typing indicator and show error
                     var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
                     if (msgs.length > 0 && msgs[msgs.length - 1].text === '') {
                         msgs.pop(); // Remove typing indicator
                     }
                     msgs.push({
-                        text: 'Error: Could not connect to chat service.',
+                        text: 'Error sending message. Please try again.',
                         sender: 'bot',
                         isWelcomeMessage: false
                     });
                     localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
                     loadMessages();
                 }
-            };
-            // Give some time for connection to establish
-            setTimeout(checkConnection, 500);
-        } else {
-            // Connection is ready, send message immediately
-            try {
-                currentSocket.send(JSON.stringify({
-                    'message': val,
-                    'message_type': "text",
-                    room_name: chatID
-                }));
-            } catch (error) {
-                console.error('Error sending message:', error);
-                // Remove typing indicator and show error
-                var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
-                if (msgs.length > 0 && msgs[msgs.length - 1].text === '') {
-                    msgs.pop(); // Remove typing indicator
-                }
-                msgs.push({
-                    text: 'Error sending message. Please try again.',
-                    sender: 'bot',
-                    isWelcomeMessage: false
-                });
-                localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
-                loadMessages();
             }
         }
-    }
 
-    sendBtn.onclick = sendMessage;
-    input.addEventListener('keydown', function (e) {
-        if (e.key === 'Enter') {
-            e.preventDefault(); // Prevent default to avoid issues on mobile
-            sendMessage();
-        } 
-    });
+        sendBtn.onclick = sendMessage;
+        input.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault(); // Prevent default to avoid issues on mobile
+                sendMessage();
+            }
+        });
 
     function showLeadCaptureInChat(onComplete) {
         isFormShowing = true; // Set flag to prevent reset during form display
@@ -2392,436 +2468,481 @@ function initializeChatEmbed() {
             nameInput.focus();
         }, 100);
     }
-
-    // On load, show lead capture inside chat window
-    function maybeShowLeadCapture() {
-        // If lead capture is disabled in config, skip the form entirely
-        if (!leadCapture) {
-            window.__simpleChatEmbedLeadCaptured = true;
-            setupChatInput();
-            
-            // Create anonymous visitor before establishing connection
-            createVisitor(null, null, null, null).then(() => {
-                // Show welcome message if set
-                if (welcomeMessage) {
-                    saveMessage(welcomeMessage, 'bot', 'welcomeMessage');
-                }
-                loadMessages();
-                
-                // Automatically establish WebSocket connection
-                connectWebSocket();
-            }).catch((error) => {
-                console.error('Failed to create anonymous visitor:', error);
-                // Still proceed with connection even if visitor creation fails
-                if (welcomeMessage) {
-                    saveMessage(welcomeMessage, 'bot', 'welcomeMessage');
-                }
-                loadMessages();
-                connectWebSocket();
-            });
-            
-            return;
-        }
-
-        // Check if we have existing messages in localStorage - if yes, skip lead form
-        var existingMessages = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
-        var storedSession = localStorage.getItem('simple-chat-session');
-
-        // If we have messages and session data, skip the form
-        if (existingMessages.length > 0 && storedSession) {
-            window.__simpleChatEmbedLeadCaptured = true;
-
-            // Load stored session data and check for handover flag
-            try {
-                var sessionData = JSON.parse(storedSession);
-                visitorInfo = sessionData.visitorInfo;
-
-                // Check if handover occurred in this session
-                if (sessionData.handoverOccurred === true) {
-                    isHandoverActive = true;
-                }
-            } catch (error) {
-                console.log('Error parsing session data:', error);
-            }
-
-            // Show chat input immediately
-            setupChatInput();
-            loadMessages();
-
-            // Ensure auto-scroll to bottom after loading existing messages with robust scroll
-            setTimeout(function () {
-                forceScrollToBottom();
-            }, 200);
-
-            // Automatically establish WebSocket connection with stored session data
-            connectWebSocket();
-            return;
-        }
-
-        // Only show lead capture form if we don't have messages or haven't captured lead yet
-        if (!window.__simpleChatEmbedLeadCaptured) {
-            inputContainer.style.display = 'none';
-            showLeadCaptureInChat(function (lead) {
-                isFormShowing = false; // Reset flag when form is completed
-                updateButtonStates(); // Update button appearance
+        // On load, show lead capture inside chat window
+        function maybeShowLeadCapture() {
+            // If lead capture is disabled in config, skip the form entirely
+            if (!leadCapture) {
                 window.__simpleChatEmbedLeadCaptured = true;
-                if (lead) {
-                    window.SimpleChatEmbedLead = lead;
-                }
                 setupChatInput();
 
-                // Show welcome message if set and no previous messages
-                var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
-                if (welcomeMessage) {
-                    saveMessage(welcomeMessage, 'bot', 'welcomeMessage');
+                // Create anonymous visitor before establishing connection
+                createVisitor(null, null, null, null).then(() => {
+                    // Show welcome message if set
+                    if (welcomeMessage) {
+                        saveMessage(welcomeMessage, 'bot', 'welcomeMessage');
+                    }
+                    loadMessages();
+
+                    // Automatically establish WebSocket connection
+                    connectWebSocket();
+                }).catch((error) => {
+                    console.error('Failed to create anonymous visitor:', error);
+                    // Still proceed with connection even if visitor creation fails
+                    if (welcomeMessage) {
+                        saveMessage(welcomeMessage, 'bot', 'welcomeMessage');
+                    }
+                    loadMessages();
+                    connectWebSocket();
+                });
+
+                return;
+            }
+
+            // Check if we have existing messages in localStorage - if yes, skip lead form
+            var existingMessages = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
+            var storedSession = localStorage.getItem('simple-chat-session');
+
+            // If we have messages and session data, skip the form
+            if (existingMessages.length > 0 && storedSession) {
+                window.__simpleChatEmbedLeadCaptured = true;
+
+                // Load stored session data and check for handover flag
+                try {
+                    var sessionData = JSON.parse(storedSession);
+                    visitorInfo = sessionData.visitorInfo;
+
+                    // Check if handover occurred in this session
+                    if (sessionData.handoverOccurred === true) {
+                        isHandoverActive = true;
+                    }
+                } catch (error) {
+                    console.log('Error parsing session data:', error);
                 }
+
+                // Show chat input immediately
+                setupChatInput();
                 loadMessages();
+
+                // Ensure auto-scroll to bottom after loading existing messages with robust scroll
+                setTimeout(function () {
+                    forceScrollToBottom();
+                }, 200);
+
+                // Automatically establish WebSocket connection with stored session data
+                connectWebSocket();
+                return;
+            }
+
+            // Only show lead capture form if we don't have messages or haven't captured lead yet
+            if (!window.__simpleChatEmbedLeadCaptured) {
+                inputContainer.style.display = 'none';
+                showLeadCaptureInChat(function (lead) {
+                    isFormShowing = false; // Reset flag when form is completed
+                    updateButtonStates(); // Update button appearance
+                    window.__simpleChatEmbedLeadCaptured = true;
+                    if (lead) {
+                        window.SimpleChatEmbedLead = lead;
+                    }
+                    setupChatInput();
+
+                    // Show welcome message if set and no previous messages
+                    var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
+                    if (welcomeMessage) {
+                        saveMessage(welcomeMessage, 'bot', 'welcomeMessage');
+                    }
+                    loadMessages();
+                });
+            } else {
+                setupChatInput();
+                loadMessages();
+            }
+        }
+
+        // Helper function to setup chat input styling
+        function setupChatInput() {
+            inputContainer.style.display = 'flex';
+            inputContainer.style.flexDirection = 'column';
+            inputContainer.style.width = '100%';
+            inputContainer.style.boxSizing = 'border-box';
+            inputContainer.style.padding = inputContainerPadding;
+            inputContainer.style.gap = '0';
+            inputContainer.style.flex = '0 0 auto';
+            inputContainer.style.borderTop = inputContainerBorderTop;
+            inputContainer.style.background = theme.inputContainerBg || '#ffffff';
+
+            // Style the input form container
+            inputForm.style.display = 'grid';
+            inputForm.style.gridTemplateColumns = '1fr auto';
+            inputForm.style.gap = '16px';
+            inputForm.style.alignItems = 'center';
+            inputForm.style.width = '100%';
+
+            input.style.padding = '12px 16px';
+            input.style.border = '1px solid #d1d5db';
+            input.style.borderRadius = '6px';
+            input.style.background = theme.inputBg;
+            input.style.color = theme.inputText;
+            input.style.fontSize = '14px';
+            input.style.lineHeight = '20px';
+            input.style.outline = 'none';
+            input.style.transition = 'border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out';
+
+            sendBtn.style.padding = '12px';
+            sendBtn.style.background = theme.sendBtnBg || '#3b82f6';
+            sendBtn.style.color = '#ffffff';
+            sendBtn.style.border = 'none';
+            sendBtn.style.borderRadius = '6px';
+            sendBtn.style.cursor = 'pointer';
+            sendBtn.style.display = 'flex';
+            sendBtn.style.alignItems = 'center';
+            sendBtn.style.justifyContent = 'center';
+            sendBtn.style.transition = 'background-color 0.2s ease-in-out';
+        }
+
+        // Sanitize input to prevent XSS
+        function sanitize(str) {
+            return String(str).replace(/[&<>"']/g, function (c) {
+                return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', '\'': '&#39;' }[c]);
             });
-        } else {
-            setupChatInput();
-            loadMessages();
         }
-    }
 
-    // Helper function to setup chat input styling
-    function setupChatInput() {
-        inputContainer.style.display = 'flex';
-        inputContainer.style.flexDirection = 'column';
-        inputContainer.style.width = '100%';
-        inputContainer.style.boxSizing = 'border-box';
-        inputContainer.style.padding = inputContainerPadding;
-        inputContainer.style.gap = '0';
-        inputContainer.style.flex = '0 0 auto';
-        inputContainer.style.borderTop = inputContainerBorderTop;
-        inputContainer.style.background = theme.inputContainerBg || '#ffffff';
-        
-        // Style the input form container
-        inputForm.style.display = 'grid';
-        inputForm.style.gridTemplateColumns = '1fr auto';
-        inputForm.style.gap = '16px';
-        inputForm.style.alignItems = 'center';
-        inputForm.style.width = '100%';
-        
-        input.style.padding = '12px 16px';
-        input.style.border = '1px solid #d1d5db';
-        input.style.borderRadius = '6px';
-        input.style.background = theme.inputBg;
-        input.style.color = theme.inputText;
-        input.style.fontSize = '14px';
-        input.style.lineHeight = '20px';
-        input.style.outline = 'none';
-        input.style.transition = 'border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out';
-        
-        sendBtn.style.padding = '12px';
-        sendBtn.style.background = theme.sendBtnBg || '#3b82f6';
-        sendBtn.style.color = '#ffffff';
-        sendBtn.style.border = 'none';
-        sendBtn.style.borderRadius = '6px';
-        sendBtn.style.cursor = 'pointer';
-        sendBtn.style.display = 'flex';
-        sendBtn.style.alignItems = 'center';
-        sendBtn.style.justifyContent = 'center';
-        sendBtn.style.transition = 'background-color 0.2s ease-in-out';
-    }
+        // Create chat toggle button
+        var chatToggle = document.createElement('button');
+        chatToggle.setAttribute("id", 'chat-embed-toggle-button')
 
-    // Sanitize input to prevent XSS
-    function sanitize(str) {
-        return String(str).replace(/[&<>"']/g, function (c) {
-            return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', '\'': '&#39;' }[c]);
-        });
-    }
+        // Set the icon based on customIcon config (SVG string or URL)
+        var defaultIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-message-circle-icon lucide-message-circle"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>';
 
-    // Create chat toggle button
-    var chatToggle = document.createElement('button');
-    chatToggle.setAttribute("id",'chat-embed-toggle-button')
-    
-    // Set the icon based on customIcon config (SVG string or URL)
-    var defaultIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-message-circle-icon lucide-message-circle"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>';
-    
-    if (config.customIcon) {
-        // Check if it's a URL (contains http/https or ends with common image extensions)
-        if (config.customIcon.match(/^https?:\/\//) || config.customIcon.match(/\.(png|jpg|jpeg|gif|svg|webp)$/i)) {
-            chatToggle.innerHTML = '<img src="' + config.customIcon + '" alt="Chat" style="width: 34px; height: 34px; object-fit: contain;" />';
-        } else {
-            // Assume it's an SVG string
-            chatToggle.innerHTML = config.customIcon;
-        }
-    } else {
-        chatToggle.innerHTML = defaultIcon;
-    }
-    
-    chatToggle.style.position = 'fixed';
-    chatToggle.style.bottom = '20px';
-    
-    // Set horizontal position based on config
-    if (config.position === 'left') {
-        chatToggle.style.left = '20px';
-        chatToggle.style.right = 'auto';
-    } else {
-        chatToggle.style.right = '20px';
-        chatToggle.style.left = 'auto';
-    }
-    
-    chatToggle.style.width = '80px';
-    chatToggle.style.height = '80px';
-    chatToggle.style.borderRadius = '50%';
-    chatToggle.style.backgroundColor = theme.sendBtnBg || '#16a34a';
-    chatToggle.style.color = '#ffffff';
-    chatToggle.style.border = 'none';
-    chatToggle.style.cursor = 'pointer';
-    chatToggle.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
-    chatToggle.style.display = 'flex';
-    chatToggle.style.alignItems = 'center';
-    chatToggle.style.justifyContent = 'center';
-    chatToggle.style.transition = 'all 0.3s ease';
-    chatToggle.style.zIndex = theme.zIndex - 1;
-
-    // Responsive positioning for mobile
-    function setToggleResponsive() {
-        if (window.innerWidth < 768) {
-            chatToggle.style.bottom = '20px';
-            
-            // Set horizontal position based on config (mobile)
-            if (config.position === 'left') {
-                chatToggle.style.left = '20px';
-                chatToggle.style.right = 'auto';
+        if (config.customIcon) {
+            // Check if it's a URL (contains http/https or ends with common image extensions)
+            if (config.customIcon.match(/^https?:\/\//) || config.customIcon.match(/\.(png|jpg|jpeg|gif|svg|webp)$/i)) {
+                chatToggle.innerHTML = '<img src="' + config.customIcon + '" alt="Chat" style="width: 34px; height: 34px; object-fit: contain;" />';
             } else {
-                chatToggle.style.right = '20px';
-                chatToggle.style.left = 'auto';
+                // Assume it's an SVG string
+                chatToggle.innerHTML = config.customIcon;
             }
         } else {
-            chatToggle.style.bottom = '20px';
-            
-            // Set horizontal position based on config (desktop)
-            if (config.position === 'left') {
-                chatToggle.style.left = '20px';
-                chatToggle.style.right = 'auto';
-            } else {
-                chatToggle.style.right = '20px';
-                chatToggle.style.left = 'auto';
-            }
+            chatToggle.innerHTML = defaultIcon;
         }
-    }
-    setToggleResponsive();
-    window.addEventListener('resize', setToggleResponsive);
 
-    // Initially hide the chat container
-    chatContainer.style.display = 'none';
+        chatToggle.style.position = 'fixed';
+        chatToggle.style.bottom = '20px';
 
-    // Toggle functionality
-    var chatOpen = false;
-    chatToggle.addEventListener('click', function () {
-        chatOpen = !chatOpen;
-        if (chatOpen) {
-            chatContainer.style.display = 'flex';
-            chatToggle.style.display = 'none';
-
-            // Auto-scroll to bottom when chat opens with robust scroll function
-            setTimeout(function () {
-                forceScrollToBottom();
-            }, 150);
+        // Set horizontal position based on config
+        if (config.position === 'left') {
+            chatToggle.style.left = '20px';
+            chatToggle.style.right = 'auto';
         } else {
-            chatContainer.style.display = 'none';
-            chatToggle.style.display = 'flex';
+            chatToggle.style.right = '20px';
+            chatToggle.style.left = 'auto';
         }
-    });
 
-    // Close button functionality from header
-    chatCloseBtn.onclick = function () {
-        chatOpen = false;
-        chatContainer.style.display = 'none';
+        chatToggle.style.width = '80px';
+        chatToggle.style.height = '80px';
+        chatToggle.style.borderRadius = '50%';
+        chatToggle.style.backgroundColor = theme.sendBtnBg || '#16a34a';
+        chatToggle.style.color = '#ffffff';
+        chatToggle.style.border = 'none';
+        chatToggle.style.cursor = 'pointer';
+        chatToggle.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
         chatToggle.style.display = 'flex';
-    };
+        chatToggle.style.alignItems = 'center';
+        chatToggle.style.justifyContent = 'center';
+        chatToggle.style.transition = 'all 0.3s ease';
+        chatToggle.style.zIndex = theme.zIndex - 1;
 
-    // Add both toggle button and chat container to body
-    document.body.appendChild(chatToggle);
+        // Responsive positioning for mobile
+        function setToggleResponsive() {
+            if (window.innerWidth < 768) {
+                chatToggle.style.bottom = '20px';
 
-    // Expose chat control functions globally
-    window.openChat = function() {
-        if (!chatOpen) {
-            chatOpen = true;
-            chatContainer.style.display = 'flex';
-            chatToggle.style.display = 'none';
-            setTimeout(function () {
-                forceScrollToBottom();
-            }, 150);
+                // Set horizontal position based on config (mobile)
+                if (config.position === 'left') {
+                    chatToggle.style.left = '20px';
+                    chatToggle.style.right = 'auto';
+                } else {
+                    chatToggle.style.right = '20px';
+                    chatToggle.style.left = 'auto';
+                }
+            } else {
+                chatToggle.style.bottom = '20px';
+
+                // Set horizontal position based on config (desktop)
+                if (config.position === 'left') {
+                    chatToggle.style.left = '20px';
+                    chatToggle.style.right = 'auto';
+                } else {
+                    chatToggle.style.right = '20px';
+                    chatToggle.style.left = 'auto';
+                }
+            }
         }
-    };
+        setToggleResponsive();
+        window.addEventListener('resize', setToggleResponsive);
 
-    window.closeChat = function() {
-        if (chatOpen) {
+        // Initially hide the chat container
+        chatContainer.style.display = 'none';
+
+        // Toggle functionality
+        var chatOpen = false;
+        chatToggle.addEventListener('click', function () {
+            chatOpen = !chatOpen;
+            if (chatOpen) {
+                chatContainer.style.display = 'flex';
+                chatToggle.style.display = 'none';
+
+                // Non-blocking session validation when widget opens
+                var storedSession = localStorage.getItem('simple-chat-session');
+                if (storedSession) {
+                    try {
+                        var sessionData = JSON.parse(storedSession);
+                        if (sessionData.chatID) {
+                            validateSession(sessionData.chatID).then(function (isValid) {
+                                if (!isValid) {
+                                    showSessionClosedNotification('This chat session has been closed.');
+                                }
+                            });
+                        }
+                    } catch (e) {
+                        // Ignore parse errors
+                    }
+                }
+
+                // Auto-scroll to bottom when chat opens with robust scroll function
+                setTimeout(function () {
+                    forceScrollToBottom();
+                }, 150);
+            } else {
+                chatContainer.style.display = 'none';
+                chatToggle.style.display = 'flex';
+            }
+        });
+
+        // Close button functionality from header
+        chatCloseBtn.onclick = function () {
             chatOpen = false;
             chatContainer.style.display = 'none';
             chatToggle.style.display = 'flex';
-        }
-    };
-
-    window.toggleChat = function() {
-        if (chatOpen) {
-            window.closeChat();
-        } else {
-            window.openChat();
-        }
-    };
-
-    // Expose functions globally for testing
-    window.saveMessage = saveMessage;
-    window.loadMessages = loadMessages;
-    window.generateChatId = generateChatId;
-    window.connectWebSocket = connectWebSocket;
-
-    // Helper function to collect browser metadata
-    const collectBrowserMetadata = () => {
-        return {
-            userAgent: navigator.userAgent,
-            platform: navigator.platform,
-            language: navigator.language,
-            referrer: document.referrer || 'direct',
-            url: window.location.href,
-            timestamp: new Date().toISOString(),
-            screenResolution: `${window.screen.width}x${window.screen.height}`,
-            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-            cookiesEnabled: navigator.cookieEnabled
         };
-    };
 
-    // Helper function to create visitor (regular or anonymous)
-    const createVisitor = async (name, email, phone, zip) => {
-        try {
-            var baseUrl = config.baseUrl;
-            var token = config.token;
-            
-            if (!baseUrl || !token) {
-                console.error('baseUrl and token must be provided in SimpleChatEmbedConfig');
-                throw new Error('Missing required configuration: baseUrl and token');
+        // Add both toggle button and chat container to body
+        document.body.appendChild(chatToggle);
+
+        // Expose chat control functions globally
+        window.openChat = function () {
+            if (!chatOpen) {
+                chatOpen = true;
+                chatContainer.style.display = 'flex';
+                chatToggle.style.display = 'none';
+                setTimeout(function () {
+                    forceScrollToBottom();
+                }, 150);
             }
+        };
 
-            // For anonymous visitors (when leadCapture is false), use browser fingerprint as email
-            const isAnonymous = !email;
-            const browserMetadata = collectBrowserMetadata();
-            
-            if (isAnonymous) {
-                // Create a truly unique identifier from multiple browser characteristics
-                const fingerprintData = [
-                    browserMetadata.userAgent,
-                    browserMetadata.platform,
-                    browserMetadata.language,
-                    browserMetadata.screenResolution,
-                    browserMetadata.timezone,
-                    browserMetadata.cookiesEnabled,
-                    navigator.hardwareConcurrency || 'unknown', // CPU cores
-                    navigator.maxTouchPoints || 0, // Touch support
-                    screen.colorDepth || 'unknown', // Color depth
-                    new Date().getTimezoneOffset(), // Timezone offset in minutes
-                ].join('|');
-                
-                // Create hash using a more robust approach
-                const fingerprint = btoa(fingerprintData)
-                    .replace(/[^a-zA-Z0-9]/g, '') // Remove special characters
-                    .substring(0, 40); // Use longer hash
-                
-                email = `anonymous_${fingerprint}@memox.local`;
-                name = 'Anonymous Visitor';
+        window.closeChat = function () {
+            if (chatOpen) {
+                chatOpen = false;
+                chatContainer.style.display = 'none';
+                chatToggle.style.display = 'flex';
             }
+        };
 
-            console.log(baseUrl,'before getvisitor')
-            
-            const getVisitor = await fetch(`${baseUrl}visitors/?email=${email}`, {
-                method: "GET",
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...(isMobileDevice && {'X-App-Platform': 'react-native-webview'}),
-                    'Authorization': `Token ${token} `,
-                    ...(ngrok && {'ngrok-skip-browser-warning': 'true'})
+        window.toggleChat = function () {
+            if (chatOpen) {
+                window.closeChat();
+            } else {
+                window.openChat();
+            }
+        };
 
-                }
-            })
+        // Expose functions globally for testing
+        window.saveMessage = saveMessage;
+        window.loadMessages = loadMessages;
+        window.generateChatId = generateChatId;
+        window.connectWebSocket = connectWebSocket;
 
-            const getVisitorJson = await getVisitor.json();
+        // Validate whether a stored session is still active on the backend
+        async function validateSession(sessionChatID) {
+            try {
+                var baseUrl = config.baseUrl;
+                var token = config.token;
+                if (!baseUrl || !token || !sessionChatID) return true;
 
-            console.log(getVisitorJson,'my json')
-
-
-            if (getVisitorJson.detail === "Not found." || !getVisitorJson.results?.length) {
-                // If visitor does not exist, create a new one
-                const visitorPayload = {
-                    name,
-                    email,
-                    phone_number: phone || '',
-                    zip_code: zip || '',
-                    organization: config.org_id,
-                    metadata: {
-                        anonymous: isAnonymous
-                    }
-                };
-                
-                const visitor = await fetch(`${baseUrl}visitors/`, {
-                    method: "POST",
+                var response = await fetch(baseUrl + 'sessions/' + sessionChatID + '/', {
+                    method: 'GET',
                     headers: {
                         'Content-Type': 'application/json',
+                        'Authorization': 'Token ' + token,
+                        ...(isMobileDevice && { 'X-App-Platform': 'react-native-webview' }),
+                        ...(ngrok && { 'ngrok-skip-browser-warning': 'true' })
+                    }
+                });
+
+                if (response.status === 404) return false;
+                if (!response.ok) return true; // Fail-open on server errors
+
+                var data = await response.json();
+                var status = data.status;
+                // Session is active if open, unanswered, or pending
+                if (status === 'close') return false;
+                return true;
+            } catch (error) {
+                console.log('Session validation failed, assuming valid:', error);
+                return true; // Fail-open on network errors
+            }
+        }
+
+        // Helper function to collect browser metadata
+        const collectBrowserMetadata = () => {
+            return {
+                userAgent: navigator.userAgent,
+                platform: navigator.platform,
+                language: navigator.language,
+                referrer: document.referrer || 'direct',
+                url: window.location.href,
+                timestamp: new Date().toISOString(),
+                screenResolution: `${window.screen.width}x${window.screen.height}`,
+                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                cookiesEnabled: navigator.cookieEnabled
+            };
+        };
+
+        // Helper function to create visitor (regular or anonymous)
+        const createVisitor = async (name, email, phone, zip) => {
+            try {
+                var baseUrl = config.baseUrl;
+                var token = config.token;
+
+                if (!baseUrl || !token) {
+                    console.error('baseUrl and token must be provided in SimpleChatEmbedConfig');
+                    throw new Error('Missing required configuration: baseUrl and token');
+                }
+
+                // For anonymous visitors (when leadCapture is false), use browser fingerprint as email
+                const isAnonymous = !email;
+                const browserMetadata = collectBrowserMetadata();
+
+                if (isAnonymous) {
+                    // Create a truly unique identifier from multiple browser characteristics
+                    const fingerprintData = [
+                        browserMetadata.userAgent,
+                        browserMetadata.platform,
+                        browserMetadata.language,
+                        browserMetadata.screenResolution,
+                        browserMetadata.timezone,
+                        browserMetadata.cookiesEnabled,
+                        navigator.hardwareConcurrency || 'unknown', // CPU cores
+                        navigator.maxTouchPoints || 0, // Touch support
+                        screen.colorDepth || 'unknown', // Color depth
+                        new Date().getTimezoneOffset(), // Timezone offset in minutes
+                    ].join('|');
+
+                    // Create hash using a more robust approach
+                    const fingerprint = btoa(fingerprintData)
+                        .replace(/[^a-zA-Z0-9]/g, '') // Remove special characters
+                        .substring(0, 40); // Use longer hash
+
+                    email = `anonymous_${fingerprint}@memox.local`;
+                    name = 'Anonymous Visitor';
+                }
+
+
+                const getVisitor = await fetch(`${baseUrl}visitors/?email=${email}`, {
+                    method: "GET",
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(isMobileDevice && { 'X-App-Platform': 'react-native-webview' }),
                         'Authorization': `Token ${token} `,
-                    ...(isMobileDevice && {'X-App-Platform': 'react-native-webview'}),
-                    ...(ngrok && {'ngrok-skip-browser-warning': 'true'})
-                    },
-                    body: JSON.stringify(visitorPayload)
+                        ...(ngrok && { 'ngrok-skip-browser-warning': 'true' })
+
+                    }
                 })
 
-                if (!visitor.ok) {
-                    throw new Error(`Failed to create visitor: ${visitor.status}`);
-                }
+                const getVisitorJson = await getVisitor.json();
 
-                const visitorData = await visitor.json();
-                visitorInfo = {
-                    "id": visitorData.id,
-                    "name": visitorData.name
-                };
-            }
-            else {
-                visitorInfo = {
-                    "id": getVisitorJson?.results[0].id,
-                    "name": getVisitorJson?.results[0].name
-                };
-            }
-        } catch (error) {
-            console.error('Error creating/fetching visitor:', error);
-            // Create fallback visitor info for offline mode
-            visitorInfo = {
-                "id": "offline_" + Date.now(),
-                "name": name 
-            };
-        }
-    }
 
-    // Function to check and auto-connect with stored session on widget load
-    function checkAndAutoConnect() {
-        var storedSession = localStorage.getItem('simple-chat-session');
 
-        if (storedSession) {
-            try {
-                var sessionData = JSON.parse(storedSession);
-                // Check if session data is complete and not too old (24 hours)
+                if (getVisitorJson.detail === "Not found." || !getVisitorJson.results?.length) {
+                    // If visitor does not exist, create a new one
+                    const visitorPayload = {
+                        name,
+                        email,
+                        phone_number: phone || '',
+                        zip_code: zip || '',
+                        organization: config.org_id,
+                        metadata: {
+                            anonymous: isAnonymous
+                        }
+                    };
 
-                if (sessionData.chatID && sessionData.visitorInfo) {
+                    const visitor = await fetch(`${baseUrl}visitors/`, {
+                        method: "POST",
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Token ${token} `,
+                            ...(isMobileDevice && { 'X-App-Platform': 'react-native-webview' }),
+                            ...(ngrok && { 'ngrok-skip-browser-warning': 'true' })
+                        },
+                        body: JSON.stringify(visitorPayload)
+                    })
 
-                    // Set visitor info from stored session
-                    visitorInfo = sessionData.visitorInfo;
-
-                    // Auto-connect if not already connected
-                    if (!isWebSocketConnected && !currentSocket) {
-                        connectWebSocket();
+                    if (!visitor.ok) {
+                        throw new Error(`Failed to create visitor: ${visitor.status}`);
                     }
+
+                    const visitorData = await visitor.json();
+                    visitorInfo = {
+                        "id": visitorData.id,
+                        "name": visitorData.name
+                    };
+                }
+                else {
+                    visitorInfo = {
+                        "id": getVisitorJson?.results[0].id,
+                        "name": getVisitorJson?.results[0].name
+                    };
                 }
             } catch (error) {
-                console.log('Error checking stored session for auto-connect:', error);
+                console.error('Error creating/fetching visitor:', error);
+                // Create fallback visitor info for offline mode
+                visitorInfo = {
+                    "id": "offline_" + Date.now(),
+                    "name": name
+                };
             }
         }
-    }
 
-    // Initial load
-    maybeShowLeadCapture();
+        // Function to check and auto-connect with stored session on widget load
+        function checkAndAutoConnect() {
+            var storedSession = localStorage.getItem('simple-chat-session');
 
-    // Check for auto-connection after initial setup
-    setTimeout(checkAndAutoConnect, 100);
-} // End of initializeChatEmbed function
+            if (storedSession) {
+                try {
+                    var sessionData = JSON.parse(storedSession);
+                    // Check if session data is complete and not too old (24 hours)
+
+                    if (sessionData.chatID && sessionData.visitorInfo) {
+
+                        // Set visitor info from stored session
+                        visitorInfo = sessionData.visitorInfo;
+
+                        // Auto-connect if not already connected
+                        if (!isWebSocketConnected && !currentSocket) {
+                            connectWebSocket();
+                        }
+                    }
+                } catch (error) {
+                    console.log('Error checking stored session for auto-connect:', error);
+                }
+            }
+        }
+
+        // Initial load
+        maybeShowLeadCapture();
+
+        // Check for auto-connection after initial setup
+        setTimeout(checkAndAutoConnect, 100);
+    } // End of initializeChatEmbed function
 
 })(); // End of main IIFE
