@@ -4,11 +4,10 @@
     if (typeof marked === 'undefined') {
         var script = document.createElement('script');
         script.src = 'https://cdn.jsdelivr.net/npm/marked/lib/marked.umd.js';
-        script.onload = function() {
-            console.log('Marked.js library loaded');
+        script.onload = function () {
             initializeChatEmbed();
         };
-        script.onerror = function() {
+        script.onerror = function () {
             console.warn('Failed to load marked.js from CDN, initializing without it');
             initializeChatEmbed();
         };
@@ -18,483 +17,525 @@
         initializeChatEmbed();
     }
 
-function initializeChatEmbed() {
-    var defaultConfig = {
-        title: 'Chat',
-        customIcon: null, // Can be SVG string or image URL
-        botIcon: {
-            svgWidth: '24px',      // Width of the SVG/image element
-            svgHeight: '24px',     // Height of the SVG/image element
-            width: '24px',         // Width of the bot icon container
-            height: '24px',        // Height of the bot icon container
-            objectFit: 'contain',  // How image should fit: contain, cover, fill, etc.
-            botAvatarUrl: null     // URL for custom bot avatar icon
-        },
-        theme: {
-            primary: '#0078d4',
-            userBubble: '#e6f0fa',
-            botBubble: '#f1f1f1',
-            userText: '#22223b',
-            botText: '#4a4e69',
-            background: '#fff',
-            containerBg: '#ffffff',
-            messagesBg: '#ffffff',
-            inputContainerBg: '#ffffff',
-            border: '#ccc',
-            text: '#222',
-            width: '100%',
-            maxWidth: '350px',
-            minWidth: '220px',
-            borderRadius: '8px',
-            fontFamily: 'sans-serif',
-            zIndex: 9999,
-            inputBg: '#fff',
-            inputText: '#222',
-            sendBtnBg: '#0078d4',
-            sendBtnText: '#fff',
-            sendBtnSvgColor: '#fff',
-            sendBtnHover: '#005fa3',
-            shadow: '0 2px 8px rgba(0,0,0,0.15)',
-            salesRepBubble: '#f1f5f9',
-            salesRepText: '#475569',
-            salesRepAvatar: '#E4E7FC',
-            userAvatar: '#8349ff',
-            botAvatar: '#E4E7FC',
-            userAvatarSvgColor: '#fff',
-            botAvatarSvgColor: '#8349ff',
-            salesRepAvatarSvgColor: '#8349ff',
-            userAvatarBorder: 'none',
-            botAvatarBorder: 'none',
-            salesRepAvatarBorder: 'none',
-            timestampColor: '#9ca3af',
-            messageFontFamily: 'inherit',
-            handoverNotificationBg: '#E4E7FC',
-            handoverNotificationText: '#334155',
-            handoverNotificationBorder: '#8349FF',
-            closeBtnIconStyle:{
-                display:""
+    function initializeChatEmbed() {
+        var defaultConfig = {
+            title: 'Chat',
+            customIcon: null, // Can be SVG string or image URL
+            botIcon: {
+                svgWidth: '24px',      // Width of the SVG/image element
+                svgHeight: '24px',     // Height of the SVG/image element
+                width: '24px',         // Width of the bot icon container
+                height: '24px',        // Height of the bot icon container
+                objectFit: 'contain',  // How image should fit: contain, cover, fill, etc.
+                botAvatarUrl: null     // URL for custom bot avatar icon
             },
-            headerStyle: {
-                backgroundColor: 'rgba(34, 34, 59, 0.95)',
-                textColor: '#fff',
-                fontWeight: '600',
-                fontFamily: '',
-                height: 'auto',
-                padding: '32px',
-                borderRadius: '12px',
-                logoStyle: {
-                    logoUrl: '',
-                    logoWidth: '24px',
-                    logoHeight: '24px',
-                    borderRadius: '0'
+            theme: {
+                primary: '#0078d4',
+                userBubble: '#e6f0fa',
+                botBubble: '#f1f1f1',
+                userText: '#22223b',
+                botText: '#4a4e69',
+                background: '#fff',
+                containerBg: '#ffffff',
+                messagesBg: '#ffffff',
+                inputContainerBg: '#ffffff',
+                border: '#ccc',
+                text: '#222',
+                width: '100%',
+                maxWidth: '350px',
+                minWidth: '220px',
+                borderRadius: '8px',
+                fontFamily: 'sans-serif',
+                zIndex: 9999,
+                inputBg: '#fff',
+                inputText: '#222',
+                sendBtnBg: '#0078d4',
+                sendBtnText: '#fff',
+                sendBtnSvgColor: '#fff',
+                sendBtnHover: '#005fa3',
+                shadow: '0 2px 8px rgba(0,0,0,0.15)',
+                salesRepBubble: '#f1f5f9',
+                salesRepText: '#475569',
+                salesRepAvatar: '#E4E7FC',
+                userAvatar: '#8349ff',
+                botAvatar: '#E4E7FC',
+                userAvatarSvgColor: '#fff',
+                botAvatarSvgColor: '#8349ff',
+                salesRepAvatarSvgColor: '#8349ff',
+                userAvatarBorder: 'none',
+                botAvatarBorder: 'none',
+                salesRepAvatarBorder: 'none',
+                timestampColor: '#9ca3af',
+                messageFontFamily: 'inherit',
+                handoverNotificationBg: '#E4E7FC',
+                handoverNotificationText: '#334155',
+                handoverNotificationBorder: '#8349FF',
+                closeBtnIconStyle: {
+                    display: ""
+                },
+                headerStyle: {
+                    backgroundColor: 'rgba(34, 34, 59, 0.95)',
+                    textColor: '#fff',
+                    fontWeight: '600',
+                    fontFamily: '',
+                    height: 'auto',
+                    padding: '32px',
+                    borderRadius: '12px',
+                    logoStyle: {
+                        logoUrl: '',
+                        logoWidth: '24px',
+                        logoHeight: '24px',
+                        borderRadius: '0'
+                    }
+                }
+            }
+        };
+
+        var config = window.SimpleChatEmbedConfig ? {
+            ...defaultConfig,
+            ...window.SimpleChatEmbedConfig,
+            theme: { ...defaultConfig.theme, ...(window.SimpleChatEmbedConfig.theme || {}) }
+        } : defaultConfig;
+
+        var theme = config.theme;
+        var apiUrl = config.apiUrl;
+        var welcomeMessage = config.welcomeMessage || null;
+        var welcomeMessageStyle = config.welcomeMessageStyle || {};
+        var socketUrl = config.socketUrl + "/ws/app/";
+        var leadCapture = config.leadCapture !== undefined ? config.leadCapture : true; // Default to true if not specified
+        var ngrok = config.ngrok ?? false
+        var isMobileDevice = config.isMobileDevice ?? false
+
+        var currentSocket = null;
+        var heartBeatInterval = null;
+        var isWebSocketConnected = false;
+        var visitorInfo = null;
+        var isHandoverActive = false;
+        var isFormShowing = false;
+        var isBotResponding = false;
+        var chatID = null
+        var isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+        // Function to enable/disable input while bot is responding
+        function setBotResponding(responding) {
+            isBotResponding = responding;
+            if (responding) {
+                input.disabled = true;
+                input.style.opacity = '0.6';
+                sendBtn.disabled = true;
+                sendBtn.style.opacity = '0.5';
+                sendBtn.style.cursor = 'not-allowed';
+            } else {
+                input.disabled = false;
+                input.style.opacity = '1';
+                // Re-enable send button only if there's text in the input
+                if (input.value.trim()) {
+                    sendBtn.disabled = false;
+                    sendBtn.style.opacity = '1';
+                    sendBtn.style.cursor = 'pointer';
+                }
+                input.focus();
+            }
+        }
+
+        // Function to update button states based on form visibility
+        function updateButtonStates() {
+            if (isFormShowing) {
+                // Disable appearance when form is showing
+                refreshBtn.style.opacity = '0.5';
+                refreshBtn.style.cursor = 'not-allowed';
+                clearSessionBtn.style.opacity = '0.5';
+                clearSessionBtn.style.cursor = 'not-allowed';
+            } else {
+                // Enable appearance when form is not showing
+                refreshBtn.style.opacity = '1';
+                refreshBtn.style.cursor = 'pointer';
+                clearSessionBtn.style.opacity = '1';
+                clearSessionBtn.style.cursor = 'pointer';
+            }
+        }
+
+        function generateChatId() {
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+                var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+        }
+
+        var chatContainer = document.createElement('div');
+        chatContainer.id = 'simple-chat-embed';
+        chatContainer.style.position = 'fixed';
+        chatContainer.style.bottom = '20px';
+
+        // Set horizontal position based on config
+        if (config.position === 'left') {
+            chatContainer.style.left = '20px';
+            chatContainer.style.right = 'auto';
+        } else {
+            chatContainer.style.right = '20px';
+            chatContainer.style.left = 'auto';
+        }
+        chatContainer.style.width = '384px';
+        chatContainer.style.height = '80vh';
+        chatContainer.style.maxHeight = '650px';
+        chatContainer.style.background = theme.containerBg || '#ffffff';
+        chatContainer.style.border = theme.containerBorderStyle || '1px solid #e2e8f0';
+        chatContainer.style.borderRadius = (theme.headerStyle && theme.headerStyle.borderRadius) || '12px';
+        chatContainer.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)';
+        chatContainer.style.fontFamily = theme.fontFamily + ', Inter, system-ui, sans-serif';
+        chatContainer.style.zIndex = theme.zIndex;
+        chatContainer.style.color = theme.text;
+        chatContainer.style.transition = 'transform 0.3s ease-in-out';
+        chatContainer.style.display = 'flex';
+        chatContainer.style.flexDirection = 'column';
+        chatContainer.style.overflow = 'hidden';
+
+        function setResponsive() {
+            if (window.innerWidth < 768) {
+                chatContainer.style.position = 'fixed';
+                chatContainer.style.top = '0';
+                chatContainer.style.left = '0';
+                chatContainer.style.right = '0';
+                chatContainer.style.bottom = '0';
+                chatContainer.style.width = '100%';
+                chatContainer.style.height = '100dvh'; // Dynamic viewport height for mobile browsers
+                chatContainer.style.borderRadius = '0';
+                // chatContainer.style.maxHeight = '100vh';
+                chatContainer.style.maxHeight = '100dvh';
+
+            } else {
+                chatContainer.style.position = 'fixed';
+                chatContainer.style.top = 'auto';
+
+                // Set horizontal position based on config
+                if (config.position === 'left') {
+                    chatContainer.style.left = '20px';
+                    chatContainer.style.right = 'auto';
+                } else {
+                    chatContainer.style.left = 'auto';
+                    chatContainer.style.right = '20px';
+                }
+
+                chatContainer.style.bottom = '20px';
+                chatContainer.style.width = '384px';
+                chatContainer.style.height = '80vh';
+                chatContainer.style.borderRadius = (theme.headerStyle && theme.headerStyle.borderRadius) || '12px';
+                chatContainer.style.maxHeight = '650px';
+            }
+        }
+        setResponsive();
+        window.addEventListener('resize', setResponsive);
+        var originalHeight = window.innerHeight;
+        function handleMobileKeyboard() {
+            if (isMobile && window.innerWidth < 768) {
+                var currentHeight = window.innerHeight;
+                var keyboardHeight = originalHeight - currentHeight;
+
+                // If keyboard is visible (height changed significantly)
+                if (keyboardHeight > 100) {
+                    chatContainer.style.height = currentHeight + 'px';
+                    chatContainer.style.maxHeight = currentHeight + 'px';
+
+                    // Scroll to show input
+                    setTimeout(function () {
+                        inputContainer.scrollIntoView({ behavior: 'smooth', block: 'end' });
+                    }, 100);
+                } else {
+                    // Keyboard hidden, restore original size
+                    chatContainer.style.height = '100vh';
+                    chatContainer.style.height = '100dvh';
+                    chatContainer.style.maxHeight = '100vh';
+                    chatContainer.style.maxHeight = '100dvh';
                 }
             }
         }
-    };
 
-    var config = window.SimpleChatEmbedConfig ? {
-        ...defaultConfig,
-        ...window.SimpleChatEmbedConfig,
-        theme: { ...defaultConfig.theme, ...(window.SimpleChatEmbedConfig.theme || {}) }
-    } : defaultConfig;
+        window.addEventListener('resize', handleMobileKeyboard);
+        window.visualViewport && window.visualViewport.addEventListener('resize', handleMobileKeyboard);
 
-    var theme = config.theme;
-    var apiUrl = config.apiUrl;
-    var welcomeMessage = config.welcomeMessage || null;
-    var welcomeMessageStyle = config.welcomeMessageStyle || {};
-    var socketUrl = config.socketUrl + "/ws/app/";
-    var leadCapture = config.leadCapture !== undefined ? config.leadCapture : true; // Default to true if not specified
-    var ngrok = config.ngrok ?? false
-    var isMobileDevice = config.isMobileDevice ?? false
 
-    var currentSocket = null;
-    var heartBeatInterval = null;
-    var isWebSocketConnected = false;
-    var visitorInfo = null;
-    var isHandoverActive = false;
-    var isFormShowing = false;
-    var isBotResponding = false;
-    var chatID = null
-    var isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        var header = document.createElement('div');
+        header.style.display = 'flex';
+        header.style.justifyContent = 'space-between';
+        header.style.alignItems = 'center';
+        header.style.background = (theme.headerStyle && theme.headerStyle.backgroundColor) || theme.headerBg || '#16a34a';
+        header.style.color = (theme.headerStyle && theme.headerStyle.textColor) || theme.headerText || '#fff';
+        header.style.padding = (theme.headerStyle && theme.headerStyle.padding) || '32px';
+        header.style.height = (theme.headerStyle && theme.headerStyle.height) || 'auto';
+        header.style.borderTopLeftRadius = (theme.headerStyle && theme.headerStyle.borderRadius) || '12px';
+        header.style.borderTopRightRadius = (theme.headerStyle && theme.headerStyle.borderRadius) || '12px';
+        header.style.fontWeight = (theme.headerStyle && theme.headerStyle.fontWeight) || '600';
+        header.style.fontFamily = (theme.headerStyle && theme.headerStyle.fontFamily) || theme.messageFontFamily || theme.fontFamily || 'sans-serif';
+        header.style.fontSize = (theme.headerStyle && theme.headerStyle.fontSize) || "18px";
+        header.style.lineHeight = '28px';
+        header.style.position = "sticky";
+        header.style.top = "0";
 
-    // Function to enable/disable input while bot is responding
-    function setBotResponding(responding) {
-        isBotResponding = responding;
-        if (responding) {
+        var headerTitleContainer = document.createElement('div');
+        headerTitleContainer.style.display = 'flex';
+        headerTitleContainer.style.alignItems = 'center';
+        headerTitleContainer.style.gap = '12px';
+
+        // Add logo if provided
+        var logoStyle = (theme.headerStyle && theme.headerStyle.logoStyle) || theme.headerStyle || {};
+        var logoUrl = logoStyle.logoUrl || (theme.headerStyle && theme.headerStyle.logoUrl) || '';
+
+        if (logoUrl) {
+            var headerLogo = document.createElement('img');
+            headerLogo.src = logoUrl;
+            headerLogo.alt = 'Logo';
+            headerLogo.style.width = logoStyle.logoWidth || (theme.headerStyle && theme.headerStyle.logoWidth) || '24px';
+            headerLogo.style.height = logoStyle.logoHeight || (theme.headerStyle && theme.headerStyle.logoHeight) || '24px';
+            headerLogo.style.borderRadius = logoStyle.borderRadius || '0';
+            headerLogo.style.objectFit = 'cover';
+            headerTitleContainer.appendChild(headerLogo);
+        }
+
+        var headerTitle = document.createElement('div');
+        headerTitle.innerText = config.title;
+        headerTitleContainer.appendChild(headerTitle);
+        header.appendChild(headerTitleContainer);
+
+        var headerActions = document.createElement('div');
+        headerActions.style.display = 'flex';
+        headerActions.style.gap = '4px';
+
+        var refreshBtn = document.createElement('button');
+        refreshBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="m21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg>';
+        refreshBtn.title = 'Clear chat history';
+        refreshBtn.style.background = 'transparent';
+        refreshBtn.style.color = (theme.headerStyle && theme.headerStyle.textColor) || theme.headerText || '#fff';
+        refreshBtn.style.border = 'none';
+        refreshBtn.style.padding = '8px';
+        refreshBtn.style.cursor = 'pointer';
+        refreshBtn.style.borderRadius = '6px';
+        refreshBtn.style.display = 'flex';
+        refreshBtn.style.alignItems = 'center';
+        refreshBtn.style.justifyContent = 'center';
+        refreshBtn.style.transition = 'background-color 0.2s ease-in-out';
+        refreshBtn.onmouseover = function () {
+            if (!isFormShowing) {
+                refreshBtn.style.backgroundColor = 'rgba(255,255,255,0.1)';
+            }
+        };
+        refreshBtn.onmouseout = function () {
+            refreshBtn.style.backgroundColor = 'transparent';
+        };
+        refreshBtn.onclick = function () {
+            // Don't allow reset when form is showing
+            if (isFormShowing) {
+                return;
+            }
+
+            var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
+            var wasHandoverActive = msgs.some(function (msg) {
+                return msg.isSystemNotification && msg.notificationType === 'joined';
+            });
+
+            var storedSession = localStorage.getItem('simple-chat-session');
+            var sessionHandoverActive = false;
+            if (storedSession) {
+                try {
+                    var sessionData = JSON.parse(storedSession);
+                    sessionHandoverActive = sessionData.handoverOccurred === true;
+                } catch (error) {
+                    console.log('Error reading session handover flag:', error);
+                }
+            }
+
+            localStorage.removeItem('simple-chat-messages');
+
+            if (!wasHandoverActive && !sessionHandoverActive) {
+                isHandoverActive = false;
+            } else {
+                isHandoverActive = true;
+            }
+
+
+            setupChatInput();
+            if (welcomeMessage) {
+                saveMessage(welcomeMessage, 'bot', 'welcomeMessage');
+            }
+            loadMessages();
+        };
+
+        // Create Clear Session button
+        var clearSessionBtn = document.createElement('button');
+        clearSessionBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>';
+        clearSessionBtn.title = 'Clear session & restart';
+        clearSessionBtn.style.background = 'transparent';
+        clearSessionBtn.style.color = (theme.headerStyle && theme.headerStyle.textColor) || theme.headerText || '#fff';
+        clearSessionBtn.style.border = 'none';
+        clearSessionBtn.style.padding = '8px';
+        clearSessionBtn.style.cursor = 'pointer';
+        clearSessionBtn.style.borderRadius = '6px';
+        clearSessionBtn.style.display = 'flex';
+        clearSessionBtn.style.alignItems = 'center';
+        clearSessionBtn.style.justifyContent = 'center';
+        clearSessionBtn.style.transition = 'background-color 0.2s ease-in-out';
+        clearSessionBtn.onmouseover = function () {
+            if (!isFormShowing) {
+                clearSessionBtn.style.backgroundColor = 'rgba(255,255,255,0.1)';
+            }
+        };
+        clearSessionBtn.onmouseout = function () {
+            clearSessionBtn.style.backgroundColor = 'transparent';
+        };
+        clearSessionBtn.onclick = function () {
+            // Don't allow session clear when form is showing
+            if (isFormShowing) {
+                return;
+            }
+            resetSession();
+        };
+
+        // Reusable function to fully reset the chat session
+        function resetSession() {
+            // Clear all chat data
+            localStorage.removeItem('simple-chat-messages');
+            localStorage.removeItem('simple-chat-session');
+            localStorage.removeItem('simple-chat-leads');
+            localStorage.removeItem('simple-chat-user-guid');
+
+            // Reset all flags
+            isHandoverActive = false;
+            isFormShowing = false;
+            window.__simpleChatEmbedLeadCaptured = false;
+            visitorInfo = null;
+            chatID = null;
+
+            // Close WebSocket connection and clear heartbeat
+            if (heartBeatInterval) {
+                clearInterval(heartBeatInterval);
+                heartBeatInterval = null;
+            }
+            if (currentSocket) {
+                currentSocket.close();
+                currentSocket = null;
+                isWebSocketConnected = false;
+            }
+
+            // Re-enable input in case it was disabled
+            input.disabled = false;
+            input.style.opacity = '1';
+            sendBtn.disabled = false;
+            sendBtn.style.opacity = '1';
+            sendBtn.style.cursor = 'pointer';
+
+            // Clear messages display
+            messages.innerHTML = '';
+
+            // Check leadCapture setting
+            if (!leadCapture) {
+                // Lead capture disabled - create anonymous visitor and start fresh
+                window.__simpleChatEmbedLeadCaptured = true;
+                setupChatInput();
+
+                createVisitor(null, null, null, null).then(() => {
+                    if (welcomeMessage) {
+                        saveMessage(welcomeMessage, 'bot', 'welcomeMessage');
+                    }
+                    loadMessages();
+                    connectWebSocket();
+                }).catch((error) => {
+                    console.error('Failed to create anonymous visitor:', error);
+                    if (welcomeMessage) {
+                        saveMessage(welcomeMessage, 'bot', 'welcomeMessage');
+                    }
+                    loadMessages();
+                    connectWebSocket();
+                });
+            } else {
+                // Lead capture enabled - show form again
+                inputContainer.style.display = 'none';
+                showLeadCaptureInChat(function (lead) {
+                    isFormShowing = false;
+                    updateButtonStates();
+                    window.__simpleChatEmbedLeadCaptured = true;
+                    if (lead) {
+                        window.SimpleChatEmbedLead = lead;
+                    }
+                    setupChatInput();
+
+                    if (welcomeMessage) {
+                        saveMessage(welcomeMessage, 'bot', 'welcomeMessage');
+                    }
+                    loadMessages();
+                });
+            }
+        }
+
+        // Show a session-closed notification, then reset after a delay
+        function showSessionClosedNotification(message) {
+            var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
+            msgs.push({
+                text: message || 'This chat session has been closed.',
+                sender: 'system',
+                isWelcomeMessage: false,
+                isSystemNotification: true,
+                notificationType: 'session_closed',
+                created_at: formatTimeStamp(new Date().toISOString())
+            });
+            localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
+            loadMessages();
+
+            // Disable input during the transition
             input.disabled = true;
-            input.style.opacity = '0.6';
+            input.style.opacity = '0.5';
             sendBtn.disabled = true;
             sendBtn.style.opacity = '0.5';
             sendBtn.style.cursor = 'not-allowed';
-        } else {
-            input.disabled = false;
-            input.style.opacity = '1';
-            // Re-enable send button only if there's text in the input
-            if (input.value.trim()) {
-                sendBtn.disabled = false;
-                sendBtn.style.opacity = '1';
-                sendBtn.style.cursor = 'pointer';
-            }
-            input.focus();
-        }
-    }
 
-    // Function to update button states based on form visibility
-    function updateButtonStates() {
-        if (isFormShowing) {
-            // Disable appearance when form is showing
-            refreshBtn.style.opacity = '0.5';
-            refreshBtn.style.cursor = 'not-allowed';
-            clearSessionBtn.style.opacity = '0.5';
-            clearSessionBtn.style.cursor = 'not-allowed';
-        } else {
-            // Enable appearance when form is not showing
-            refreshBtn.style.opacity = '1';
-            refreshBtn.style.cursor = 'pointer';
-            clearSessionBtn.style.opacity = '1';
-            clearSessionBtn.style.cursor = 'pointer';
-        }
-    }
-
-    function generateChatId() {
-        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-            var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
-            return v.toString(16);
-        });
-    }
-
-    var chatContainer = document.createElement('div');
-    chatContainer.id = 'simple-chat-embed';
-    chatContainer.style.position = 'fixed';
-    chatContainer.style.bottom = '20px';
-    
-    // Set horizontal position based on config
-    if (config.position === 'left') {
-        chatContainer.style.left = '20px';
-        chatContainer.style.right = 'auto';
-    } else {
-        chatContainer.style.right = '20px';
-        chatContainer.style.left = 'auto';
-    }
-    console.log(theme.containerBorderStyle,'my border style')
-    chatContainer.style.width = '384px';
-    chatContainer.style.height = '80vh';
-    chatContainer.style.maxHeight = '650px';
-    chatContainer.style.background = theme.containerBg || '#ffffff';
-    chatContainer.style.border = theme.containerBorderStyle || '1px solid #e2e8f0';
-    chatContainer.style.borderRadius = (theme.headerStyle && theme.headerStyle.borderRadius) || '12px';
-    chatContainer.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)';
-    chatContainer.style.fontFamily = theme.fontFamily + ', Inter, system-ui, sans-serif';
-    chatContainer.style.zIndex = theme.zIndex;
-    chatContainer.style.color = theme.text;
-    chatContainer.style.transition = 'transform 0.3s ease-in-out';
-    chatContainer.style.display = 'flex';
-    chatContainer.style.flexDirection = 'column';
-    chatContainer.style.overflow = 'hidden';
-
-    function setResponsive() {
-        if (window.innerWidth < 768) {
-            chatContainer.style.position = 'fixed';
-            chatContainer.style.top = '0';
-            chatContainer.style.left = '0';
-            chatContainer.style.right = '0';
-            chatContainer.style.bottom = '0';
-            chatContainer.style.width = '100%';
-            chatContainer.style.height = '100dvh'; // Dynamic viewport height for mobile browsers
-            chatContainer.style.borderRadius = '0';
-            // chatContainer.style.maxHeight = '100vh';
-            chatContainer.style.maxHeight = '100dvh';
-
-        } else {
-            chatContainer.style.position = 'fixed';
-            chatContainer.style.top = 'auto';
-            
-            // Set horizontal position based on config
-            if (config.position === 'left') {
-                chatContainer.style.left = '20px';
-                chatContainer.style.right = 'auto';
-            } else {
-                chatContainer.style.left = 'auto';
-                chatContainer.style.right = '20px';
-            }
-            
-            chatContainer.style.bottom = '20px';
-            chatContainer.style.width = '384px';
-            chatContainer.style.height = '80vh';
-            chatContainer.style.borderRadius = (theme.headerStyle && theme.headerStyle.borderRadius) || '12px';
-            chatContainer.style.maxHeight = '650px';
-        }
-    }
-    setResponsive();
-    window.addEventListener('resize', setResponsive);
-    var originalHeight = window.innerHeight;
-    function handleMobileKeyboard() {
-        if (isMobile && window.innerWidth < 768) {
-            var currentHeight = window.innerHeight;
-            var keyboardHeight = originalHeight - currentHeight;
-            
-            // If keyboard is visible (height changed significantly)
-            if (keyboardHeight > 100) {
-                chatContainer.style.height = currentHeight + 'px';
-                chatContainer.style.maxHeight = currentHeight + 'px';
-                
-                // Scroll to show input
-                setTimeout(function() {
-                    inputContainer.scrollIntoView({ behavior: 'smooth', block: 'end' });
-                }, 100);
-            } else {
-                // Keyboard hidden, restore original size
-                chatContainer.style.height = '100vh';
-                chatContainer.style.height = '100dvh';
-                chatContainer.style.maxHeight = '100vh';
-                chatContainer.style.maxHeight = '100dvh';
-            }
-        }
-    }
-
-    window.addEventListener('resize', handleMobileKeyboard);
-    window.visualViewport && window.visualViewport.addEventListener('resize', handleMobileKeyboard);
-
-
-    var header = document.createElement('div');
-    header.style.display = 'flex';
-    header.style.justifyContent = 'space-between';
-    header.style.alignItems = 'center';
-    header.style.background = (theme.headerStyle && theme.headerStyle.backgroundColor) || theme.headerBg || '#16a34a';
-    header.style.color = (theme.headerStyle && theme.headerStyle.textColor) || theme.headerText || '#fff';
-    header.style.padding = (theme.headerStyle && theme.headerStyle.padding) || '32px';
-    header.style.height = (theme.headerStyle && theme.headerStyle.height) || 'auto';
-    header.style.borderTopLeftRadius = (theme.headerStyle && theme.headerStyle.borderRadius) || '12px';
-    header.style.borderTopRightRadius = (theme.headerStyle && theme.headerStyle.borderRadius) || '12px';
-    header.style.fontWeight = (theme.headerStyle && theme.headerStyle.fontWeight) || '600';
-    header.style.fontFamily = (theme.headerStyle && theme.headerStyle.fontFamily) || theme.messageFontFamily || theme.fontFamily || 'sans-serif';
-    header.style.fontSize = (theme.headerStyle && theme.headerStyle.fontSize) || "18px";
-    header.style.lineHeight = '28px';
-    header.style.position  = "sticky";
-    header.style.top  = "0";
-
-    var headerTitleContainer = document.createElement('div');
-    headerTitleContainer.style.display = 'flex';
-    headerTitleContainer.style.alignItems = 'center';
-    headerTitleContainer.style.gap = '12px';
-
-    // Add logo if provided
-    var logoStyle = (theme.headerStyle && theme.headerStyle.logoStyle) || theme.headerStyle || {};
-    var logoUrl = logoStyle.logoUrl || (theme.headerStyle && theme.headerStyle.logoUrl) || '';
-    
-    if (logoUrl) {
-        var headerLogo = document.createElement('img');
-        headerLogo.src = logoUrl;
-        headerLogo.alt = 'Logo';
-        headerLogo.style.width = logoStyle.logoWidth || (theme.headerStyle && theme.headerStyle.logoWidth) || '24px';
-        headerLogo.style.height = logoStyle.logoHeight || (theme.headerStyle && theme.headerStyle.logoHeight) || '24px';
-        headerLogo.style.borderRadius = logoStyle.borderRadius || '0';
-        headerLogo.style.objectFit = 'cover';
-        headerTitleContainer.appendChild(headerLogo);
-    }
-
-    var headerTitle = document.createElement('div');
-    headerTitle.innerText = config.title;
-    headerTitleContainer.appendChild(headerTitle);
-    header.appendChild(headerTitleContainer);
-
-    var headerActions = document.createElement('div');
-    headerActions.style.display = 'flex';
-    headerActions.style.gap = '4px';
-
-    var refreshBtn = document.createElement('button');
-    refreshBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="m21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg>';
-    refreshBtn.title = 'Clear chat history';
-    refreshBtn.style.background = 'transparent';
-    refreshBtn.style.color = (theme.headerStyle && theme.headerStyle.textColor) || theme.headerText || '#fff';
-    refreshBtn.style.border = 'none';
-    refreshBtn.style.padding = '8px';
-    refreshBtn.style.cursor = 'pointer';
-    refreshBtn.style.borderRadius = '6px';
-    refreshBtn.style.display = 'flex';
-    refreshBtn.style.alignItems = 'center';
-    refreshBtn.style.justifyContent = 'center';
-    refreshBtn.style.transition = 'background-color 0.2s ease-in-out';
-    refreshBtn.onmouseover = function () { 
-        if (!isFormShowing) {
-            refreshBtn.style.backgroundColor = 'rgba(255,255,255,0.1)'; 
-        }
-    };
-    refreshBtn.onmouseout = function () { 
-        refreshBtn.style.backgroundColor = 'transparent'; 
-    };
-    refreshBtn.onclick = function () {
-        // Don't allow reset when form is showing
-        if (isFormShowing) {
-            return;
-        }
-        
-        var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
-        var wasHandoverActive = msgs.some(function (msg) {
-            return msg.isSystemNotification && msg.notificationType === 'joined';
-        });
-
-        var storedSession = localStorage.getItem('simple-chat-session');
-        var sessionHandoverActive = false;
-        if (storedSession) {
-            try {
-                var sessionData = JSON.parse(storedSession);
-                sessionHandoverActive = sessionData.handoverOccurred === true;
-            } catch (error) {
-                console.log('Error reading session handover flag:', error);
-            }
+            // Reset session after a short delay so user can read the notification
+            setTimeout(function () {
+                resetSession();
+            }, 3000);
         }
 
-        localStorage.removeItem('simple-chat-messages');
+        var closeBtn = document.createElement('button');
+        closeBtn.style.display = theme.closeBtnIconStyle.display || "flex"
+        closeBtn.setAttribute("id", "close-btn")
+        closeBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>';
+        closeBtn.title = 'Close chat';
+        closeBtn.style.background = 'transparent';
+        closeBtn.style.color = (theme.headerStyle && theme.headerStyle.textColor) || theme.headerText || '#fff';
+        closeBtn.style.border = 'none';
+        closeBtn.style.padding = '8px';
+        closeBtn.style.cursor = 'pointer';
+        closeBtn.style.borderRadius = '6px';
+        closeBtn.style.alignItems = 'center';
+        closeBtn.style.justifyContent = 'center';
+        closeBtn.style.transition = 'background-color 0.2s ease-in-out';
+        closeBtn.onmouseover = function () { closeBtn.style.backgroundColor = 'rgba(255,255,255,0.1)'; };
+        closeBtn.onmouseout = function () { closeBtn.style.backgroundColor = 'transparent'; };
 
-        if (!wasHandoverActive && !sessionHandoverActive) {
-            isHandoverActive = false;
-        } else {
-            isHandoverActive = true;
-        }
+        var chatCloseBtn = closeBtn;
+
+        headerActions.appendChild(refreshBtn);
+        headerActions.appendChild(clearSessionBtn);
+        headerActions.appendChild(closeBtn);
+        header.appendChild(headerActions);
+
+        chatContainer.appendChild(header);
+
+        var messages = document.createElement('div');
+        messages.style.flex = '1 1 0%';
+        messages.style.overflowY = 'auto';
+        messages.style.overflowX = 'hidden';
+        messages.style.padding = theme.messagesContainerPadding || '16px';
+        messages.style.background = theme.messagesBg || '#ffffff';
+        messages.style.webkitOverflowScrolling = 'touch'; // Smooth scrolling on iOS
+        messages.id = 'chat-messages';
+        messages.style.display = 'flex';
+        messages.style.flexDirection = 'column';
+        messages.style.gap = '16px';
+        messages.style.scrollBehavior = 'smooth';
+        messages.style.scrollbarWidth = 'none';
+        messages.style.msOverflowStyle = 'none';
 
 
-        setupChatInput();
-        if (welcomeMessage) {
-            saveMessage(welcomeMessage, 'bot', 'welcomeMessage');
-        }
-        loadMessages();
-    };
-
-    // Create Clear Session button
-    var clearSessionBtn = document.createElement('button');
-    clearSessionBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>';
-    clearSessionBtn.title = 'Clear session & restart';
-    clearSessionBtn.style.background = 'transparent';
-    clearSessionBtn.style.color = (theme.headerStyle && theme.headerStyle.textColor) || theme.headerText || '#fff';
-    clearSessionBtn.style.border = 'none';
-    clearSessionBtn.style.padding = '8px';
-    clearSessionBtn.style.cursor = 'pointer';
-    clearSessionBtn.style.borderRadius = '6px';
-    clearSessionBtn.style.display = 'flex';
-    clearSessionBtn.style.alignItems = 'center';
-    clearSessionBtn.style.justifyContent = 'center';
-    clearSessionBtn.style.transition = 'background-color 0.2s ease-in-out';
-    clearSessionBtn.onmouseover = function () { 
-        if (!isFormShowing) {
-            clearSessionBtn.style.backgroundColor = 'rgba(255,255,255,0.1)'; 
-        }
-    };
-    clearSessionBtn.onmouseout = function () { 
-        clearSessionBtn.style.backgroundColor = 'transparent'; 
-    };
-    clearSessionBtn.onclick = function () {
-        // Don't allow session clear when form is showing
-        if (isFormShowing) {
-            return;
-        }
-        
-        // Clear all chat data
-        localStorage.removeItem('simple-chat-messages');
-        localStorage.removeItem('simple-chat-session');
-        localStorage.removeItem('simple-chat-leads');
-        localStorage.removeItem('simple-chat-user-guid');
-        
-        // Reset all flags
-        isHandoverActive = false;
-        isFormShowing = false;
-        window.__simpleChatEmbedLeadCaptured = false;
-        visitorInfo = null;
-        
-        // Close WebSocket connection
-        if (currentSocket) {
-            currentSocket.close();
-            currentSocket = null;
-            isWebSocketConnected = false;
-        }
-        
-        // Clear messages display
-        messages.innerHTML = '';
-        
-        // Check leadCapture setting
-        if (!leadCapture) {
-            // Lead capture disabled - create anonymous visitor and start fresh
-            window.__simpleChatEmbedLeadCaptured = true;
-            setupChatInput();
-            
-            createVisitor(null, null, null, null).then(() => {
-                if (welcomeMessage) {
-                    saveMessage(welcomeMessage, 'bot', 'welcomeMessage');
-                }
-                loadMessages();
-                connectWebSocket();
-            }).catch((error) => {
-                console.error('Failed to create anonymous visitor:', error);
-                if (welcomeMessage) {
-                    saveMessage(welcomeMessage, 'bot', 'welcomeMessage');
-                }
-                loadMessages();
-                connectWebSocket();
-            });
-        } else {
-            // Lead capture enabled - show form again
-            inputContainer.style.display = 'none';
-            showLeadCaptureInChat(function (lead) {
-                isFormShowing = false;
-                updateButtonStates();
-                window.__simpleChatEmbedLeadCaptured = true;
-                if (lead) {
-                    window.SimpleChatEmbedLead = lead;
-                }
-                setupChatInput();
-
-                if (welcomeMessage) {
-                    saveMessage(welcomeMessage, 'bot', 'welcomeMessage');
-                }
-                loadMessages();
-            });
-        }
-    };
-
-    var closeBtn = document.createElement('button');
-    closeBtn.style.display = theme.closeBtnIconStyle.display || "flex"
-    closeBtn.setAttribute("id","close-btn")
-    closeBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>';
-    closeBtn.title = 'Close chat';
-    closeBtn.style.background = 'transparent';
-    closeBtn.style.color = (theme.headerStyle && theme.headerStyle.textColor) || theme.headerText || '#fff';
-    closeBtn.style.border = 'none';
-    closeBtn.style.padding = '8px';
-    closeBtn.style.cursor = 'pointer';
-    closeBtn.style.borderRadius = '6px';
-    closeBtn.style.alignItems = 'center';
-    closeBtn.style.justifyContent = 'center';
-    closeBtn.style.transition = 'background-color 0.2s ease-in-out';
-    closeBtn.onmouseover = function () { closeBtn.style.backgroundColor = 'rgba(255,255,255,0.1)'; };
-    closeBtn.onmouseout = function () { closeBtn.style.backgroundColor = 'transparent'; };
-
-    var chatCloseBtn = closeBtn;
-
-    headerActions.appendChild(refreshBtn);
-    headerActions.appendChild(clearSessionBtn);
-    headerActions.appendChild(closeBtn);
-    header.appendChild(headerActions);
-
-    chatContainer.appendChild(header);
-
-    var messages = document.createElement('div');
-    messages.style.flex = '1 1 0%';
-    messages.style.overflowY = 'auto';
-    messages.style.overflowX = 'hidden';
-    messages.style.padding = theme.messagesContainerPadding || '16px';
-    messages.style.background = theme.messagesBg || '#ffffff';
-    messages.style.webkitOverflowScrolling = 'touch'; // Smooth scrolling on iOS
-    messages.id = 'chat-messages';
-    messages.style.display = 'flex';
-    messages.style.flexDirection = 'column';
-    messages.style.gap = '16px';
-    messages.style.scrollBehavior = 'smooth';
-    messages.style.scrollbarWidth = 'none';
-    messages.style.msOverflowStyle = 'none';
-    
-    
-    var style = document.createElement('style');
-    style.textContent = `
+        var style = document.createElement('style');
+        style.textContent = `
         #chat-messages::-webkit-scrollbar { display: none; }
         #simple-chat-embed ul { list-style-type: disc !important; }
         #simple-chat-embed ol { list-style-type: decimal !important; }
@@ -519,455 +560,462 @@ function initializeChatEmbed() {
             }
         }
     `;
-    document.head.appendChild(style);
+        document.head.appendChild(style);
 
-    chatContainer.appendChild(messages);
+        chatContainer.appendChild(messages);
 
-    // Get scroll button styles from config
-    var scrollButtonStyle = theme.scrollButtonStyle || {};
-    var scrollIconColor = scrollButtonStyle.iconColor || '#ffffff';
-    var scrollBgColor = scrollButtonStyle.backgroundColor || theme.sendBtnBg || '#3b82f6';
-    var scrollHoverColor = scrollButtonStyle.hoverColor || theme.sendBtnHover || '#2563eb';
-    var scrollPosition = scrollButtonStyle.position || {};
-    var scrollRight = scrollPosition.right || '16px';
-    var scrollBottom = scrollPosition.bottom || '80px';
+        // Get scroll button styles from config
+        var scrollButtonStyle = theme.scrollButtonStyle || {};
+        var scrollIconColor = scrollButtonStyle.iconColor || '#ffffff';
+        var scrollBgColor = scrollButtonStyle.backgroundColor || theme.sendBtnBg || '#3b82f6';
+        var scrollHoverColor = scrollButtonStyle.hoverColor || theme.sendBtnHover || '#2563eb';
+        var scrollPosition = scrollButtonStyle.position || {};
+        var scrollRight = scrollPosition.right || '16px';
+        var scrollBottom = scrollPosition.bottom || '80px';
 
-    var scrollToBottomBtn = document.createElement('button');
-    scrollToBottomBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 13 5 5 5-5"/><path d="M12 18V6"/></svg>';
-    scrollToBottomBtn.title = 'Scroll to bottom';
-    scrollToBottomBtn.style.position = 'absolute';
-    scrollToBottomBtn.style.right = scrollRight;
-    scrollToBottomBtn.style.bottom = scrollBottom;
-    scrollToBottomBtn.style.width = '40px';
-    scrollToBottomBtn.style.height = '40px';
-    scrollToBottomBtn.style.borderRadius = '50%';
-    scrollToBottomBtn.style.background = scrollBgColor;
-    scrollToBottomBtn.style.color = scrollIconColor;
-    scrollToBottomBtn.style.border = 'none';
-    scrollToBottomBtn.style.cursor = 'pointer';
-    scrollToBottomBtn.style.display = 'none';
-    scrollToBottomBtn.style.alignItems = 'center';
-    scrollToBottomBtn.style.justifyContent = 'center';
-    scrollToBottomBtn.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
-    scrollToBottomBtn.style.transition = 'all 0.3s ease';
-    scrollToBottomBtn.style.zIndex = '10';
-
-    scrollToBottomBtn.addEventListener('mouseover', function () {
-        scrollToBottomBtn.style.backgroundColor = scrollHoverColor;
-        scrollToBottomBtn.style.transform = 'scale(1.1)';
-    });
-    scrollToBottomBtn.addEventListener('mouseout', function () {
-        scrollToBottomBtn.style.backgroundColor = scrollBgColor;
-        scrollToBottomBtn.style.transform = 'scale(1)';
-    });
-
-    scrollToBottomBtn.onclick = function () {
-        messages.scrollTop = messages.scrollHeight;
+        var scrollToBottomBtn = document.createElement('button');
+        scrollToBottomBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 13 5 5 5-5"/><path d="M12 18V6"/></svg>';
+        scrollToBottomBtn.title = 'Scroll to bottom';
+        scrollToBottomBtn.style.position = 'absolute';
+        scrollToBottomBtn.style.right = scrollRight;
+        scrollToBottomBtn.style.bottom = scrollBottom;
+        scrollToBottomBtn.style.width = '40px';
+        scrollToBottomBtn.style.height = '40px';
+        scrollToBottomBtn.style.borderRadius = '50%';
+        scrollToBottomBtn.style.background = scrollBgColor;
+        scrollToBottomBtn.style.color = scrollIconColor;
+        scrollToBottomBtn.style.border = 'none';
+        scrollToBottomBtn.style.cursor = 'pointer';
         scrollToBottomBtn.style.display = 'none';
-    };
+        scrollToBottomBtn.style.alignItems = 'center';
+        scrollToBottomBtn.style.justifyContent = 'center';
+        scrollToBottomBtn.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
+        scrollToBottomBtn.style.transition = 'all 0.3s ease';
+        scrollToBottomBtn.style.zIndex = '10';
 
-    chatContainer.appendChild(scrollToBottomBtn);
+        scrollToBottomBtn.addEventListener('mouseover', function () {
+            scrollToBottomBtn.style.backgroundColor = scrollHoverColor;
+            scrollToBottomBtn.style.transform = 'scale(1.1)';
+        });
+        scrollToBottomBtn.addEventListener('mouseout', function () {
+            scrollToBottomBtn.style.backgroundColor = scrollBgColor;
+            scrollToBottomBtn.style.transform = 'scale(1)';
+        });
 
-    // Get input container styles from config
-    var inputContainerStyle = theme.inputContainerStyle || {};
-    var inputContainerPadding = inputContainerStyle.padding || '16px';
-    var inputContainerBorderTop = inputContainerStyle.borderTop || '1px solid #ececec';
+        scrollToBottomBtn.onclick = function () {
+            messages.scrollTop = messages.scrollHeight;
+            scrollToBottomBtn.style.display = 'none';
+        };
 
-    var inputContainer = document.createElement('div');
-    inputContainer.style.padding = inputContainerPadding;
-    inputContainer.style.background = theme.inputContainerBg || '#ffffff';
-    inputContainer.style.display = 'flex';
-    inputContainer.style.flexDirection = 'column';
-    inputContainer.style.borderBottomLeftRadius = '12px';
-    inputContainer.style.borderBottomRightRadius = '12px';
+        chatContainer.appendChild(scrollToBottomBtn);
 
-    // Quick question buttons container (placed in messages area, below welcome message)
-    var quickButtonsContainer = document.createElement('div');
-    quickButtonsContainer.style.display = 'none'; // Initially hidden, shown after welcome message renders
-    quickButtonsContainer.style.flexDirection = 'row';
-    quickButtonsContainer.style.flexWrap = 'wrap';
-    quickButtonsContainer.style.gap = '8px';
-    quickButtonsContainer.style.paddingLeft = '44px';
-    quickButtonsContainer.style.width = 'auto';
+        // Get input container styles from config
+        var inputContainerStyle = theme.inputContainerStyle || {};
+        var inputContainerPadding = inputContainerStyle.padding || '16px';
+        var inputContainerBorderTop = inputContainerStyle.borderTop || '1px solid #ececec';
 
-    // Create quick question buttons if configured
-    if (config.quickQuestions && config.quickQuestions.length > 0) {
-        config.quickQuestions.forEach(function(question, index) {
-            var quickBtn = document.createElement('button');
-            quickBtn.innerText = question;
-            quickBtn.style.padding = '8px 16px';
-            quickBtn.style.background = '#ffffff';
-            quickBtn.style.color = '#6b7280';
-            quickBtn.style.border = '1px solid #e5e7eb';
-            quickBtn.style.borderRadius = '9999px';
-            quickBtn.style.cursor = 'pointer';
-            quickBtn.style.fontSize = '14px';
-            quickBtn.style.fontWeight = '500';
-            quickBtn.style.transition = 'all 0.2s ease-in-out';
-            quickBtn.style.width = 'auto';
-            quickBtn.style.textAlign = 'center';
-            quickBtn.style.boxSizing = 'border-box';
-            quickBtn.style.whiteSpace = 'nowrap';
+        var inputContainer = document.createElement('div');
+        inputContainer.style.padding = inputContainerPadding;
+        inputContainer.style.background = theme.inputContainerBg || '#ffffff';
+        inputContainer.style.display = 'flex';
+        inputContainer.style.flexDirection = 'column';
+        inputContainer.style.borderBottomLeftRadius = '12px';
+        inputContainer.style.borderBottomRightRadius = '12px';
 
-            quickBtn.addEventListener('mouseover', function() {
-                quickBtn.style.borderColor = theme.primary || '#8349FF';
-                quickBtn.style.color = theme.primary || '#8349FF';
-                quickBtn.style.background = '#ffffff';
-            });
+        // Quick question buttons container (placed in messages area, below welcome message)
+        var quickButtonsContainer = document.createElement('div');
+        quickButtonsContainer.style.display = 'none'; // Initially hidden, shown after welcome message renders
+        quickButtonsContainer.style.flexDirection = 'row';
+        quickButtonsContainer.style.flexWrap = 'wrap';
+        quickButtonsContainer.style.gap = '8px';
+        quickButtonsContainer.style.paddingLeft = '44px';
+        quickButtonsContainer.style.width = 'auto';
 
-            quickBtn.addEventListener('mouseout', function() {
+        // Create quick question buttons if configured
+        if (config.quickQuestions && config.quickQuestions.length > 0) {
+            config.quickQuestions.forEach(function (question, index) {
+                var quickBtn = document.createElement('button');
+                quickBtn.innerText = question;
+                quickBtn.style.padding = '8px 16px';
                 quickBtn.style.background = '#ffffff';
                 quickBtn.style.color = '#6b7280';
-                quickBtn.style.borderColor = '#e5e7eb';
-            });
+                quickBtn.style.border = '1px solid #e5e7eb';
+                quickBtn.style.borderRadius = '9999px';
+                quickBtn.style.cursor = 'pointer';
+                quickBtn.style.fontSize = '14px';
+                quickBtn.style.fontWeight = '500';
+                quickBtn.style.transition = 'all 0.2s ease-in-out';
+                quickBtn.style.width = 'auto';
+                quickBtn.style.textAlign = 'center';
+                quickBtn.style.boxSizing = 'border-box';
+                quickBtn.style.whiteSpace = 'nowrap';
 
-            quickBtn.addEventListener('click', function() {
-                input.value = question;
-                sendMessage();
-                // Hide quick buttons after first use if not permanent
-                if (!config.quickQuestionsPermanent) {
-                    quickButtonsContainer.style.display = 'none';
-                }
-            });
+                quickBtn.addEventListener('mouseover', function () {
+                    quickBtn.style.borderColor = theme.primary || '#8349FF';
+                    quickBtn.style.color = theme.primary || '#8349FF';
+                    quickBtn.style.background = '#ffffff';
+                });
 
-            quickButtonsContainer.appendChild(quickBtn);
+                quickBtn.addEventListener('mouseout', function () {
+                    quickBtn.style.background = '#ffffff';
+                    quickBtn.style.color = '#6b7280';
+                    quickBtn.style.borderColor = '#e5e7eb';
+                });
+
+                quickBtn.addEventListener('click', function () {
+                    input.value = question;
+                    sendMessage();
+                    // Hide quick buttons after first use if not permanent
+                    if (!config.quickQuestionsPermanent) {
+                        quickButtonsContainer.style.display = 'none';
+                    }
+                });
+
+                quickButtonsContainer.appendChild(quickBtn);
+            });
+        }
+
+        chatContainer.appendChild(inputContainer);
+
+        var inputForm = document.createElement('div');
+        inputForm.style.display = 'grid';
+        inputForm.style.gridTemplateColumns = '1fr auto';
+        inputForm.style.gap = '16px';
+        inputForm.style.alignItems = 'center';
+        inputForm.style.width = '100%';
+
+        var input = document.createElement('input');
+        input.type = 'text';
+        input.placeholder = 'Type your message...';
+        input.style.padding = '12px 16px';
+        input.style.border = theme.inputContainerStyle?.inputStyle?.border || '1px solid #d1d5db';
+        input.style.borderRadius = '6px';
+        input.style.background = '#ffffff';
+        input.style.color = '#374151';
+        input.style.fontSize = '14px';
+        input.style.lineHeight = '20px';
+        input.style.outline = theme.inputContainerStyle?.inputStyle?.outline || 'none';
+        input.style.transition = theme.inputContainerStyle?.inputStyle?.transition || 'border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out';
+        input.style.fontFamily = theme.messageFontFamily || theme.fontFamily || 'sans-serif';
+
+        input.addEventListener('focus', function () {
+            input.style.border = theme.inputContainerStyle?.inputStyle?.borderOnFocus || '1px solid #3b82f6';
+            input.style.boxShadow = theme.inputContainerStyle?.inputStyle?.boxShadowOnFocus || '0 0 0 3px rgba(59, 130, 246, 0.1)';
         });
-    }
+        input.addEventListener('blur', function () {
+            input.style.border = theme.inputContainerStyle?.inputStyle?.borderOnBlur || '1px solid #d1d5db';
+            input.style.boxShadow = theme.inputContainerStyle?.inputStyle?.boxShadowOnBlur || 'none';
+        });
 
-    chatContainer.appendChild(inputContainer);
+        // Enable/disable send button based on input value
+        input.addEventListener('input', function () {
+            if (input.value.trim()) {
+                sendBtn.disabled = false;
+                sendBtn.style.opacity = '1';
+                sendBtn.style.cursor = 'pointer';
+            } else {
+                sendBtn.disabled = true;
+                sendBtn.style.opacity = '0.5';
+                sendBtn.style.cursor = 'not-allowed';
+            }
+        });
 
-    var inputForm = document.createElement('div');
-    inputForm.style.display = 'grid';
-    inputForm.style.gridTemplateColumns = '1fr auto';
-    inputForm.style.gap = '16px';
-    inputForm.style.alignItems = 'center';
-    inputForm.style.width = '100%';
+        // Create the “Send” <button> field
+        var sendBtn = document.createElement('button');
+        sendBtn.title = 'Send';
+        var sendBtnSvgColor = theme.sendBtnSvgColor || '#fff';
+        sendBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="' + sendBtnSvgColor + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>';
+        sendBtn.style.padding = '12px';
+        sendBtn.style.background = theme.sendBtnBg || '#3b82f6';
+        sendBtn.style.color = '#ffffff';
+        sendBtn.style.border = 'none';
+        sendBtn.style.borderRadius = '6px';
+        sendBtn.style.cursor = 'pointer';
+        sendBtn.style.display = 'flex';
+        sendBtn.style.alignItems = 'center';
+        sendBtn.style.justifyContent = 'center';
+        sendBtn.style.transition = 'background-color 0.2s ease-in-out, opacity 0.2s ease-in-out';
+        sendBtn.disabled = true;
+        sendBtn.style.opacity = '0.5';
+        sendBtn.style.cursor = 'not-allowed';
 
-    var input = document.createElement('input');
-    input.type = 'text';
-    input.placeholder = 'Type your message...';
-    input.style.padding = '12px 16px';
-    input.style.border = theme.inputContainerStyle?.inputStyle?.border || '1px solid #d1d5db';
-    input.style.borderRadius = '6px';
-    input.style.background = '#ffffff';
-    input.style.color = '#374151';
-    input.style.fontSize = '14px';
-    input.style.lineHeight = '20px';
-    input.style.outline = theme.inputContainerStyle?.inputStyle?.outline || 'none';
-    input.style.transition = theme.inputContainerStyle?.inputStyle?.transition || 'border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out';
-    input.style.fontFamily = theme.messageFontFamily || theme.fontFamily || 'sans-serif';
+        sendBtn.addEventListener('mouseover', function () {
+            if (!sendBtn.disabled) {
+                sendBtn.style.backgroundColor = theme.sendBtnHover || '#2563eb';
+            }
+        });
+        sendBtn.addEventListener('mouseout', function () {
+            if (!sendBtn.disabled) {
+                sendBtn.style.backgroundColor = theme.sendBtnBg || '#3b82f6';
+            }
+        });
 
-    input.addEventListener('focus', function () {
-        input.style.border = theme.inputContainerStyle?.inputStyle?.borderOnFocus || '1px solid #3b82f6';
-        input.style.boxShadow = theme.inputContainerStyle?.inputStyle?.boxShadowOnFocus ||  '0 0 0 3px rgba(59, 130, 246, 0.1)';
-    });
-    input.addEventListener('blur', function () {
-        input.style.border = theme.inputContainerStyle?.inputStyle?.borderOnBlur || '1px solid #d1d5db';
-        input.style.boxShadow = theme.inputContainerStyle?.inputStyle?.boxShadowOnBlur || 'none';
-    });
+        inputForm.appendChild(input);
+        inputForm.appendChild(sendBtn);
 
-    // Enable/disable send button based on input value
-    input.addEventListener('input', function () {
-        if (input.value.trim()) {
-            sendBtn.disabled = false;
-            sendBtn.style.opacity = '1';
-            sendBtn.style.cursor = 'pointer';
-        } else {
-            sendBtn.disabled = true;
-            sendBtn.style.opacity = '0.5';
-            sendBtn.style.cursor = 'not-allowed';
+        inputContainer.appendChild(inputForm);
+        chatContainer.appendChild(inputContainer);
+
+        document.body.appendChild(chatContainer);
+
+        // Helper function to check if string is image data URL
+        function isImageDataUrl(str) {
+            return typeof str === 'string' && str.startsWith('data:image/');
         }
-    });
 
-    // Create the “Send” <button> field
-    var sendBtn = document.createElement('button');
-    sendBtn.title = 'Send';
-    var sendBtnSvgColor = theme.sendBtnSvgColor || '#fff';
-    sendBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="' + sendBtnSvgColor + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>';
-    sendBtn.style.padding = '12px';
-    sendBtn.style.background = theme.sendBtnBg || '#3b82f6';
-    sendBtn.style.color = '#ffffff';
-    sendBtn.style.border = 'none';
-    sendBtn.style.borderRadius = '6px';
-    sendBtn.style.cursor = 'pointer';
-    sendBtn.style.display = 'flex';
-    sendBtn.style.alignItems = 'center';
-    sendBtn.style.justifyContent = 'center';
-    sendBtn.style.transition = 'background-color 0.2s ease-in-out, opacity 0.2s ease-in-out';
-    sendBtn.disabled = true;
-    sendBtn.style.opacity = '0.5';
-    sendBtn.style.cursor = 'not-allowed';
-
-    sendBtn.addEventListener('mouseover', function () {
-        if (!sendBtn.disabled) {
-            sendBtn.style.backgroundColor = theme.sendBtnHover || '#2563eb';
-        }
-    });
-    sendBtn.addEventListener('mouseout', function () {
-        if (!sendBtn.disabled) {
-            sendBtn.style.backgroundColor = theme.sendBtnBg || '#3b82f6';
-        }
-    });
-
-    inputForm.appendChild(input);
-    inputForm.appendChild(sendBtn);
-
-    inputContainer.appendChild(inputForm);
-    chatContainer.appendChild(inputContainer);
-
-    document.body.appendChild(chatContainer);
-
-    // Helper function to check if string is image data URL
-    function isImageDataUrl(str) {
-        return typeof str === 'string' && str.startsWith('data:image/');
-    }
-
-    function createBouncingDots() {
-        var loader = document.createElement('span');
-        loader.style.display = 'inline-flex';
-        loader.style.alignItems = 'center';
-        loader.style.height = '1.5em';
-        var dotColor = theme.botText || '#4a4e69';
-        loader.innerHTML = `
+        function createBouncingDots() {
+            var loader = document.createElement('span');
+            loader.style.display = 'inline-flex';
+            loader.style.alignItems = 'center';
+            loader.style.height = '1.5em';
+            var dotColor = theme.botText || '#4a4e69';
+            loader.innerHTML = `
       <span style="display:inline-block;width:8px;height:8px;margin:0 2px;background:${dotColor};border-radius:50%;animation:bounce 1s infinite alternate;"></span>
       <span style="display:inline-block;width:8px;height:8px;margin:0 2px;background:${dotColor};border-radius:50%;animation:bounce 1s 0.2s infinite alternate;"></span>
       <span style="display:inline-block;width:8px;height:8px;margin:0 2px;background:${dotColor};border-radius:50%;animation:bounce 1s 0.4s infinite alternate;"></span>
     `;
-        // Add keyframes if not already present
-        if (!document.getElementById('simple-chat-bounce-style')) {
-            var style = document.createElement('style');
-            style.id = 'simple-chat-bounce-style';
-            style.innerHTML = `@keyframes bounce { 0% { transform: translateY(0); } 100% { transform: translateY(-7px); } }`;
-            document.head.appendChild(style);
-        }
-        return loader;
-    }
-
-    // Helper: convert markdown to HTML using marked.js library
-    function markdownToHtml(text, isStreaming = false) {
-        if (!text) return '';
-
-        // Always use marked.js for consistent processing, whether streaming or not
-        try {
-            // Check if marked is available
-            if (typeof marked === 'undefined') {
-                throw new Error('marked.js not available');
+            // Add keyframes if not already present
+            if (!document.getElementById('simple-chat-bounce-style')) {
+                var style = document.createElement('style');
+                style.id = 'simple-chat-bounce-style';
+                style.innerHTML = `@keyframes bounce { 0% { transform: translateY(0); } 100% { transform: translateY(-7px); } }`;
+                document.head.appendChild(style);
             }
-            
-            // Use marked with minimal configuration first to test
-            var result = marked.parse(text, {
-                breaks: true, // Convert single line breaks to <br>
-                gfm: true // GitHub flavored markdown
-            });
-            
-            // Post-process to add our custom styles to links
-            if (typeof result === 'string') {
-                // Add custom styling to p tags for AI messages
-                result = result.replace(/<p>/g, '<p style="font-size:inherit;line-height:inherit;font-family:inherit;font-weight:inherit;margin:0;">');
-                
-                // Add custom styling to links
-                result = result.replace(/<a\s+href="([^"]*)"([^>]*)>([^<]*)<\/a>/g, function(match, href, attrs, text) {
-                    return '<a href="' + href + '" target="_blank" style="font-weight:bold;color:' + (theme.botText || '#4a4e69') + ';text-decoration:underline;cursor:pointer;">' + text + '</a>';
-                });
-                
-                // Add custom styling to lists
-                result = result.replace(/<ul>/g, '<ul style="margin:8px 0;padding-left:24px;">');
-                result = result.replace(/<ol>/g, '<ol style="margin:8px 0;padding-left:24px;">');
-                result = result.replace(/<li>/g, '<li style="margin:4px 0;">');
-                
-                // Add custom styling to code blocks
-                result = result.replace(/<pre><code>/g, '<pre style="background:#f6f8fa;border:1px solid #e1e4e8;border-radius:6px;padding:16px;margin:8px 0;overflow-x:auto;font-family:ui-monospace,SFMono-Regular,\'SF Mono\',Consolas,\'Liberation Mono\',Menlo,monospace;font-size:13px;line-height:1.45;"><code>');
-                result = result.replace(/<code>/g, '<code style="background:#f6f8fa;border-radius:3px;padding:2px 4px;font-family:ui-monospace,SFMono-Regular,\'SF Mono\',Consolas,\'Liberation Mono\',Menlo,monospace;font-size:85%;">');
-                
-                // Add custom styling to strong/em
-                result = result.replace(/<strong>/g, '<strong style="font-weight:600;">');
-                result = result.replace(/<em>/g, '<em style="font-style:italic;">');
-                
-                return result;
-            }
-            
-            return String(result);
-            
-        } catch (error) {
-            console.error('Markdown parsing error:', error);
-            // Fallback to escaped text with line breaks
-            return escapeHtml(text).replace(/\n/g, '<br>');
-        }
-    }
-
-    // Helper function to escape HTML
-    function escapeHtml(text) {
-        var div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-
-    // Load messages from localStorage
-    // Load messages with modern avatar design like ChatWindowComponent
-    function loadMessages() {
-        var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
-        messages.innerHTML = '';
-
-        // Check if handover has already occurred by looking for handover messages
-        var hasHandoverMessage = msgs.some(function (msg) {
-            return msg.isSystemNotification && msg.notificationType === 'joined';
-        });
-
-        // Set handover flag if handover message exists in chat history
-        if (hasHandoverMessage) {
-            isHandoverActive = true;
+            return loader;
         }
 
-        for (var i = 0; i < msgs.length; i++) {
-            var msg = msgs[i];
+        // Helper: convert markdown to HTML using marked.js library
+        function markdownToHtml(text, isStreaming = false) {
+            if (!text) return '';
 
-            // Handle system notifications (like handover messages) differently
-            if (msg.isSystemNotification) {
-                var notificationContainer = document.createElement('div');
-                notificationContainer.style.display = 'flex';
-                notificationContainer.style.justifyContent = 'center';
-                notificationContainer.style.margin = '16px 0';
-                notificationContainer.style.animation = 'fadeInUp 0.5s ease-out';
-
-                var notification = document.createElement('div');
-                notification.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
-                notification.style.color = '#ffffff';
-                notification.style.padding = '12px 24px';
-                notification.style.borderRadius = '20px';
-                notification.style.fontSize = '14px';
-                notification.style.fontWeight = '500';
-                notification.style.display = 'flex';
-                notification.style.alignItems = 'center';
-                notification.style.gap = '8px';
-                notification.style.maxWidth = '80%';
-                notification.style.textAlign = 'center';
-
-                // Add icon based on notification type
-                var icon = document.createElement('span');
-                if (msg.notificationType === 'joined') {
-                    icon.innerHTML = '👋';
-                    notification.style.background = theme.handoverNotificationBg || '#E4E7FC';
-                    notification.style.color = theme.handoverNotificationText || '#334155';
-                    notification.style.border = '1px solid ' + (theme.handoverNotificationBorder || '#8349FF');
-                } else {
-                    icon.innerHTML = '💬';
+            // Always use marked.js for consistent processing, whether streaming or not
+            try {
+                // Check if marked is available
+                if (typeof marked === 'undefined') {
+                    throw new Error('marked.js not available');
                 }
-                icon.style.fontSize = '16px';
 
-                notification.appendChild(icon);
-                notification.appendChild(document.createTextNode(msg.text));
-                notificationContainer.appendChild(notification);
+                // Use marked with minimal configuration first to test
+                var result = marked.parse(text, {
+                    breaks: true, // Convert single line breaks to <br>
+                    gfm: true // GitHub flavored markdown
+                });
 
-                // Add fade-in animation if not already present
-                if (!document.getElementById('system-notification-style')) {
-                    var style = document.createElement('style');
-                    style.id = 'system-notification-style';
-                    style.innerHTML = `
+                // Post-process to add our custom styles to links
+                if (typeof result === 'string') {
+                    // Add custom styling to p tags for AI messages
+                    result = result.replace(/<p>/g, '<p style="font-size:inherit;line-height:inherit;font-family:inherit;font-weight:inherit;margin:0;">');
+
+                    // Add custom styling to links
+                    result = result.replace(/<a\s+href="([^"]*)"([^>]*)>([^<]*)<\/a>/g, function (match, href, attrs, text) {
+                        return '<a href="' + href + '" target="_blank" style="font-weight:bold;color:' + (theme.botText || '#4a4e69') + ';text-decoration:underline;cursor:pointer;">' + text + '</a>';
+                    });
+
+                    // Add custom styling to lists
+                    result = result.replace(/<ul>/g, '<ul style="margin:8px 0;padding-left:24px;">');
+                    result = result.replace(/<ol>/g, '<ol style="margin:8px 0;padding-left:24px;">');
+                    result = result.replace(/<li>/g, '<li style="margin:4px 0;">');
+
+                    // Add custom styling to code blocks
+                    result = result.replace(/<pre><code>/g, '<pre style="background:#f6f8fa;border:1px solid #e1e4e8;border-radius:6px;padding:16px;margin:8px 0;overflow-x:auto;font-family:ui-monospace,SFMono-Regular,\'SF Mono\',Consolas,\'Liberation Mono\',Menlo,monospace;font-size:13px;line-height:1.45;"><code>');
+                    result = result.replace(/<code>/g, '<code style="background:#f6f8fa;border-radius:3px;padding:2px 4px;font-family:ui-monospace,SFMono-Regular,\'SF Mono\',Consolas,\'Liberation Mono\',Menlo,monospace;font-size:85%;">');
+
+                    // Add custom styling to strong/em
+                    result = result.replace(/<strong>/g, '<strong style="font-weight:600;">');
+                    result = result.replace(/<em>/g, '<em style="font-style:italic;">');
+
+                    return result;
+                }
+
+                return String(result);
+
+            } catch (error) {
+                console.error('Markdown parsing error:', error);
+                // Fallback to escaped text with line breaks
+                return escapeHtml(text).replace(/\n/g, '<br>');
+            }
+        }
+
+        // Helper function to escape HTML
+        function escapeHtml(text) {
+            var div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Load messages from localStorage
+        // Load messages with modern avatar design like ChatWindowComponent
+        function loadMessages() {
+            var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
+            messages.innerHTML = '';
+
+            // Check if handover has already occurred by looking for handover messages
+            var hasHandoverMessage = msgs.some(function (msg) {
+                return msg.isSystemNotification && msg.notificationType === 'joined';
+            });
+
+            // Set handover flag if handover message exists in chat history
+            if (hasHandoverMessage) {
+                isHandoverActive = true;
+            }
+
+            for (var i = 0; i < msgs.length; i++) {
+                var msg = msgs[i];
+
+                // Handle system notifications (like handover messages) differently
+                if (msg.isSystemNotification) {
+                    var notificationContainer = document.createElement('div');
+                    notificationContainer.style.display = 'flex';
+                    notificationContainer.style.justifyContent = 'center';
+                    notificationContainer.style.margin = '16px 0';
+                    notificationContainer.style.animation = 'fadeInUp 0.5s ease-out';
+
+                    var notification = document.createElement('div');
+                    notification.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+                    notification.style.color = '#ffffff';
+                    notification.style.padding = '12px 24px';
+                    notification.style.borderRadius = '20px';
+                    notification.style.fontSize = '14px';
+                    notification.style.fontWeight = '500';
+                    notification.style.display = 'flex';
+                    notification.style.alignItems = 'center';
+                    notification.style.gap = '8px';
+                    notification.style.maxWidth = '80%';
+                    notification.style.textAlign = 'center';
+
+                    // Add icon based on notification type
+                    var icon = document.createElement('span');
+                    if (msg.notificationType === 'session_closed') {
+                        icon.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#991B1B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>';
+                        icon.style.display = 'flex';
+                        icon.style.alignItems = 'center';
+                        notification.style.background = '#FEE2E2';
+                        notification.style.color = '#991B1B';
+                        notification.style.border = '1px solid #F87171';
+                    } else if (msg.notificationType === 'joined') {
+                        icon.innerHTML = '👋';
+                        notification.style.background = theme.handoverNotificationBg || '#E4E7FC';
+                        notification.style.color = theme.handoverNotificationText || '#334155';
+                        notification.style.border = '1px solid ' + (theme.handoverNotificationBorder || '#8349FF');
+                    } else {
+                        icon.innerHTML = '💬';
+                    }
+                    icon.style.fontSize = '16px';
+
+                    notification.appendChild(icon);
+                    notification.appendChild(document.createTextNode(msg.text));
+                    notificationContainer.appendChild(notification);
+
+                    // Add fade-in animation if not already present
+                    if (!document.getElementById('system-notification-style')) {
+                        var style = document.createElement('style');
+                        style.id = 'system-notification-style';
+                        style.innerHTML = `
                         @keyframes fadeInUp {
                             0% { opacity: 0; transform: translateY(20px); }
                             100% { opacity: 1; transform: translateY(0); }
                         }
                     `;
-                    document.head.appendChild(style);
+                        document.head.appendChild(style);
+                    }
+
+                    messages.appendChild(notificationContainer);
+                    continue;
                 }
 
-                messages.appendChild(notificationContainer);
-                continue;
-            }
+                // Create message container with flex layout
+                var messageContainer = document.createElement('div');
+                messageContainer.style.display = 'flex';
+                messageContainer.style.flexDirection = 'column';
+                messageContainer.style.marginBottom = '16px';
 
-            // Create message container with flex layout
-            var messageContainer = document.createElement('div');
-            messageContainer.style.display = 'flex';
-            messageContainer.style.flexDirection = 'column';
-            messageContainer.style.marginBottom = '16px';
+                // Create avatar and message wrapper
+                var messageWrapper = document.createElement('div');
+                messageWrapper.style.display = 'flex';
+                messageWrapper.style.gap = '8px';
 
-            // Create avatar and message wrapper
-            var messageWrapper = document.createElement('div');
-            messageWrapper.style.display = 'flex';
-            messageWrapper.style.gap = '8px';
+                // Reverse layout for user messages only (bot and sales_rep start from left)
+                if (msg.sender === 'user') {
+                    messageWrapper.style.flexDirection = 'row-reverse';
+                    messageWrapper.style.justifyContent = 'flex-start';
+                }
 
-            // Reverse layout for user messages only (bot and sales_rep start from left)
-            if (msg.sender === 'user') {
-                messageWrapper.style.flexDirection = 'row-reverse';
-                messageWrapper.style.justifyContent = 'flex-start';
-            }
+                // Create avatar for user, sales_rep, and bot messages
+                var avatar = null;
+                if (msg.sender === 'user') {
+                    avatar = document.createElement('div');
+                    avatar.style.width = '40px';
+                    avatar.style.height = '40px';
+                    avatar.style.borderRadius = '50%';
+                    avatar.style.display = 'flex';
+                    avatar.style.alignItems = 'center';
+                    avatar.style.justifyContent = 'center';
+                    avatar.style.background = theme.userAvatar || '#8349ff';
+                    avatar.style.border = theme.userAvatarBorder || 'none';
 
-            // Create avatar for user, sales_rep, and bot messages
-            var avatar = null;
-            if (msg.sender === 'user') {
-                avatar = document.createElement('div');
-                avatar.style.width = '40px';
-                avatar.style.height = '40px';
-                avatar.style.borderRadius = '50%';
-                avatar.style.display = 'flex';
-                avatar.style.alignItems = 'center';
-                avatar.style.justifyContent = 'center';
-                avatar.style.background = theme.userAvatar || '#8349ff';
-                avatar.style.border = theme.userAvatarBorder || 'none';
-
-                // Load user SVG from assets
-                var userSvg = document.createElement('div');
-                var userSvgColor = theme.userAvatarSvgColor || '#fff';
-                userSvg.innerHTML = `
+                    // Load user SVG from assets
+                    var userSvg = document.createElement('div');
+                    var userSvgColor = theme.userAvatarSvgColor || '#fff';
+                    userSvg.innerHTML = `
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M19 21V19C19 17.9391 18.5786 16.9217 17.8284 16.1716C17.0783 15.4214 16.0609 15 15 15H9C7.93913 15 6.92172 15.4214 6.17157 16.1716C5.42143 16.9217 5 17.9391 5 19V21" stroke="${userSvgColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                         <path d="M12 11C14.2091 11 16 9.20914 16 7C16 4.79086 14.2091 3 12 3C9.79086 3 8 4.79086 8 7C8 9.20914 9.79086 11 12 11Z" stroke="${userSvgColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
                 `;
-                avatar.appendChild(userSvg);
-            } else if (msg.sender === 'sales_rep') {
-                avatar = document.createElement('div');
-                avatar.style.width = '40px';
-                avatar.style.height = '40px';
-                avatar.style.borderRadius = '50%';
-                avatar.style.display = 'flex';
-                avatar.style.alignItems = 'center';
-                avatar.style.justifyContent = 'center';
-                avatar.style.background = theme.salesRepAvatar || '#E4E7FC';
-                avatar.style.border = theme.salesRepAvatarBorder || 'none';
-                var iconColor = theme.salesRepAvatarSvgColor || theme.primary || '#8349FF';
-                avatar.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" style="width:26px;height:26px;color:' + iconColor + ';" width="200" height="200" viewBox="0 0 24 24"><path fill="currentColor" d="M19.938 8H21a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-1.062A8.001 8.001 0 0 1 12 23v-2a6 6 0 0 0 6-6V9A6 6 0 0 0 6 9v7H3a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h1.062a8.001 8.001 0 0 1 15.876 0ZM3 10v4h1v-4H3Zm17 0v4h1v-4h-1ZM7.76 15.785l1.06-1.696A5.972 5.972 0 0 0 12 15a5.972 5.972 0 0 0 3.18-.911l1.06 1.696A7.963 7.963 0 0 1 12 17a7.962 7.962 0 0 1-4.24-1.215Z"/></svg>'; // Sales rep icon
-            } else if (msg.sender === 'bot' || msg.sender === 'ai') {
-                avatar = document.createElement('div');
-                avatar.style.width = '40px';
-                avatar.style.height = '40px';
-                avatar.style.borderRadius = '50%';
-                avatar.style.display = 'flex';
-                avatar.style.alignItems = 'center';
-                avatar.style.justifyContent = 'center';
-                avatar.style.background = theme.botAvatar || '#E4E7FC';
-                avatar.style.border = theme.botAvatarBorder || 'none';
-                avatar.style.overflow = "hidden";
+                    avatar.appendChild(userSvg);
+                } else if (msg.sender === 'sales_rep') {
+                    avatar = document.createElement('div');
+                    avatar.style.width = '40px';
+                    avatar.style.height = '40px';
+                    avatar.style.borderRadius = '50%';
+                    avatar.style.display = 'flex';
+                    avatar.style.alignItems = 'center';
+                    avatar.style.justifyContent = 'center';
+                    avatar.style.background = theme.salesRepAvatar || '#E4E7FC';
+                    avatar.style.border = theme.salesRepAvatarBorder || 'none';
+                    var iconColor = theme.salesRepAvatarSvgColor || theme.primary || '#8349FF';
+                    avatar.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" style="width:26px;height:26px;color:' + iconColor + ';" width="200" height="200" viewBox="0 0 24 24"><path fill="currentColor" d="M19.938 8H21a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-1.062A8.001 8.001 0 0 1 12 23v-2a6 6 0 0 0 6-6V9A6 6 0 0 0 6 9v7H3a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h1.062a8.001 8.001 0 0 1 15.876 0ZM3 10v4h1v-4H3Zm17 0v4h1v-4h-1ZM7.76 15.785l1.06-1.696A5.972 5.972 0 0 0 12 15a5.972 5.972 0 0 0 3.18-.911l1.06 1.696A7.963 7.963 0 0 1 12 17a7.962 7.962 0 0 1-4.24-1.215Z"/></svg>'; // Sales rep icon
+                } else if (msg.sender === 'bot' || msg.sender === 'ai') {
+                    avatar = document.createElement('div');
+                    avatar.style.width = '40px';
+                    avatar.style.height = '40px';
+                    avatar.style.borderRadius = '50%';
+                    avatar.style.display = 'flex';
+                    avatar.style.alignItems = 'center';
+                    avatar.style.justifyContent = 'center';
+                    avatar.style.background = theme.botAvatar || '#E4E7FC';
+                    avatar.style.border = theme.botAvatarBorder || 'none';
+                    avatar.style.overflow = "hidden";
 
-                // Load bot icon - either custom URL or default SVG
-                var botSvg = document.createElement('div');
-                var botIconConfig = theme.botIcon || config.botIcon || {};
-                
-                // Container dimensions for botSvg
-                var containerWidth = botIconConfig.width || '24px';
-                var containerHeight = botIconConfig.height || '24px';
-                
-                // SVG/Image element dimensions
-                var svgWidth = botIconConfig.svgWidth || botIconConfig.width || '24px';
-                var svgHeight = botIconConfig.svgHeight || botIconConfig.height || '24px';
-                
-                var objectFit = botIconConfig.objectFit || 'contain';
-                var botAvatarUrl = botIconConfig.botAvatarUrl;
+                    // Load bot icon - either custom URL or default SVG
+                    var botSvg = document.createElement('div');
+                    var botIconConfig = theme.botIcon || config.botIcon || {};
 
-                // Set botSvg container dimensions
-                botSvg.style.width = containerWidth;
-                botSvg.style.height = containerHeight;
-                botSvg.style.display = 'flex';
-                botSvg.style.alignItems = 'center';
-                botSvg.style.justifyContent = 'center';
+                    // Container dimensions for botSvg
+                    var containerWidth = botIconConfig.width || '24px';
+                    var containerHeight = botIconConfig.height || '24px';
 
-                if (botAvatarUrl) {
-                    // Use custom image URL
-                    botSvg.innerHTML = `<img src="${botAvatarUrl}" alt="Bot" style="width: ${svgWidth}; height: ${svgHeight}; object-fit: ${objectFit};" />`;
-                } else {
-                    // Use default SVG
-                    var iconColor = theme.botAvatarSvgColor || theme.primary || '#8349ff';
-                    botSvg.innerHTML = `
+                    // SVG/Image element dimensions
+                    var svgWidth = botIconConfig.svgWidth || botIconConfig.width || '24px';
+                    var svgHeight = botIconConfig.svgHeight || botIconConfig.height || '24px';
+
+                    var objectFit = botIconConfig.objectFit || 'contain';
+                    var botAvatarUrl = botIconConfig.botAvatarUrl;
+
+                    // Set botSvg container dimensions
+                    botSvg.style.width = containerWidth;
+                    botSvg.style.height = containerHeight;
+                    botSvg.style.display = 'flex';
+                    botSvg.style.alignItems = 'center';
+                    botSvg.style.justifyContent = 'center';
+
+                    if (botAvatarUrl) {
+                        // Use custom image URL
+                        botSvg.innerHTML = `<img src="${botAvatarUrl}" alt="Bot" style="width: ${svgWidth}; height: ${svgHeight}; object-fit: ${objectFit};" />`;
+                    } else {
+                        // Use default SVG
+                        var iconColor = theme.botAvatarSvgColor || theme.primary || '#8349ff';
+                        botSvg.innerHTML = `
                         <svg width="${svgWidth}" height="${svgHeight}" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <g clip-path="url(#clip0_4_4929)">
                                 <path d="M19 11H5C3.89543 11 3 11.8954 3 13V19C3 20.1046 3.89543 21 5 21H19C20.1046 21 21 20.1046 21 19V13C21 11.8954 20.1046 11 19 11Z" stroke="${iconColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -981,507 +1029,554 @@ function initializeChatEmbed() {
                             </defs>
                         </svg>
                     `;
-                }
-                avatar.appendChild(botSvg);
-            }
-
-            // Create message content container
-            var contentContainer = document.createElement('div');
-            contentContainer.style.display = 'flex';
-            contentContainer.style.flexDirection = 'column';
-            contentContainer.style.gap = '8px';
-            contentContainer.style.maxWidth = msg.sender === 'user' ? '70%' : '70%'; // All message types now have avatars
-
-            var msgDiv = document.createElement('div');
-            msgDiv.style.padding = '12px 16px';
-            msgDiv.style.wordBreak = 'break-word';
-            msgDiv.style.fontSize = '14px';
-            msgDiv.style.lineHeight = '20px';
-            msgDiv.style.fontFamily = theme.messageFontFamily || theme.fontFamily || 'sans-serif';
-            msgDiv.style.position = 'relative';
-
-            if (msg.sender === 'user') {
-                // User message styling
-                msgDiv.style.background = theme.userBubble || '#dbeafe';
-                msgDiv.style.color = theme.userText || '#1e40af';
-                msgDiv.style.alignSelf = 'flex-end';
-                msgDiv.style.borderRadius = '16px 16px 4px 16px';
-                msgDiv.style.boxShadow = '0 2px 8px rgba(59, 130, 246, 0.15)';
-            } else if (msg.sender === 'sales_rep') {
-                msgDiv.style.background = theme.salesRepBubble || '#f1f5f9';
-                msgDiv.style.color = theme.salesRepText || '#475569';
-                msgDiv.style.alignSelf = 'flex-start';
-                msgDiv.style.borderRadius = '16px 16px 16px 4px';
-            } else {
-                msgDiv.style.background = theme.botBubble || '#f1f5f9';
-                msgDiv.style.color = theme.botText || '#475569';
-                msgDiv.style.alignSelf = 'flex-start';
-                msgDiv.style.borderRadius = '16px 16px 16px 4px';
-                msgDiv.style.boxShadow = '0 2px 8px rgba(71, 85, 105, 0.1)';
-            }
-
-            // Handle different message types
-            if (msg.text === '' && i === msgs.length - 1) {
-                // Empty message - show typing indicator
-                msgDiv.appendChild(createBouncingDots());
-            } else if (msg.text === '[Image]' && i > 0 && isImageDataUrl(msgs[i - 1].text)) {
-                var img = document.createElement('img');
-                img.src = msgs[i - 1].text;
-                img.style.maxWidth = '200px';
-                img.style.maxHeight = '150px';
-                img.style.borderRadius = '8px';
-                img.style.display = 'block';
-                msgDiv.appendChild(img);
-            } else {
-                // Content wrapper for all messages
-                var contentWrapper = document.createElement('div');
-
-                // Use markdown conversion for bot messages, plain text for others
-                if (msg.sender === 'bot' || msg.sender === 'ai') {
-                    var html = markdownToHtml(msg.text);
-
-                    // Apply welcomeMessageStyle to welcome message paragraphs
-                    if (msg.isWelcomeMessage && welcomeMessageStyle) {
-                        var tempDiv = document.createElement('div');
-                        tempDiv.innerHTML = html;
-                        var paragraphs = tempDiv.querySelectorAll('p');
-
-                        // Apply container lineHeight to all paragraphs
-                        if (welcomeMessageStyle.lineHeight) {
-                            for (var pi = 0; pi < paragraphs.length; pi++) {
-                                paragraphs[pi].style.lineHeight = welcomeMessageStyle.lineHeight;
-                            }
-                        }
-
-                        // Apply body style (marginTop, color) to the middle paragraph(s)
-                        if (welcomeMessageStyle.body && paragraphs.length > 1) {
-                            for (var bi = 1; bi < paragraphs.length - 1; bi++) {
-                                if (welcomeMessageStyle.body.marginTop) {
-                                    paragraphs[bi].style.marginTop = welcomeMessageStyle.body.marginTop;
-                                }
-                                if (welcomeMessageStyle.body.color) {
-                                    paragraphs[bi].style.color = welcomeMessageStyle.body.color;
-                                }
-                            }
-                        }
-
-                        // Apply closing style (marginTop) to the last paragraph
-                        if (welcomeMessageStyle.closing && paragraphs.length > 2) {
-                            var lastP = paragraphs[paragraphs.length - 1];
-                            if (welcomeMessageStyle.closing.marginTop) {
-                                lastP.style.marginTop = welcomeMessageStyle.closing.marginTop;
-                            }
-                        }
-
-                        html = tempDiv.innerHTML;
                     }
+                    avatar.appendChild(botSvg);
+                }
 
-                    contentWrapper.innerHTML = html;
+                // Create message content container
+                var contentContainer = document.createElement('div');
+                contentContainer.style.display = 'flex';
+                contentContainer.style.flexDirection = 'column';
+                contentContainer.style.gap = '8px';
+                contentContainer.style.maxWidth = msg.sender === 'user' ? '70%' : '70%'; // All message types now have avatars
+
+                var msgDiv = document.createElement('div');
+                msgDiv.style.padding = '12px 16px';
+                msgDiv.style.wordBreak = 'break-word';
+                msgDiv.style.fontSize = '14px';
+                msgDiv.style.lineHeight = '20px';
+                msgDiv.style.fontFamily = theme.messageFontFamily || theme.fontFamily || 'sans-serif';
+                msgDiv.style.position = 'relative';
+
+                if (msg.sender === 'user') {
+                    // User message styling
+                    msgDiv.style.background = theme.userBubble || '#dbeafe';
+                    msgDiv.style.color = theme.userText || '#1e40af';
+                    msgDiv.style.alignSelf = 'flex-end';
+                    msgDiv.style.borderRadius = '16px 16px 4px 16px';
+                    msgDiv.style.boxShadow = '0 2px 8px rgba(59, 130, 246, 0.15)';
                 } else if (msg.sender === 'sales_rep') {
-                    // Sales rep messages with clean formatting and sender name at top
-                    var messageText = escapeHtml(msg.text).replace(/\n/g, '<br>');
-                    var senderName = 'Sales Representative';
+                    msgDiv.style.background = theme.salesRepBubble || '#f1f5f9';
+                    msgDiv.style.color = theme.salesRepText || '#475569';
+                    msgDiv.style.alignSelf = 'flex-start';
+                    msgDiv.style.borderRadius = '16px 16px 16px 4px';
+                } else {
+                    msgDiv.style.background = theme.botBubble || '#f1f5f9';
+                    msgDiv.style.color = theme.botText || '#475569';
+                    msgDiv.style.alignSelf = 'flex-start';
+                    msgDiv.style.borderRadius = '16px 16px 16px 4px';
+                    msgDiv.style.boxShadow = '0 2px 8px rgba(71, 85, 105, 0.1)';
+                }
 
-                    // Safely extract sender name
-                    if (msg.senderName) {
-                        if (typeof msg.senderName === 'string') {
-                            senderName = msg.senderName;
-                        } else if (msg.senderName.name) {
-                            senderName = msg.senderName.name;
+                // Handle different message types
+                if (msg.text === '' && i === msgs.length - 1) {
+                    // Empty message - show typing indicator
+                    msgDiv.appendChild(createBouncingDots());
+                } else if (msg.text === '[Image]' && i > 0 && isImageDataUrl(msgs[i - 1].text)) {
+                    var img = document.createElement('img');
+                    img.src = msgs[i - 1].text;
+                    img.style.maxWidth = '200px';
+                    img.style.maxHeight = '150px';
+                    img.style.borderRadius = '8px';
+                    img.style.display = 'block';
+                    msgDiv.appendChild(img);
+                } else {
+                    // Content wrapper for all messages
+                    var contentWrapper = document.createElement('div');
+
+                    // Use markdown conversion for bot messages, plain text for others
+                    if (msg.sender === 'bot' || msg.sender === 'ai') {
+                        var html = markdownToHtml(msg.text);
+
+                        // Apply welcomeMessageStyle to welcome message paragraphs
+                        if (msg.isWelcomeMessage && welcomeMessageStyle) {
+                            var tempDiv = document.createElement('div');
+                            tempDiv.innerHTML = html;
+                            var paragraphs = tempDiv.querySelectorAll('p');
+
+                            // Apply container lineHeight to all paragraphs
+                            if (welcomeMessageStyle.lineHeight) {
+                                for (var pi = 0; pi < paragraphs.length; pi++) {
+                                    paragraphs[pi].style.lineHeight = welcomeMessageStyle.lineHeight;
+                                }
+                            }
+
+                            // Apply body style (marginTop, color) to the middle paragraph(s)
+                            if (welcomeMessageStyle.body && paragraphs.length > 1) {
+                                for (var bi = 1; bi < paragraphs.length - 1; bi++) {
+                                    if (welcomeMessageStyle.body.marginTop) {
+                                        paragraphs[bi].style.marginTop = welcomeMessageStyle.body.marginTop;
+                                    }
+                                    if (welcomeMessageStyle.body.color) {
+                                        paragraphs[bi].style.color = welcomeMessageStyle.body.color;
+                                    }
+                                }
+                            }
+
+                            // Apply closing style (marginTop) to the last paragraph
+                            if (welcomeMessageStyle.closing && paragraphs.length > 2) {
+                                var lastP = paragraphs[paragraphs.length - 1];
+                                if (welcomeMessageStyle.closing.marginTop) {
+                                    lastP.style.marginTop = welcomeMessageStyle.closing.marginTop;
+                                }
+                            }
+
+                            html = tempDiv.innerHTML;
                         }
+
+                        contentWrapper.innerHTML = html;
+                    } else if (msg.sender === 'sales_rep') {
+                        // Sales rep messages with clean formatting and sender name at top
+                        var messageText = escapeHtml(msg.text).replace(/\n/g, '<br>');
+                        var senderName = 'Sales Representative';
+
+                        // Safely extract sender name
+                        if (msg.senderName) {
+                            if (typeof msg.senderName === 'string') {
+                                senderName = msg.senderName;
+                            } else if (msg.senderName.name) {
+                                senderName = msg.senderName.name;
+                            }
+                        }
+
+                        // Create message content with sender name at the top
+                        contentWrapper.innerHTML =
+                            '<div style=" padding-bottom: 6px; font-size: 12px; color: #6b7280; font-weight: 500;">~ ' +
+                            senderName + '</div>' + messageText;
+
+                        contentWrapper.style.fontWeight = '500';
+                        contentWrapper.style.lineHeight = '1.4';
+                        contentWrapper.style.display = 'block';
+                        contentWrapper.style.width = '100%';
+                    } else {
+                        // User messages
+                        contentWrapper.innerHTML = escapeHtml(msg.text).replace(/\n/g, '<br>');
                     }
 
-                    // Create message content with sender name at the top
-                    contentWrapper.innerHTML =
-                        '<div style=" padding-bottom: 6px; font-size: 12px; color: #6b7280; font-weight: 500;">~ ' +
-                        senderName + '</div>' + messageText;
-
-                    contentWrapper.style.fontWeight = '500';
-                    contentWrapper.style.lineHeight = '1.4';
-                    contentWrapper.style.display = 'block';
-                    contentWrapper.style.width = '100%';
-                } else {
-                    // User messages
-                    contentWrapper.innerHTML = escapeHtml(msg.text).replace(/\n/g, '<br>');
+                    msgDiv.appendChild(contentWrapper);
                 }
 
-                msgDiv.appendChild(contentWrapper);
+                // Assemble the message
+                contentContainer.appendChild(msgDiv);
+
+                if (!msg.isWelcomeMessage) {
+                    var timestamp = document.createElement('div');
+                    timestamp.style.fontSize = '12px';
+                    timestamp.style.color = theme.timestampColor || '#9ca3af';
+                    timestamp.style.alignSelf = msg.sender === 'user' ? 'flex-end' : 'flex-start';
+                    timestamp.innerText = msg.created_at;
+                    contentContainer.appendChild(timestamp);
+                }
+                // Only append avatar if it exists (user messages only)
+                if (avatar) {
+                    messageWrapper.appendChild(avatar);
+                }
+                messageWrapper.appendChild(contentContainer);
+                messageContainer.appendChild(messageWrapper);
+                messages.appendChild(messageContainer);
             }
 
-            // Assemble the message
-            contentContainer.appendChild(msgDiv);
+            // Append quick buttons after all messages are rendered
+            if (config.quickQuestions && config.quickQuestions.length > 0) {
+                messages.appendChild(quickButtonsContainer);
+                var isFirstSession = msgs.length === 0 || (msgs.length === 1 && msgs[0].isWelcomeMessage);
 
-            if (!msg.isWelcomeMessage) {
-                var timestamp = document.createElement('div');
-                timestamp.style.fontSize = '12px';
-                timestamp.style.color = theme.timestampColor || '#9ca3af';
-                timestamp.style.alignSelf = msg.sender === 'user' ? 'flex-end' : 'flex-start';
-                timestamp.innerText = msg.created_at;
-                contentContainer.appendChild(timestamp);
+                if (config.quickQuestionsPermanent || isFirstSession) {
+                    quickButtonsContainer.style.display = 'flex';
+                } else {
+                    quickButtonsContainer.style.display = 'none';
+                }
             }
-            // Only append avatar if it exists (user messages only)
-            if (avatar) {
-                messageWrapper.appendChild(avatar);
-            }
-            messageWrapper.appendChild(contentContainer);
-            messageContainer.appendChild(messageWrapper);
-            messages.appendChild(messageContainer);
-        }
 
-        // Append quick buttons after all messages are rendered
-        if (config.quickQuestions && config.quickQuestions.length > 0) {
-            messages.appendChild(quickButtonsContainer);
-            var isFirstSession = msgs.length === 0 || (msgs.length === 1 && msgs[0].isWelcomeMessage);
-            
-            if (config.quickQuestionsPermanent || isFirstSession) {
-                quickButtonsContainer.style.display = 'flex';
-            } else {
-                quickButtonsContainer.style.display = 'none';
-            }
-        }
-
-        messages.scrollTop = messages.scrollHeight;
-
-        // Check if scroll button should be visible with a small delay to ensure proper rendering
-        setTimeout(function () {
-            // Force scroll to bottom again to ensure it works
             messages.scrollTop = messages.scrollHeight;
-            checkScrollPosition();
-        }, 100);
-    }
 
-    // Function to check scroll position and show/hide scroll button
-    function checkScrollPosition() {
-        // Add a small threshold to account for rounding differences
-        var scrollThreshold = 100;
-        var isScrolledToBottom = messages.scrollHeight - messages.scrollTop <= messages.clientHeight + scrollThreshold;
-
-        if (isScrolledToBottom) {
-            scrollToBottomBtn.style.display = 'none';
-        } else {
-            scrollToBottomBtn.style.display = 'flex';
-        }
-    }
-
-    // Function to force scroll to bottom with retries
-    function forceScrollToBottom() {
-        var attempts = 0;
-        var maxAttempts = 5;
-
-        function tryScroll() {
-            messages.scrollTop = messages.scrollHeight;
-            attempts++;
-
-            if (attempts < maxAttempts && messages.scrollTop < messages.scrollHeight - messages.clientHeight - 10) {
-                setTimeout(tryScroll, 50);
-            } else {
+            // Check if scroll button should be visible with a small delay to ensure proper rendering
+            setTimeout(function () {
+                // Force scroll to bottom again to ensure it works
+                messages.scrollTop = messages.scrollHeight;
                 checkScrollPosition();
+            }, 100);
+        }
+
+        // Function to check scroll position and show/hide scroll button
+        function checkScrollPosition() {
+            // Add a small threshold to account for rounding differences
+            var scrollThreshold = 100;
+            var isScrolledToBottom = messages.scrollHeight - messages.scrollTop <= messages.clientHeight + scrollThreshold;
+
+            if (isScrolledToBottom) {
+                scrollToBottomBtn.style.display = 'none';
+            } else {
+                scrollToBottomBtn.style.display = 'flex';
             }
         }
 
-        tryScroll();
-    }
+        // Function to force scroll to bottom with retries
+        function forceScrollToBottom() {
+            var attempts = 0;
+            var maxAttempts = 5;
 
-    // Add scroll event listener to messages container
-    messages.addEventListener('scroll', function () {
-        checkScrollPosition();
-    });
+            function tryScroll() {
+                messages.scrollTop = messages.scrollHeight;
+                attempts++;
 
-    // Save message to localStorage
-    function saveMessage(msg, sender, type = "") {
-        var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
-        if (type === "welcomeMessage") {
-            const getWelcomeMessageInd = msgs.findIndex(m => m.isWelcomeMessage)
-            if (getWelcomeMessageInd !== -1) msgs[getWelcomeMessageInd].text = msg
-            else msgs.push({ text: msg, isWelcomeMessage: true, sender: sender });
-
-        }
-        else {
-            msgs.push({ text: msg, isWelcomeMessage: false, sender, created_at: formatTimeStamp(new Date().toISOString()) });
-        }
-        localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
-    }
-
-    async function connectWebSocket() {
-        if (isWebSocketConnected || currentSocket) return;
-
-        // Try to get stored session data first
-        var storedSession = localStorage.getItem('simple-chat-session');
-
-        if (storedSession) {
-            try {
-                var sessionData = JSON.parse(storedSession);
-                // Check if session data is complete and not too old (optional: 24 hours)
-                if (sessionData.chatID && sessionData.visitorInfo) {
-                    chatID = sessionData.chatID;
-                    visitorInfo = sessionData.visitorInfo;
+                if (attempts < maxAttempts && messages.scrollTop < messages.scrollHeight - messages.clientHeight - 10) {
+                    setTimeout(tryScroll, 50);
                 } else {
-                    // Session is invalid or expired, generate new data
-                    throw new Error('Invalid or expired session');
+                    checkScrollPosition();
                 }
-            } catch (error) {
-                console.log('Invalid session data, generating new session');
-                // Clear invalid session data
-                localStorage.removeItem('simple-chat-session');
-                storedSession = null;
             }
+
+            tryScroll();
         }
 
-        if (!storedSession) {
-            // Generate new session data if not stored or invalid
-            chatID = generateChatId();
-
-            // Store session data (with or without visitor info based on leadCapture setting)
-            var chatSessionData = {
-                chatID: chatID,
-                timestamp: new Date().toISOString()
-            };
-            
-            // Only include visitor info if lead capture is enabled and we have the info
-            if (leadCapture && visitorInfo) {
-                chatSessionData.visitorInfo = visitorInfo;
-            }
-            
-            localStorage.setItem('simple-chat-session', JSON.stringify(chatSessionData));
-        }
-
-        // Collect browser metadata for websocket connection
-        const browserMetadata = collectBrowserMetadata();
-        var wsUrl = `${socketUrl}${config.org_id}/?visitor_info=${JSON.stringify(visitorInfo)}&browser_metadata=${encodeURIComponent(JSON.stringify(browserMetadata))}`;
-        try {
-            currentSocket = new WebSocket(wsUrl);
-            currentSocket.onopen = function () {
-                isWebSocketConnected = true;
-                startHeartBeat()
-            };
-            currentSocket.onmessage = function (event) {
-                var msgData = JSON.parse(event.data);
-
-                if(msgData?.room_name && msgData?.room_name === chatID){
-                    
-                                    // Skip unread messages but allow broadcast messages
-                                    if (msgData?.message_type === "unread_message") {
-                                        return;
-                                    }
-                                    if (msgData?.message_type === "handover_requested") {
-                                        return;
-                                    }
-                    
-                                    if (msgData?.message_type === "handover_message") {
-                    
-                                        // Set handover flag to stop showing typing indicators
-                                        isHandoverActive = true;
-                    
-                                        // Store handover flag in session data for persistence
-                                        var storedSession = localStorage.getItem('simple-chat-session');
-                                        if (storedSession) {
-                                            try {
-                                                var sessionData = JSON.parse(storedSession);
-                                                sessionData.handoverOccurred = true;
-                                                localStorage.setItem('simple-chat-session', JSON.stringify(sessionData));
-                                            } catch (error) {
-                                                console.log('Error updating session with handover flag:', error);
-                                            }
-                                        }
-                    
-                                        // Store handover message in localStorage like other messages
-                                        var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
-                                        msgs.push({
-                                            text: msgData.sender?.name + ' has entered the chat',
-                                            sender: 'system',
-                                            isWelcomeMessage: false,
-                                            isSystemNotification: true,
-                                            notificationType: 'joined',
-                                            created_at: formatTimeStamp(msgData.created_at || new Date().toISOString())
-                                        });
-                                        localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
-                    
-                                        // Reload messages to show the stored handover message
-                                        loadMessages();
-                                        return;
-                                    }
-                    
-                                    // Handle AI/bot messages (both streaming and regular) - only if handover is not active
-                                    if ((msgData.sender_type === 'ai' || msgData.sender === 'ai' || msgData.sender_type === 'bot' || msgData.sender === 'bot') && !isHandoverActive) {
-                    
-                                        var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
-                                        var lastMessage = msgs[msgs.length - 1];
-                    
-                                        // Remove typing indicator if present
-                                        if (lastMessage && lastMessage.text === '' && (lastMessage.sender === 'bot' || lastMessage.sender === 'ai')) {
-                                            msgs.pop();
-                                            lastMessage = msgs[msgs.length - 1] || null;
-                                        }
-                    
-                                        var content = msgData.content || msgData.message || '';
-                    
-                                        // Handle completion signal (empty content with is_complete flag)
-                                        if (msgData.is_complete === true && content === '') {
-                                            if (lastMessage && lastMessage.isStreaming) {
-                                                console.log('Stream completed');
-                                                lastMessage.isStreaming = false;
-                                                msgs[msgs.length - 1] = lastMessage;
-                                                localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
-                                                // No need to reload - already processed correctly
-                                            }
-                                            setBotResponding(false);
-                                            return;
-                                        }
-                    
-                                        // Handle any content from AI (treat all as streaming chunks)
-                                        if (content) {
-                                            // Check if we should append to existing message or create new one
-                                            if (lastMessage &&
-                                                (lastMessage.sender === 'bot' || lastMessage.sender === 'ai') &&
-                                                lastMessage.isStreaming === true) {
-                                                // Append to existing streaming message
-                                                lastMessage.text += content;
-                                                lastMessage.lastChunkTime = Date.now(); // Track when last chunk arrived
-                                                msgs[msgs.length - 1] = lastMessage;
-                                            } else {
-                                                // Create new streaming message
-                                                msgs.push({
-                                                    text: content,
-                                                    sender: 'bot',
-                                                    isWelcomeMessage: false,
-                                                    isStreaming: true,
-                                                    messageId: msgData.message_id,
-                                                    created_at: formatTimeStamp(msgData.created_at),
-                                                    lastChunkTime: Date.now() // Track when last chunk arrived
-                                                });
-                                            }
-                                            localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
-                                            loadMessages(); // Use immediate loading for streaming
-
-                                            // If this chunk also carries the completion flag, re-enable input
-                                            if (msgData.is_complete === true) {
-                                                var streamMsg = msgs[msgs.length - 1];
-                                                if (streamMsg && streamMsg.isStreaming) {
-                                                    streamMsg.isStreaming = false;
-                                                    msgs[msgs.length - 1] = streamMsg;
-                                                    localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
-                                                }
-                                                setBotResponding(false);
-                                            }
-                                        }
-                                    } else if ((msgData.sender_type === "sales_rep" || msgData.sender === "sales_rep")) {
-                                        var content = msgData.content || '';
-                    
-                                        // Ignore empty sales_rep messages completely - these should not create typing indicators
-                                        if (!content || !content.trim()) {
-                                            return;
-                                        }
-                    
-                                        var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
-                                        msgs.push({
-                                            text: content,
-                                            sender: msgData.sender_type,
-                                            senderName: msgData.sender || msgData.sender_name || 'Sales Representative', // Capture sender name
-                                            isWelcomeMessage: false,
-                                            created_at: formatTimeStamp(msgData.created_at)
-                                        });
-                                        localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
-                                        loadMessages();
-                                    }
-                                };
-
-                }
-
-            currentSocket.onclose = function () {
-                console.error('WebSocket connection closed unexpectedly...');
-                isWebSocketConnected = false;
-                currentSocket = null;
-            if (heartBeatInterval) clearInterval(heartBeatInterval);
-            heartBeatInterval = null
-
-                // Stop enhanced presence tracking
-            };
-            currentSocket.onerror = function (error) {
-                console.error('WebSocket error:', error);
-                isWebSocketConnected = false;
-                currentSocket = null;
-            if (heartBeatInterval) clearInterval(heartBeatInterval);
-            heartBeatInterval = null
-
-                // Stop enhanced presence tracking
-            };
-        } catch (error) {
-            console.error('Failed to create WebSocket connection:', error);
-            isWebSocketConnected = false;
-            currentSocket = null;
-            if (heartBeatInterval) clearInterval(heartBeatInterval);
-            heartBeatInterval = null
-        }
-    }
-
-    function startHeartBeat() {
-        if (currentSocket.readyState === WebSocket.OPEN) {
-              const heartbeatMessage = {
-          message_type: 'heartbeat',
-          timestamp: Date.now()
-        };
-            heartBeatInterval = setInterval(function () {
-                currentSocket.send(JSON.stringify(heartbeatMessage));
-            }, 2500); // Send heartbeat every 2.5 seconds
-        }
-    }
-
-    function formatTimeStamp(timestamp) {
-        const createdAt = new Date(timestamp)// or your date value
-        const formattedTime = createdAt.toLocaleTimeString("en-US", {
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: true
+        // Add scroll event listener to messages container
+        messages.addEventListener('scroll', function () {
+            checkScrollPosition();
         });
-        return formattedTime;
 
-    }
+        // Save message to localStorage
+        function saveMessage(msg, sender, type = "") {
+            var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
+            if (type === "welcomeMessage") {
+                const getWelcomeMessageInd = msgs.findIndex(m => m.isWelcomeMessage)
+                if (getWelcomeMessageInd !== -1) msgs[getWelcomeMessageInd].text = msg
+                else msgs.push({ text: msg, isWelcomeMessage: true, sender: sender });
 
-
-
-    // --- Message sending logic update ---
-    // This function now uses WebSocket instead of API calls
-    function sendMessage(value) {
-        var val = input.value.trim() || value
-        if (!val) return;
-        if (isBotResponding) return;
-        // Save user message immediately
-        saveMessage(val, 'user');
-        input.value = '';
-        // Disable send button after clearing input
-        sendBtn.disabled = true;
-        sendBtn.style.opacity = '0.5';
-        sendBtn.style.cursor = 'not-allowed';
-        loadMessages();
-
-        // Show typing indicator only if handover is not active
-        if (!isHandoverActive) {
-            saveMessage('', 'bot');
-            loadMessages();
-            setBotResponding(true);
+            }
+            else {
+                msgs.push({ text: msg, isWelcomeMessage: false, sender, created_at: formatTimeStamp(new Date().toISOString()) });
+            }
+            localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
         }
 
-        if (!isWebSocketConnected || !currentSocket || currentSocket.readyState !== WebSocket.OPEN) {
-            connectWebSocket();
-            // Wait for connection and then send message
-            var checkConnection = function () {
-                if (currentSocket && currentSocket.readyState === WebSocket.OPEN) {
+        async function connectWebSocket() {
+            if (isWebSocketConnected || currentSocket) return;
+
+            // Try to get stored session data first
+            var storedSession = localStorage.getItem('simple-chat-session');
+
+            if (storedSession) {
+                try {
+                    var sessionData = JSON.parse(storedSession);
+                    // Check if session data is complete and not too old (optional: 24 hours)
+                    if (sessionData.chatID && sessionData.visitorInfo) {
+                        chatID = sessionData.chatID;
+                        visitorInfo = sessionData.visitorInfo;
+
+                        // Validate that the stored session is still active on the backend
+                        var isValid = await validateSession(chatID);
+                        if (!isValid) {
+                            showSessionClosedNotification('This chat session has been closed.');
+                            return;
+                        }
+                    } else {
+                        // Session is invalid or expired, generate new data
+                        throw new Error('Invalid or expired session');
+                    }
+                } catch (error) {
+                    console.log('Invalid session data, generating new session');
+                    // Clear invalid session data
+                    localStorage.removeItem('simple-chat-session');
+                    storedSession = null;
+                }
+            }
+
+            if (!storedSession) {
+                // Generate new session data if not stored or invalid
+                chatID = generateChatId();
+
+                // Store session data (with or without visitor info based on leadCapture setting)
+                var chatSessionData = {
+                    chatID: chatID,
+                    timestamp: new Date().toISOString()
+                };
+
+                // Only include visitor info if lead capture is enabled and we have the info
+                if (leadCapture && visitorInfo) {
+                    chatSessionData.visitorInfo = visitorInfo;
+                }
+
+                localStorage.setItem('simple-chat-session', JSON.stringify(chatSessionData));
+            }
+
+            // Collect browser metadata for websocket connection
+            const browserMetadata = collectBrowserMetadata();
+            var wsUrl = `${socketUrl}${config.org_id}/?visitor_info=${JSON.stringify(visitorInfo)}&browser_metadata=${encodeURIComponent(JSON.stringify(browserMetadata))}`;
+            try {
+                currentSocket = new WebSocket(wsUrl);
+                currentSocket.onopen = function () {
+                    isWebSocketConnected = true;
+                    startHeartBeat()
+                };
+                currentSocket.onmessage = function (event) {
+                    var msgData = JSON.parse(event.data);
+
+                    if (msgData?.room_name && msgData?.room_name === chatID) {
+
+                        // Handle session closed by backend
+                        if (msgData?.message_type === "error_message") {
+                            showSessionClosedNotification(
+                                msgData.content || msgData.message || 'This chat session has been closed.'
+                            );
+                            return;
+                        }
+
+                        // Skip unread messages but allow broadcast messages
+                        if (msgData?.message_type === "unread_message") {
+                            return;
+                        }
+                        if (msgData?.message_type === "handover_requested") {
+                            return;
+                        }
+
+                        if (msgData?.message_type === "handover_message") {
+
+                            // Set handover flag to stop showing typing indicators
+                            isHandoverActive = true;
+
+                            // Store handover flag in session data for persistence
+                            var storedSession = localStorage.getItem('simple-chat-session');
+                            if (storedSession) {
+                                try {
+                                    var sessionData = JSON.parse(storedSession);
+                                    sessionData.handoverOccurred = true;
+                                    localStorage.setItem('simple-chat-session', JSON.stringify(sessionData));
+                                } catch (error) {
+                                    console.log('Error updating session with handover flag:', error);
+                                }
+                            }
+
+                            // Store handover message in localStorage like other messages
+                            var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
+                            msgs.push({
+                                text: msgData.sender?.name + ' has entered the chat',
+                                sender: 'system',
+                                isWelcomeMessage: false,
+                                isSystemNotification: true,
+                                notificationType: 'joined',
+                                created_at: formatTimeStamp(msgData.created_at || new Date().toISOString())
+                            });
+                            localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
+
+                            // Reload messages to show the stored handover message
+                            loadMessages();
+                            return;
+                        }
+
+                        // Handle AI/bot messages (both streaming and regular) - only if handover is not active
+                        if ((msgData.sender_type === 'ai' || msgData.sender === 'ai' || msgData.sender_type === 'bot' || msgData.sender === 'bot') && !isHandoverActive) {
+
+                            var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
+                            var lastMessage = msgs[msgs.length - 1];
+
+                            // Remove typing indicator if present
+                            if (lastMessage && lastMessage.text === '' && (lastMessage.sender === 'bot' || lastMessage.sender === 'ai')) {
+                                msgs.pop();
+                                lastMessage = msgs[msgs.length - 1] || null;
+                            }
+
+                            var content = msgData.content || msgData.message || '';
+
+                            // Handle completion signal (empty content with is_complete flag)
+                            if (msgData.is_complete === true && content === '') {
+                                if (lastMessage && lastMessage.isStreaming) {
+                                    lastMessage.isStreaming = false;
+                                    msgs[msgs.length - 1] = lastMessage;
+                                    localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
+                                    loadMessages();
+                                }
+                                setBotResponding(false);
+                                return;
+                            }
+
+                            // Handle any content from AI (treat all as streaming chunks)
+                            if (content) {
+                                // Check if we should append to existing message or create new one
+                                if (lastMessage &&
+                                    (lastMessage.sender === 'bot' || lastMessage.sender === 'ai') &&
+                                    lastMessage.isStreaming === true) {
+                                    // Append to existing streaming message
+                                    lastMessage.text += content;
+                                    lastMessage.lastChunkTime = Date.now(); // Track when last chunk arrived
+                                    msgs[msgs.length - 1] = lastMessage;
+                                } else {
+                                    // Create new streaming message
+                                    msgs.push({
+                                        text: content,
+                                        sender: 'bot',
+                                        isWelcomeMessage: false,
+                                        isStreaming: true,
+                                        messageId: msgData.message_id,
+                                        created_at: formatTimeStamp(msgData.created_at),
+                                        lastChunkTime: Date.now() // Track when last chunk arrived
+                                    });
+                                }
+                                localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
+                                loadMessages(); // Use immediate loading for streaming
+                            }
+                        } else if ((msgData.sender_type === "sales_rep" || msgData.sender === "sales_rep")) {
+                            var content = msgData.content || '';
+
+                            // Ignore empty sales_rep messages completely - these should not create typing indicators
+                            if (!content || !content.trim()) {
+                                return;
+                            }
+
+                            var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
+                            msgs.push({
+                                text: content,
+                                sender: msgData.sender_type,
+                                senderName: msgData.sender || msgData.sender_name || 'Sales Representative', // Capture sender name
+                                isWelcomeMessage: false,
+                                created_at: formatTimeStamp(msgData.created_at)
+                            });
+                            localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
+                            setBotResponding(false);
+                            loadMessages();
+                        }
+                    };
+                    // Fallback: handle error_message broadcast without room_name
+                    if (msgData?.message_type === "error_message" && !msgData?.room_name) {
+                        showSessionClosedNotification(
+                            msgData.content || msgData.message || 'This chat session has been closed.'
+                        );
+                        return;
+                    }
+                }
+
+                currentSocket.onclose = function () {
+                    console.error('WebSocket connection closed unexpectedly...');
+                    isWebSocketConnected = false;
+                    currentSocket = null;
+                    if (heartBeatInterval) clearInterval(heartBeatInterval);
+                    heartBeatInterval = null
+
+                    // Stop enhanced presence tracking
+                };
+                currentSocket.onerror = function (error) {
+                    console.error('WebSocket error:', error);
+                    isWebSocketConnected = false;
+                    currentSocket = null;
+                    if (heartBeatInterval) clearInterval(heartBeatInterval);
+                    heartBeatInterval = null
+
+                    // Stop enhanced presence tracking
+                };
+            }
+            catch (error) {
+                console.error('Failed to create WebSocket connection:', error);
+                isWebSocketConnected = false;
+                currentSocket = null;
+                if (heartBeatInterval) clearInterval(heartBeatInterval);
+                heartBeatInterval = null
+            }
+        }
+
+        function startHeartBeat() {
+            if (currentSocket.readyState === WebSocket.OPEN) {
+                const heartbeatMessage = {
+                    message_type: 'heartbeat',
+                    timestamp: Date.now()
+                };
+                heartBeatInterval = setInterval(function () {
+                    if (currentSocket && currentSocket.readyState === WebSocket.OPEN) {
+                        currentSocket.send(JSON.stringify(heartbeatMessage));
+                    } else {
+                        clearInterval(heartBeatInterval);
+                        heartBeatInterval = null;
+                    }
+                }, 2500); // Send heartbeat every 2.5 seconds
+            }
+        }
+
+        function formatTimeStamp(timestamp) {
+            const createdAt = new Date(timestamp)// or your date value
+            const formattedTime = createdAt.toLocaleTimeString("en-US", {
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: true
+            });
+            return formattedTime;
+
+        }
+
+
+        // --- Message sending logic update ---
+        // This function now uses WebSocket instead of API calls
+        function sendMessage(value) {
+            var val = input.value.trim() || value
+            if (!val) return;
+            if (isBotResponding) return;
+            // Save user message immediately
+            saveMessage(val, 'user');
+            input.value = '';
+            // Disable send button after clearing input
+            sendBtn.disabled = true;
+            sendBtn.style.opacity = '0.5';
+            sendBtn.style.cursor = 'not-allowed';
+            loadMessages();
+
+
+            // Show typing indicator only if handover is not active
+            if (!isHandoverActive) {
+                saveMessage('', 'bot');
+                loadMessages();
+                setBotResponding(true);
+
+            }
+
+            if (!isWebSocketConnected || !currentSocket || currentSocket.readyState !== WebSocket.OPEN) {
+                connectWebSocket();
+                // Wait for connection and then send message
+                var checkConnection = function () {
+                    // Guard: session was reset during reconnection
+                    if (!chatID || !currentSocket) {
+                        return;
+                    }
+                    if (currentSocket && currentSocket.readyState === WebSocket.OPEN) {
+                        currentSocket.send(JSON.stringify({
+                            'message': val,
+                            'message_type': "text",
+                            "room_name": chatID
+                        }));
+                    } else if (currentSocket && currentSocket.readyState === WebSocket.CONNECTING) {
+                        // Still connecting, wait a bit more
+                        setTimeout(checkConnection, 100);
+                    } else {
+                        // Connection failed - remove typing indicator and show error
+                        var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
+                        if (msgs.length > 0 && msgs[msgs.length - 1].text === '') {
+                            msgs.pop(); // Remove typing indicator
+                        }
+                        msgs.push({
+                            text: 'Error: Could not connect to chat service.',
+                            sender: 'bot',
+                            isWelcomeMessage: false
+                        });
+                        localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
+                        loadMessages();
+                    }
+                };
+                // Give some time for connection to establish
+                setTimeout(checkConnection, 500);
+            } else {
+                // Connection is ready, send message immediately
+                try {
                     currentSocket.send(JSON.stringify({
                         'message': val,
                         'message_type': "text",
-                        "room_name": chatID
+                        room_name: chatID
                     }));
-                } else if (currentSocket && currentSocket.readyState === WebSocket.CONNECTING) {
-                    // Still connecting, wait a bit more
-                    setTimeout(checkConnection, 100);
-                } else {
-                    // Connection failed - remove typing indicator and show error
+                } catch (error) {
+                    console.error('Error sending message:', error);
+                    // Remove typing indicator and show error
                     var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
                     if (msgs.length > 0 && msgs[msgs.length - 1].text === '') {
                         msgs.pop(); // Remove typing indicator
                     }
                     msgs.push({
-                        text: 'Error: Could not connect to chat service.',
+                        text: 'Error sending message. Please try again.',
                         sender: 'bot',
                         isWelcomeMessage: false
                     });
@@ -1490,1080 +1585,1396 @@ function initializeChatEmbed() {
                     loadMessages();
                 }
             };
-            // Give some time for connection to establish
-            setTimeout(checkConnection, 500);
-        } else {
-            // Connection is ready, send message immediately
-            try {
-                currentSocket.send(JSON.stringify({
-                    'message': val,
-                    'message_type': "text",
-                    room_name: chatID
-                }));
-            } catch (error) {
-                console.error('Error sending message:', error);
-                // Remove typing indicator and show error
-                var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
-                if (msgs.length > 0 && msgs[msgs.length - 1].text === '') {
-                    msgs.pop(); // Remove typing indicator
+        }
+
+        sendBtn.onclick = sendMessage;
+        input.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault(); // Prevent default to avoid issues on mobile
+                sendMessage();
+            }
+        });
+
+        function showLeadCaptureInChat(onComplete) {
+            isFormShowing = true; // Set flag to prevent reset during form display
+            updateButtonStates(); // Update button appearance
+            messages.innerHTML = '';
+
+            var wrapper = document.createElement('div');
+            wrapper.style.display = 'flex';
+            wrapper.style.flexDirection = 'column';
+            wrapper.style.alignItems = 'center';
+            wrapper.style.height = '100%';
+            wrapper.style.width = '100%';
+            wrapper.style.padding = '16px';
+            wrapper.style.boxSizing = 'border-box';
+            wrapper.style.overflow = 'hidden';
+            wrapper.style.justifyContent = 'center';
+
+            // Scrollable form content container
+            var formScrollContainer = document.createElement('div');
+            formScrollContainer.style.flex = '1';
+            formScrollContainer.style.width = '100%';
+            // formScrollContainer.style.overflowY = 'auto';
+            // formScrollContainer.style.overflowX = 'hidden';
+            formScrollContainer.style.display = 'flex';
+            formScrollContainer.style.justifyContent = 'center';
+            formScrollContainer.style.paddingBottom = '16px';
+
+            var formContainer = document.createElement('div');
+            formContainer.style.width = '100%';
+            formContainer.style.maxWidth = window.innerWidth <= 768 ? 'none' : '300px';
+            formContainer.style.display = 'flex';
+            formContainer.style.flexDirection = 'column';
+            formContainer.style.gap = '20px';
+
+            // Add helper text (configurable from SimpleChatEmbedConfig)
+            var helperTextConfig = config.leadFormHelperText || {};
+            var helperText = document.createElement('div');
+            helperText.innerText = helperTextConfig.text || 'To help us provide you with better service and personalized assistance, please share your details below.';
+            helperText.style.fontSize = helperTextConfig.fontSize || '13px';
+            helperText.style.lineHeight = helperTextConfig.lineHeight || '1.5';
+            helperText.style.textAlign = helperTextConfig.textAlign || 'center';
+            helperText.style.padding = helperTextConfig.padding || '11px';
+            helperText.style.marginBottom = helperTextConfig.marginBottom || '4px';
+            helperText.style.border = helperTextConfig.border || '1px dashed #8348FF';
+            helperText.style.background = helperTextConfig.background || '#f5f0ff';
+            helperText.style.color = helperTextConfig.color || '#8348FF';
+            helperText.style.fontStyle = helperTextConfig.fontStyle || 'italic';
+            helperText.style.borderRadius = helperTextConfig.borderRadius || '6px';
+            helperText.style.flexShrink = '0';
+
+            var nameFieldContainer = document.createElement('div');
+            nameFieldContainer.style.display = 'flex';
+            nameFieldContainer.style.flexDirection = 'column';
+            nameFieldContainer.style.gap = '4px';
+            nameFieldContainer.style.marginBottom = '4px';
+            nameFieldContainer.style.height = '63px';
+
+            var nameInputRow = document.createElement('div');
+            nameInputRow.style.display = 'flex';
+            nameInputRow.style.alignItems = 'center';
+            nameInputRow.style.gap = '12px';
+
+            var nameLabel = document.createElement('label');
+            nameLabel.innerText = 'Full Name:*';
+            nameLabel.style.minWidth = '80px';
+            nameLabel.style.fontSize = '14px';
+            nameLabel.style.fontWeight = '500';
+            nameLabel.style.color = '#374151';
+            nameLabel.style.flexShrink = '0';
+
+            var nameInput = document.createElement('input');
+            nameInput.type = 'text';
+            nameInput.placeholder = 'Full name';
+            nameInput.style.flex = '1';
+            nameInput.style.padding = '10px 12px';
+            nameInput.style.border = '1px solid #d1d5db';
+            nameInput.style.borderRadius = '6px';
+            nameInput.style.fontSize = '14px';
+            nameInput.style.outline = 'none';
+            nameInput.style.transition = 'all 0.2s ease-in-out';
+            nameInput.style.fontFamily = theme.messageFontFamily || theme.fontFamily || 'sans-serif';
+
+            nameInput.addEventListener('focus', function () {
+                nameInput.style.borderColor = '#3b82f6';
+                nameInput.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+            });
+            nameInput.addEventListener('blur', function () {
+                if (!nameInput.classList.contains('error')) {
+                    nameInput.style.borderColor = '#d1d5db';
                 }
-                msgs.push({
-                    text: 'Error sending message. Please try again.',
-                    sender: 'bot',
-                    isWelcomeMessage: false
-                });
-                localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
-                setBotResponding(false);
-                loadMessages();
-            }
-        }
-    }
-
-    sendBtn.onclick = sendMessage;
-    input.addEventListener('keydown', function (e) {
-        if (e.key === 'Enter') {
-            e.preventDefault(); // Prevent default to avoid issues on mobile
-            sendMessage();
-        } 
-    });
-
-    function showLeadCaptureInChat(onComplete) {
-        isFormShowing = true; // Set flag to prevent reset during form display
-        updateButtonStates(); // Update button appearance
-        messages.innerHTML = '';
-
-        var wrapper = document.createElement('div');
-        wrapper.style.display = 'flex';
-        wrapper.style.flexDirection = 'column';
-        wrapper.style.alignItems = 'center';
-        wrapper.style.height = '100%';
-        wrapper.style.width = '100%';
-        wrapper.style.padding = '16px';
-        wrapper.style.boxSizing = 'border-box';
-        wrapper.style.overflow = 'hidden';
-        wrapper.style.justifyContent = 'center';
-
-        // Scrollable form content container
-        var formScrollContainer = document.createElement('div');
-        formScrollContainer.style.flex = '1';
-        formScrollContainer.style.width = '100%';
-        // formScrollContainer.style.overflowY = 'auto';
-        // formScrollContainer.style.overflowX = 'hidden';
-        formScrollContainer.style.display = 'flex';
-        formScrollContainer.style.justifyContent = 'center';
-        formScrollContainer.style.paddingBottom = '16px';
-
-        var formContainer = document.createElement('div');
-        formContainer.style.width = '100%';
-        formContainer.style.maxWidth = window.innerWidth <= 768 ? 'none' : '300px';
-        formContainer.style.display = 'flex';
-        formContainer.style.flexDirection = 'column';
-        formContainer.style.gap = '20px';
-
-        // Add helper text (configurable from SimpleChatEmbedConfig)
-        var helperTextConfig = config.leadFormHelperText || {};
-        var helperText = document.createElement('div');
-        helperText.innerText = helperTextConfig.text || 'To help us provide you with better service and personalized assistance, please share your details below.';
-        helperText.style.fontSize = helperTextConfig.fontSize || '13px';
-        helperText.style.lineHeight = helperTextConfig.lineHeight || '1.5';
-        helperText.style.textAlign = helperTextConfig.textAlign || 'center';
-        helperText.style.padding = helperTextConfig.padding || '11px';
-        helperText.style.marginBottom = helperTextConfig.marginBottom || '4px';
-        helperText.style.border = helperTextConfig.border || '1px dashed #8348FF';
-        helperText.style.background = helperTextConfig.background || '#f5f0ff';
-        helperText.style.color = helperTextConfig.color || '#8348FF';
-        helperText.style.fontStyle = helperTextConfig.fontStyle || 'italic';
-        helperText.style.borderRadius = helperTextConfig.borderRadius || '6px';
-        helperText.style.flexShrink = '0';
-
-        var nameFieldContainer = document.createElement('div');
-        nameFieldContainer.style.display = 'flex';
-        nameFieldContainer.style.flexDirection = 'column';
-        nameFieldContainer.style.gap = '4px';
-        nameFieldContainer.style.marginBottom = '4px';
-        nameFieldContainer.style.height = '63px';
-
-        var nameInputRow = document.createElement('div');
-        nameInputRow.style.display = 'flex';
-        nameInputRow.style.alignItems = 'center';
-        nameInputRow.style.gap = '12px';
-
-        var nameLabel = document.createElement('label');
-        nameLabel.innerText = 'Full Name:*';
-        nameLabel.style.minWidth = '80px';
-        nameLabel.style.fontSize = '14px';
-        nameLabel.style.fontWeight = '500';
-        nameLabel.style.color = '#374151';
-        nameLabel.style.flexShrink = '0';
-
-        var nameInput = document.createElement('input');
-        nameInput.type = 'text';
-        nameInput.placeholder = 'Full name';
-        nameInput.style.flex = '1';
-        nameInput.style.padding = '10px 12px';
-        nameInput.style.border = '1px solid #d1d5db';
-        nameInput.style.borderRadius = '6px';
-        nameInput.style.fontSize = '14px';
-        nameInput.style.outline = 'none';
-        nameInput.style.transition = 'all 0.2s ease-in-out';
-        nameInput.style.fontFamily = theme.messageFontFamily || theme.fontFamily || 'sans-serif';
-
-        nameInput.addEventListener('focus', function () {
-            nameInput.style.borderColor = '#3b82f6';
-            nameInput.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
-        });
-        nameInput.addEventListener('blur', function () {
-            if (!nameInput.classList.contains('error')) {
-                nameInput.style.borderColor = '#d1d5db';
-            }
-            nameInput.style.boxShadow = 'none';
-        });
-
-        // Clear error on input
-        nameInput.addEventListener('input', function() {
-            if (nameInput.value.trim()) {
-                nameInput.classList.remove('error');
-                nameInput.style.borderColor = '#d1d5db';
-                nameError.style.opacity = '0';
-                nameError.style.maxHeight = '0';
-            }
-        });
-
-        nameInputRow.appendChild(nameLabel);
-        nameInputRow.appendChild(nameInput);
-
-        // Name error message with reserved space
-        var nameError = document.createElement('div');
-        nameError.style.color = '#ef4444';
-        nameError.style.fontSize = '11px';
-        nameError.style.marginLeft = '92px';
-        nameError.style.opacity = '0';
-        nameError.style.maxHeight = '0';
-        nameError.style.overflow = 'hidden';
-        nameError.style.transition = 'all 0.3s ease-in-out';
-        nameError.innerText = 'Full name is required';
-
-        nameFieldContainer.appendChild(nameInputRow);
-        nameFieldContainer.appendChild(nameError);
-
-        // Email field
-        var emailFieldContainer = document.createElement('div');
-        emailFieldContainer.style.display = 'flex';
-        emailFieldContainer.style.flexDirection = 'column';
-        emailFieldContainer.style.gap = '4px';
-        emailFieldContainer.style.marginBottom = '4px';
-        emailFieldContainer.style.height = '63px';
-
-
-        var emailInputRow = document.createElement('div');
-        emailInputRow.style.display = 'flex';
-        emailInputRow.style.alignItems = 'center';
-        emailInputRow.style.gap = '12px';
-
-        var emailLabel = document.createElement('label');
-        emailLabel.innerText = 'Email:*';
-        emailLabel.style.minWidth = '80px';
-        emailLabel.style.fontSize = '14px';
-        emailLabel.style.fontWeight = '500';
-        emailLabel.style.color = '#374151';
-        emailLabel.style.flexShrink = '0';
-
-        var emailInput = document.createElement('input');
-        emailInput.type = 'email';
-        emailInput.placeholder = 'Email';
-        emailInput.style.flex = '1';
-        emailInput.style.padding = '10px 12px';
-        emailInput.style.border = '1px solid #d1d5db';
-        emailInput.style.borderRadius = '6px';
-        emailInput.style.fontSize = '14px';
-        emailInput.style.outline = 'none';
-        emailInput.style.transition = 'all 0.2s ease-in-out';
-        emailInput.style.fontFamily = theme.messageFontFamily || theme.fontFamily || 'sans-serif';
-
-        emailInput.addEventListener('focus', function () {
-            emailInput.style.borderColor = '#3b82f6';
-            emailInput.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
-        });
-        emailInput.addEventListener('blur', function () {
-            if (!emailInput.classList.contains('error')) {
-                emailInput.style.borderColor = '#d1d5db';
-            }
-            emailInput.style.boxShadow = 'none';
-        });
-
-        // Clear error on input
-        emailInput.addEventListener('input', function() {
-            if (emailInput.value.trim()) {
-                emailInput.classList.remove('error');
-                emailInput.style.borderColor = '#d1d5db';
-                emailError.style.opacity = '0';
-                emailError.style.maxHeight = '0';
-            }
-        });
-
-        emailInputRow.appendChild(emailLabel);
-        emailInputRow.appendChild(emailInput);
-
-        // Email error message with reserved space
-        var emailError = document.createElement('div');
-        emailError.style.color = '#ef4444';
-        emailError.style.fontSize = '11px';
-        emailError.style.marginLeft = '92px';
-        emailError.style.opacity = '0';
-        emailError.style.maxHeight = '0';
-        emailError.style.overflow = 'hidden';
-        emailError.style.transition = 'all 0.3s ease-in-out';
-        emailError.innerText = 'Please enter a valid email address';
-
-        emailFieldContainer.appendChild(emailInputRow);
-        emailFieldContainer.appendChild(emailError);
-
-        // Phone field (required)
-        var phoneFieldContainer = document.createElement('div');
-        phoneFieldContainer.style.display = 'flex';
-        phoneFieldContainer.style.flexDirection = 'column';
-        phoneFieldContainer.style.gap = '4px';
-        phoneFieldContainer.style.marginBottom = '4px';
-        phoneFieldContainer.style.height = '63px';
-
-
-        var phoneInputRow = document.createElement('div');
-        phoneInputRow.style.display = 'flex';
-        phoneInputRow.style.alignItems = 'center';
-        phoneInputRow.style.gap = '12px';
-
-        var phoneLabel = document.createElement('label');
-        phoneLabel.innerText = 'Phone:*';
-        phoneLabel.style.minWidth = '80px';
-        phoneLabel.style.fontSize = '14px';
-        phoneLabel.style.fontWeight = '500';
-        phoneLabel.style.color = '#374151';
-        phoneLabel.style.flexShrink = '0';
-
-        var phoneInput = document.createElement('input');
-        phoneInput.type = 'tel';
-        phoneInput.placeholder = '+1 555 123 4567';
-        phoneInput.maxLength = 20;
-        phoneInput.style.flex = '1';
-        phoneInput.style.padding = '10px 12px';
-        phoneInput.style.border = '1px solid #d1d5db';
-        phoneInput.style.borderRadius = '6px';
-        phoneInput.style.fontSize = '14px';
-        phoneInput.style.outline = 'none';
-        phoneInput.style.transition = 'all 0.2s ease-in-out';
-        phoneInput.style.fontFamily = theme.messageFontFamily || theme.fontFamily || 'sans-serif';
-
-        phoneInput.addEventListener('focus', function () {
-            phoneInput.style.borderColor = '#3b82f6';
-            phoneInput.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
-        });
-        phoneInput.addEventListener('blur', function () {
-            if (!phoneInput.classList.contains('error')) {
-                phoneInput.style.borderColor = '#d1d5db';
-            }
-            phoneInput.style.boxShadow = 'none';
-        });
-
-        // Helper: strip non-digit characters from phone (keeps + at start)
-        function stripPhoneDigits(val) {
-            return val.replace(/\D/g, '');
-        }
-
-        // Helper: normalize phone to E.164 format for HubSpot
-        // E.164: + followed by country code + number, 7-15 digits total
-        function normalizePhoneE164(val) {
-            var cleaned = val.replace(/[\s\-\(\)\.]/g, '');
-            // Already has + prefix — just strip any remaining non-digit/non-plus chars
-            if (cleaned.charAt(0) === '+') {
-                return '+' + cleaned.substring(1).replace(/\D/g, '');
-            }
-            var digits = cleaned.replace(/\D/g, '');
-            // 10 digits without prefix — assume US/Canada, prepend +1
-            if (digits.length === 10) return '+1' + digits;
-            // Otherwise prepend + (user likely included country code)
-            return '+' + digits;
-        }
-
-        // Only allow digits, +, spaces, dashes, parens, dots in the phone field
-        phoneInput.addEventListener('input', function() {
-            var val = phoneInput.value;
-            // Strip any characters that aren't digits, +, space, dash, parens, or dot
-            var cleaned = val.replace(/[^\d\+\s\-\(\)\.]/g, '');
-            // Ensure + only appears at the start
-            var firstChar = cleaned.charAt(0);
-            var rest = cleaned.substring(1).replace(/\+/g, '');
-            cleaned = firstChar + rest;
-            if (cleaned !== val) {
-                phoneInput.value = cleaned;
-            }
+                nameInput.style.boxShadow = 'none';
+            });
 
             // Clear error on input
-            if (phoneInput.value.trim()) {
-                phoneInput.classList.remove('error');
-                phoneInput.style.borderColor = '#d1d5db';
-                phoneError.style.opacity = '0';
-                phoneError.style.maxHeight = '0';
-            }
-        });
+            nameInput.addEventListener('input', function () {
+                if (nameInput.value.trim()) {
+                    nameInput.classList.remove('error');
+                    nameInput.style.borderColor = '#d1d5db';
+                    nameError.style.opacity = '0';
+                    nameError.style.maxHeight = '0';
+                }
+            });
 
-        phoneInputRow.appendChild(phoneLabel);
-        phoneInputRow.appendChild(phoneInput);
+            nameInputRow.appendChild(nameLabel);
+            nameInputRow.appendChild(nameInput);
 
-        // Phone error message with reserved space
-        var phoneError = document.createElement('div');
-        phoneError.style.color = '#ef4444';
-        phoneError.style.fontSize = '11px';
-        phoneError.style.marginLeft = '92px';
-        phoneError.style.opacity = '0';
-        phoneError.style.maxHeight = '0';
-        phoneError.style.overflow = 'hidden';
-        phoneError.style.transition = 'all 0.3s ease-in-out';
-        phoneError.innerText = 'Phone number is required';
-
-        phoneFieldContainer.appendChild(phoneInputRow);
-        phoneFieldContainer.appendChild(phoneError);
-
-        // Zip Code field (required)
-        var zipFieldContainer = document.createElement('div');
-        zipFieldContainer.style.display = 'flex';
-        zipFieldContainer.style.flexDirection = 'column';
-        zipFieldContainer.style.gap = '4px';
-        zipFieldContainer.style.marginBottom = '4px';
-        zipFieldContainer.style.height = '63px';
-
-
-        var zipInputRow = document.createElement('div');
-        zipInputRow.style.display = 'flex';
-        zipInputRow.style.alignItems = 'center';
-        zipInputRow.style.gap = '12px';
-
-        var zipLabel = document.createElement('label');
-        zipLabel.innerText = 'Zip Code:*';
-        zipLabel.style.minWidth = '80px';
-        zipLabel.style.fontSize = '14px';
-        zipLabel.style.fontWeight = '500';
-        zipLabel.style.color = '#374151';
-        zipLabel.style.flexShrink = '0';
-
-        var zipInput = document.createElement('input');
-        zipInput.type = 'text';
-        zipInput.placeholder = 'Zip code';
-        zipInput.style.flex = '1';
-        zipInput.style.padding = '10px 12px';
-        zipInput.style.border = '1px solid #d1d5db';
-        zipInput.style.borderRadius = '6px';
-        zipInput.style.fontSize = '14px';
-        zipInput.style.outline = 'none';
-        zipInput.style.transition = 'all 0.2s ease-in-out';
-        zipInput.style.fontFamily = theme.messageFontFamily || theme.fontFamily || 'sans-serif';
-
-        zipInput.addEventListener('focus', function () {
-            zipInput.style.borderColor = '#3b82f6';
-            zipInput.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
-        });
-        zipInput.addEventListener('blur', function () {
-            if (!zipInput.classList.contains('error')) {
-                zipInput.style.borderColor = '#d1d5db';
-            }
-            zipInput.style.boxShadow = 'none';
-        });
-
-        // Clear error on input
-        zipInput.addEventListener('input', function() {
-            if (zipInput.value.trim()) {
-                zipInput.classList.remove('error');
-                zipInput.style.borderColor = '#d1d5db';
-                zipError.style.opacity = '0';
-                zipError.style.maxHeight = '0';
-            }
-        });
-
-        zipInputRow.appendChild(zipLabel);
-        zipInputRow.appendChild(zipInput);
-
-        // Zip error message with reserved space
-        var zipError = document.createElement('div');
-        zipError.style.color = '#ef4444';
-        zipError.style.fontSize = '11px';
-        zipError.style.marginLeft = '92px';
-        zipError.style.opacity = '0';
-        zipError.style.maxHeight = '0';
-        zipError.style.overflow = 'hidden';
-        zipError.style.transition = 'all 0.3s ease-in-out';
-        zipError.innerText = 'Zip code is required';
-
-        zipFieldContainer.appendChild(zipInputRow);
-        zipFieldContainer.appendChild(zipError);
-
-        // Add all fields to form container
-        formContainer.appendChild(helperText);
-        formContainer.appendChild(nameFieldContainer);
-        formContainer.appendChild(emailFieldContainer);
-        formContainer.appendChild(phoneFieldContainer);
-        formContainer.appendChild(zipFieldContainer);
-
-        // Add form container to scroll container
-        formScrollContainer.appendChild(formContainer);
-
-        // Fixed button container at bottom
-        var buttonContainer = document.createElement('div');
-        buttonContainer.style.width = '100%';
-        buttonContainer.style.display = 'flex';
-        buttonContainer.style.justifyContent = 'center';
-        // buttonContainer.style.padding = '16px 0 0 0';
-        // buttonContainer.style.borderTop = '1px solid #e5e7eb';
-        buttonContainer.style.background = '#fff';
-        buttonContainer.style.flexShrink = '0';
-
-        // Start Chat button
-        var confirmBtn = document.createElement('button');
-        confirmBtn.innerText = 'Start Chat';
-        confirmBtn.style.width = '100%';
-        confirmBtn.style.maxWidth = window.innerWidth <= 768 ? 'none' : '300px';
-        confirmBtn.style.padding = '12px 24px';
-        confirmBtn.style.background = theme.sendBtnBg || '#16a34a';
-        confirmBtn.style.color = '#ffffff';
-        confirmBtn.style.border = 'none';
-        confirmBtn.style.borderRadius = '6px';
-        confirmBtn.style.cursor = 'pointer';
-        confirmBtn.style.fontWeight = '600';
-        confirmBtn.style.fontSize = '14px';
-        confirmBtn.style.transition = 'all 0.2s ease-in-out';
-        confirmBtn.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.1)';
-
-        confirmBtn.addEventListener('mouseover', function () {
-            confirmBtn.style.backgroundColor = theme.sendBtnHover || '#15803d';
-            confirmBtn.style.transform = 'translateY(-1px)';
-            confirmBtn.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.15)';
-        });
-        confirmBtn.addEventListener('mouseout', function () {
-            confirmBtn.style.backgroundColor = theme.sendBtnBg || '#16a34a';
-            confirmBtn.style.transform = 'translateY(0)';
-            confirmBtn.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.1)';
-        });
-
-        // Confirmation button click handler
-        confirmBtn.onclick = async function () {
-            var nameVal = nameInput.value.trim();
-            var emailVal = emailInput.value.trim();
-            var phoneVal = phoneInput.value.trim();
-            var hasErrors = false;
-
-            var zipVal = zipInput.value.trim();
-            var hasErrors = false;
-
-            // Reset all error states
-            nameInput.classList.remove('error');
-            emailInput.classList.remove('error');
-            phoneInput.classList.remove('error');
-            zipInput.classList.remove('error');
-            nameInput.style.borderColor = '#d1d5db';
-            emailInput.style.borderColor = '#d1d5db';
-            phoneInput.style.borderColor = '#d1d5db';
-            zipInput.style.borderColor = '#d1d5db';
+            // Name error message with reserved space
+            var nameError = document.createElement('div');
+            nameError.style.color = '#ef4444';
+            nameError.style.fontSize = '11px';
+            nameError.style.marginLeft = '92px';
             nameError.style.opacity = '0';
             nameError.style.maxHeight = '0';
+            nameError.style.overflow = 'hidden';
+            nameError.style.transition = 'all 0.3s ease-in-out';
+            nameError.innerText = 'Full name is required';
+
+            nameFieldContainer.appendChild(nameInputRow);
+            nameFieldContainer.appendChild(nameError);
+
+            // Email field
+            var emailFieldContainer = document.createElement('div');
+            emailFieldContainer.style.display = 'flex';
+            emailFieldContainer.style.flexDirection = 'column';
+            emailFieldContainer.style.gap = '4px';
+            emailFieldContainer.style.marginBottom = '4px';
+            emailFieldContainer.style.height = '63px';
+
+
+            var emailInputRow = document.createElement('div');
+            emailInputRow.style.display = 'flex';
+            emailInputRow.style.alignItems = 'center';
+            emailInputRow.style.gap = '12px';
+
+            var emailLabel = document.createElement('label');
+            emailLabel.innerText = 'Email:*';
+            emailLabel.style.minWidth = '80px';
+            emailLabel.style.fontSize = '14px';
+            emailLabel.style.fontWeight = '500';
+            emailLabel.style.color = '#374151';
+            emailLabel.style.flexShrink = '0';
+
+            var emailInput = document.createElement('input');
+            emailInput.type = 'email';
+            emailInput.placeholder = 'Email';
+            emailInput.style.flex = '1';
+            emailInput.style.padding = '10px 12px';
+            emailInput.style.border = '1px solid #d1d5db';
+            emailInput.style.borderRadius = '6px';
+            emailInput.style.fontSize = '14px';
+            emailInput.style.outline = 'none';
+            emailInput.style.transition = 'all 0.2s ease-in-out';
+            emailInput.style.fontFamily = theme.messageFontFamily || theme.fontFamily || 'sans-serif';
+
+            emailInput.addEventListener('focus', function () {
+                emailInput.style.borderColor = '#3b82f6';
+                emailInput.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+            });
+            emailInput.addEventListener('blur', function () {
+                if (!emailInput.classList.contains('error')) {
+                    emailInput.style.borderColor = '#d1d5db';
+                }
+                emailInput.style.boxShadow = 'none';
+            });
+
+            // Clear error on input
+            emailInput.addEventListener('input', function () {
+                if (emailInput.value.trim()) {
+                    emailInput.classList.remove('error');
+                    emailInput.style.borderColor = '#d1d5db';
+                    emailError.style.opacity = '0';
+                    emailError.style.maxHeight = '0';
+                }
+            });
+
+            emailInputRow.appendChild(emailLabel);
+            emailInputRow.appendChild(emailInput);
+
+            // Email error message with reserved space
+            var emailError = document.createElement('div');
+            emailError.style.color = '#ef4444';
+            emailError.style.fontSize = '11px';
+            emailError.style.marginLeft = '92px';
             emailError.style.opacity = '0';
             emailError.style.maxHeight = '0';
+            emailError.style.overflow = 'hidden';
+            emailError.style.transition = 'all 0.3s ease-in-out';
+            emailError.innerText = 'Please enter a valid email address';
+
+            emailFieldContainer.appendChild(emailInputRow);
+            emailFieldContainer.appendChild(emailError);
+
+            // Country codes data for phone selector
+            var COUNTRY_CODES = [
+                { code: 'US', dial: '+1', flag: '\uD83C\uDDFA\uD83C\uDDF8', name: 'United States', minLen: 10, maxLen: 10 },
+                { code: 'CA', dial: '+1', flag: '\uD83C\uDDE8\uD83C\uDDE6', name: 'Canada', minLen: 10, maxLen: 10 },
+                { code: 'GB', dial: '+44', flag: '\uD83C\uDDEC\uD83C\uDDE7', name: 'United Kingdom', minLen: 10, maxLen: 10 },
+                { code: 'AF', dial: '+93', flag: '\uD83C\uDDE6\uD83C\uDDEB', name: 'Afghanistan', minLen: 9, maxLen: 9 },
+                { code: 'AL', dial: '+355', flag: '\uD83C\uDDE6\uD83C\uDDF1', name: 'Albania', minLen: 8, maxLen: 9 },
+                { code: 'DZ', dial: '+213', flag: '\uD83C\uDDE9\uD83C\uDDFF', name: 'Algeria', minLen: 9, maxLen: 9 },
+                { code: 'AR', dial: '+54', flag: '\uD83C\uDDE6\uD83C\uDDF7', name: 'Argentina', minLen: 10, maxLen: 11 },
+                { code: 'AU', dial: '+61', flag: '\uD83C\uDDE6\uD83C\uDDFA', name: 'Australia', minLen: 9, maxLen: 9 },
+                { code: 'AT', dial: '+43', flag: '\uD83C\uDDE6\uD83C\uDDF9', name: 'Austria', minLen: 10, maxLen: 11 },
+                { code: 'BD', dial: '+880', flag: '\uD83C\uDDE7\uD83C\uDDE9', name: 'Bangladesh', minLen: 10, maxLen: 10 },
+                { code: 'BE', dial: '+32', flag: '\uD83C\uDDE7\uD83C\uDDEA', name: 'Belgium', minLen: 9, maxLen: 9 },
+                { code: 'BR', dial: '+55', flag: '\uD83C\uDDE7\uD83C\uDDF7', name: 'Brazil', minLen: 10, maxLen: 11 },
+                { code: 'BG', dial: '+359', flag: '\uD83C\uDDE7\uD83C\uDDEC', name: 'Bulgaria', minLen: 8, maxLen: 9 },
+                { code: 'KH', dial: '+855', flag: '\uD83C\uDDF0\uD83C\uDDED', name: 'Cambodia', minLen: 8, maxLen: 9 },
+                { code: 'CL', dial: '+56', flag: '\uD83C\uDDE8\uD83C\uDDF1', name: 'Chile', minLen: 9, maxLen: 9 },
+                { code: 'CN', dial: '+86', flag: '\uD83C\uDDE8\uD83C\uDDF3', name: 'China', minLen: 11, maxLen: 11 },
+                { code: 'CO', dial: '+57', flag: '\uD83C\uDDE8\uD83C\uDDF4', name: 'Colombia', minLen: 10, maxLen: 10 },
+                { code: 'CR', dial: '+506', flag: '\uD83C\uDDE8\uD83C\uDDF7', name: 'Costa Rica', minLen: 8, maxLen: 8 },
+                { code: 'HR', dial: '+385', flag: '\uD83C\uDDED\uD83C\uDDF7', name: 'Croatia', minLen: 8, maxLen: 9 },
+                { code: 'CZ', dial: '+420', flag: '\uD83C\uDDE8\uD83C\uDDFF', name: 'Czech Republic', minLen: 9, maxLen: 9 },
+                { code: 'DK', dial: '+45', flag: '\uD83C\uDDE9\uD83C\uDDF0', name: 'Denmark', minLen: 8, maxLen: 8 },
+                { code: 'DO', dial: '+1', flag: '\uD83C\uDDE9\uD83C\uDDF4', name: 'Dominican Republic', minLen: 10, maxLen: 10 },
+                { code: 'EC', dial: '+593', flag: '\uD83C\uDDEA\uD83C\uDDE8', name: 'Ecuador', minLen: 9, maxLen: 9 },
+                { code: 'EG', dial: '+20', flag: '\uD83C\uDDEA\uD83C\uDDEC', name: 'Egypt', minLen: 10, maxLen: 10 },
+                { code: 'FI', dial: '+358', flag: '\uD83C\uDDEB\uD83C\uDDEE', name: 'Finland', minLen: 9, maxLen: 10 },
+                { code: 'FR', dial: '+33', flag: '\uD83C\uDDEB\uD83C\uDDF7', name: 'France', minLen: 9, maxLen: 9 },
+                { code: 'DE', dial: '+49', flag: '\uD83C\uDDE9\uD83C\uDDEA', name: 'Germany', minLen: 10, maxLen: 11 },
+                { code: 'GH', dial: '+233', flag: '\uD83C\uDDEC\uD83C\uDDED', name: 'Ghana', minLen: 9, maxLen: 9 },
+                { code: 'GR', dial: '+30', flag: '\uD83C\uDDEC\uD83C\uDDF7', name: 'Greece', minLen: 10, maxLen: 10 },
+                { code: 'GT', dial: '+502', flag: '\uD83C\uDDEC\uD83C\uDDF9', name: 'Guatemala', minLen: 8, maxLen: 8 },
+                { code: 'HN', dial: '+504', flag: '\uD83C\uDDED\uD83C\uDDF3', name: 'Honduras', minLen: 8, maxLen: 8 },
+                { code: 'HK', dial: '+852', flag: '\uD83C\uDDED\uD83C\uDDF0', name: 'Hong Kong', minLen: 8, maxLen: 8 },
+                { code: 'HU', dial: '+36', flag: '\uD83C\uDDED\uD83C\uDDFA', name: 'Hungary', minLen: 9, maxLen: 9 },
+                { code: 'IN', dial: '+91', flag: '\uD83C\uDDEE\uD83C\uDDF3', name: 'India', minLen: 10, maxLen: 10 },
+                { code: 'ID', dial: '+62', flag: '\uD83C\uDDEE\uD83C\uDDE9', name: 'Indonesia', minLen: 10, maxLen: 12 },
+                { code: 'IE', dial: '+353', flag: '\uD83C\uDDEE\uD83C\uDDEA', name: 'Ireland', minLen: 9, maxLen: 9 },
+                { code: 'IL', dial: '+972', flag: '\uD83C\uDDEE\uD83C\uDDF1', name: 'Israel', minLen: 9, maxLen: 9 },
+                { code: 'IT', dial: '+39', flag: '\uD83C\uDDEE\uD83C\uDDF9', name: 'Italy', minLen: 9, maxLen: 10 },
+                { code: 'JM', dial: '+1', flag: '\uD83C\uDDEF\uD83C\uDDF2', name: 'Jamaica', minLen: 10, maxLen: 10 },
+                { code: 'JP', dial: '+81', flag: '\uD83C\uDDEF\uD83C\uDDF5', name: 'Japan', minLen: 10, maxLen: 10 },
+                { code: 'KE', dial: '+254', flag: '\uD83C\uDDF0\uD83C\uDDEA', name: 'Kenya', minLen: 9, maxLen: 9 },
+                { code: 'MY', dial: '+60', flag: '\uD83C\uDDF2\uD83C\uDDFE', name: 'Malaysia', minLen: 9, maxLen: 10 },
+                { code: 'MX', dial: '+52', flag: '\uD83C\uDDF2\uD83C\uDDFD', name: 'Mexico', minLen: 10, maxLen: 10 },
+                { code: 'MA', dial: '+212', flag: '\uD83C\uDDF2\uD83C\uDDE6', name: 'Morocco', minLen: 9, maxLen: 9 },
+                { code: 'NL', dial: '+31', flag: '\uD83C\uDDF3\uD83C\uDDF1', name: 'Netherlands', minLen: 9, maxLen: 9 },
+                { code: 'NZ', dial: '+64', flag: '\uD83C\uDDF3\uD83C\uDDFF', name: 'New Zealand', minLen: 9, maxLen: 10 },
+                { code: 'NG', dial: '+234', flag: '\uD83C\uDDF3\uD83C\uDDEC', name: 'Nigeria', minLen: 10, maxLen: 10 },
+                { code: 'NO', dial: '+47', flag: '\uD83C\uDDF3\uD83C\uDDF4', name: 'Norway', minLen: 8, maxLen: 8 },
+                { code: 'PK', dial: '+92', flag: '\uD83C\uDDF5\uD83C\uDDF0', name: 'Pakistan', minLen: 10, maxLen: 10 },
+                { code: 'PA', dial: '+507', flag: '\uD83C\uDDF5\uD83C\uDDE6', name: 'Panama', minLen: 7, maxLen: 8 },
+                { code: 'PE', dial: '+51', flag: '\uD83C\uDDF5\uD83C\uDDEA', name: 'Peru', minLen: 9, maxLen: 9 },
+                { code: 'PH', dial: '+63', flag: '\uD83C\uDDF5\uD83C\uDDED', name: 'Philippines', minLen: 10, maxLen: 10 },
+                { code: 'PL', dial: '+48', flag: '\uD83C\uDDF5\uD83C\uDDF1', name: 'Poland', minLen: 9, maxLen: 9 },
+                { code: 'PT', dial: '+351', flag: '\uD83C\uDDF5\uD83C\uDDF9', name: 'Portugal', minLen: 9, maxLen: 9 },
+                { code: 'PR', dial: '+1', flag: '\uD83C\uDDF5\uD83C\uDDF7', name: 'Puerto Rico', minLen: 10, maxLen: 10 },
+                { code: 'RO', dial: '+40', flag: '\uD83C\uDDF7\uD83C\uDDF4', name: 'Romania', minLen: 9, maxLen: 9 },
+                { code: 'RU', dial: '+7', flag: '\uD83C\uDDF7\uD83C\uDDFA', name: 'Russia', minLen: 10, maxLen: 10 },
+                { code: 'SA', dial: '+966', flag: '\uD83C\uDDF8\uD83C\uDDE6', name: 'Saudi Arabia', minLen: 9, maxLen: 9 },
+                { code: 'SG', dial: '+65', flag: '\uD83C\uDDF8\uD83C\uDDEC', name: 'Singapore', minLen: 8, maxLen: 8 },
+                { code: 'ZA', dial: '+27', flag: '\uD83C\uDDFF\uD83C\uDDE6', name: 'South Africa', minLen: 9, maxLen: 9 },
+                { code: 'KR', dial: '+82', flag: '\uD83C\uDDF0\uD83C\uDDF7', name: 'South Korea', minLen: 10, maxLen: 11 },
+                { code: 'ES', dial: '+34', flag: '\uD83C\uDDEA\uD83C\uDDF8', name: 'Spain', minLen: 9, maxLen: 9 },
+                { code: 'SE', dial: '+46', flag: '\uD83C\uDDF8\uD83C\uDDEA', name: 'Sweden', minLen: 9, maxLen: 10 },
+                { code: 'CH', dial: '+41', flag: '\uD83C\uDDE8\uD83C\uDDED', name: 'Switzerland', minLen: 9, maxLen: 9 },
+                { code: 'TW', dial: '+886', flag: '\uD83C\uDDF9\uD83C\uDDFC', name: 'Taiwan', minLen: 9, maxLen: 9 },
+                { code: 'TH', dial: '+66', flag: '\uD83C\uDDF9\uD83C\uDDED', name: 'Thailand', minLen: 9, maxLen: 9 },
+                { code: 'TR', dial: '+90', flag: '\uD83C\uDDF9\uD83C\uDDF7', name: 'Turkey', minLen: 10, maxLen: 10 },
+                { code: 'UA', dial: '+380', flag: '\uD83C\uDDFA\uD83C\uDDE6', name: 'Ukraine', minLen: 9, maxLen: 9 },
+                { code: 'AE', dial: '+971', flag: '\uD83C\uDDE6\uD83C\uDDEA', name: 'United Arab Emirates', minLen: 9, maxLen: 9 },
+                { code: 'UY', dial: '+598', flag: '\uD83C\uDDFA\uD83C\uDDFE', name: 'Uruguay', minLen: 8, maxLen: 8 },
+                { code: 'VE', dial: '+58', flag: '\uD83C\uDDFB\uD83C\uDDEA', name: 'Venezuela', minLen: 10, maxLen: 10 },
+                { code: 'VN', dial: '+84', flag: '\uD83C\uDDFB\uD83C\uDDF3', name: 'Vietnam', minLen: 9, maxLen: 10 }
+            ];
+            var selectedCountry = COUNTRY_CODES[0]; // Default to US
+
+            // Phone field (required)
+            var phoneFieldContainer = document.createElement('div');
+            phoneFieldContainer.style.display = 'flex';
+            phoneFieldContainer.style.flexDirection = 'column';
+            phoneFieldContainer.style.gap = '4px';
+            phoneFieldContainer.style.marginBottom = '4px';
+            phoneFieldContainer.style.minHeight = '63px';
+
+
+            var phoneInputRow = document.createElement('div');
+            phoneInputRow.style.display = 'flex';
+            phoneInputRow.style.alignItems = 'center';
+            phoneInputRow.style.gap = '12px';
+            phoneInputRow.style.width = '100%';
+            phoneInputRow.style.minWidth = '0';
+
+            var phoneLabel = document.createElement('label');
+            phoneLabel.innerText = 'Phone:*';
+            phoneLabel.style.minWidth = '80px';
+            phoneLabel.style.fontSize = '14px';
+            phoneLabel.style.fontWeight = '500';
+            phoneLabel.style.color = '#374151';
+            phoneLabel.style.flexShrink = '0';
+
+            // Phone input wrapper — acts as a single unified input field
+            var phoneInputWrapper = document.createElement('div');
+            phoneInputWrapper.style.display = 'flex';
+            phoneInputWrapper.style.alignItems = 'center';
+            phoneInputWrapper.style.flex = '1';
+            phoneInputWrapper.style.position = 'relative';
+            phoneInputWrapper.style.minWidth = '0';
+            phoneInputWrapper.style.border = '1px solid #d1d5db';
+            phoneInputWrapper.style.borderRadius = '6px';
+            phoneInputWrapper.style.background = '#fff';
+            phoneInputWrapper.style.transition = 'all 0.2s ease-in-out';
+            phoneInputWrapper.style.overflow = 'visible';
+
+            function setWrapperFocus(focused) {
+                if (focused) {
+                    phoneInputWrapper.style.borderColor = '#3b82f6';
+                    phoneInputWrapper.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+                } else if (!phoneInput.classList.contains('error')) {
+                    phoneInputWrapper.style.borderColor = '#d1d5db';
+                    phoneInputWrapper.style.boxShadow = 'none';
+                } else {
+                    phoneInputWrapper.style.boxShadow = 'none';
+                }
+            }
+
+            // Country code button — seamless inside the wrapper
+            var countryCodeBtn = document.createElement('button');
+            countryCodeBtn.type = 'button';
+            countryCodeBtn.style.display = 'flex';
+            countryCodeBtn.style.alignItems = 'center';
+            countryCodeBtn.style.gap = '4px';
+            countryCodeBtn.style.padding = '10px 8px 10px 10px';
+            countryCodeBtn.style.border = 'none';
+            countryCodeBtn.style.borderRight = '1px solid #e5e7eb';
+            countryCodeBtn.style.borderRadius = '6px 0 0 6px';
+            countryCodeBtn.style.fontSize = '13px';
+            countryCodeBtn.style.background = 'transparent';
+            countryCodeBtn.style.cursor = 'pointer';
+            countryCodeBtn.style.outline = 'none';
+            countryCodeBtn.style.flexShrink = '0';
+            countryCodeBtn.style.boxSizing = 'border-box';
+            countryCodeBtn.style.fontFamily = theme.messageFontFamily || theme.fontFamily || 'sans-serif';
+            countryCodeBtn.style.whiteSpace = 'nowrap';
+            countryCodeBtn.style.color = '#374151';
+
+            function updateCountryBtn() {
+                countryCodeBtn.innerHTML = '<span style="font-size:13px">' + selectedCountry.dial + '</span><span style="font-size:8px;color:#9ca3af;margin-left:1px">\u25BC</span>';
+            }
+            updateCountryBtn();
+
+            countryCodeBtn.addEventListener('mouseenter', function () {
+                countryCodeBtn.style.background = '#f3f4f6';
+            });
+            countryCodeBtn.addEventListener('mouseleave', function () {
+                countryCodeBtn.style.background = 'transparent';
+            });
+            countryCodeBtn.addEventListener('focus', function () { setWrapperFocus(true); });
+            countryCodeBtn.addEventListener('blur', function () {
+                // Delay to check if focus moved to phoneInput (still inside wrapper)
+                setTimeout(function () {
+                    if (!phoneInputWrapper.contains(document.activeElement)) setWrapperFocus(false);
+                }, 0);
+            });
+
+            // Phone number input — borderless inside the wrapper
+            var phoneInput = document.createElement('input');
+            phoneInput.type = 'tel';
+            phoneInput.placeholder = '555 123 4567';
+            phoneInput.maxLength = 15;
+            phoneInput.style.flex = '1';
+            phoneInput.style.padding = '10px 12px';
+            phoneInput.style.border = 'none';
+            phoneInput.style.borderRadius = '0 6px 6px 0';
+            phoneInput.style.fontSize = '14px';
+            phoneInput.style.outline = 'none';
+            phoneInput.style.background = 'transparent';
+            phoneInput.style.fontFamily = theme.messageFontFamily || theme.fontFamily || 'sans-serif';
+            phoneInput.style.minWidth = '0';
+            phoneInput.style.boxSizing = 'border-box';
+            phoneInput.style.width = '0';
+            phoneInput.style.color = '#111827';
+
+            phoneInput.addEventListener('focus', function () { setWrapperFocus(true); });
+            phoneInput.addEventListener('blur', function () {
+                setTimeout(function () {
+                    if (!phoneInputWrapper.contains(document.activeElement)) setWrapperFocus(false);
+                }, 0);
+            });
+
+            // Country dropdown
+            var countryDropdown = document.createElement('div');
+            countryDropdown.style.position = 'absolute';
+            countryDropdown.style.top = '100%';
+            countryDropdown.style.left = '0';
+            countryDropdown.style.right = '0';
+            countryDropdown.style.background = '#fff';
+            countryDropdown.style.border = '1px solid #e5e7eb';
+            countryDropdown.style.borderRadius = '8px';
+            countryDropdown.style.boxShadow = '0 8px 24px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.08)';
+            countryDropdown.style.zIndex = '9999';
+            countryDropdown.style.display = 'none';
+            countryDropdown.style.marginTop = '4px';
+            countryDropdown.style.overflow = 'hidden';
+
+            var countrySearch = document.createElement('input');
+            countrySearch.type = 'text';
+            countrySearch.placeholder = 'Search country...';
+            countrySearch.style.width = '100%';
+            countrySearch.style.padding = '10px 12px';
+            countrySearch.style.border = 'none';
+            countrySearch.style.borderBottom = '1px solid #f3f4f6';
+            countrySearch.style.fontSize = '16px'; // Prevent iOS zoom
+            countrySearch.style.outline = 'none';
+            countrySearch.style.boxSizing = 'border-box';
+            countrySearch.style.fontFamily = theme.messageFontFamily || theme.fontFamily || 'sans-serif';
+            countrySearch.style.color = '#111827';
+            countrySearch.style.background = '#fafafa';
+
+            var countryList = document.createElement('div');
+            countryList.style.maxHeight = window.innerWidth < 768 ? '150px' : '220px';
+            countryList.style.overflowY = 'auto';
+
+            function renderCountryList(filter) {
+                countryList.innerHTML = '';
+                var lowerFilter = (filter || '').toLowerCase();
+                COUNTRY_CODES.forEach(function (c, idx) {
+                    if (lowerFilter && c.name.toLowerCase().indexOf(lowerFilter) === -1 &&
+                        c.dial.indexOf(lowerFilter) === -1 &&
+                        c.code.toLowerCase().indexOf(lowerFilter) === -1) return;
+                    var isSelected = c.code === selectedCountry.code && c.dial === selectedCountry.dial;
+                    var row = document.createElement('div');
+                    row.style.display = 'flex';
+                    row.style.alignItems = 'center';
+                    row.style.gap = '10px';
+                    row.style.padding = '9px 12px';
+                    row.style.cursor = 'pointer';
+                    row.style.fontSize = '13px';
+                    row.style.transition = 'background 0.1s';
+                    row.style.background = isSelected ? '#eff6ff' : '';
+                    row.style.borderLeft = isSelected ? '2px solid #3b82f6' : '2px solid transparent';
+                    row.style.borderBottom = '1px solid #f3f4f6';
+                    row.setAttribute('data-idx', String(idx));
+                    row.innerHTML = '<span style="font-size:16px;line-height:1">' + c.flag + '</span><span style="flex:1;color:#111827;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + c.name + '</span><span style="color:#9ca3af;font-size:12px;flex-shrink:0">' + c.dial + '</span>';
+                    row.addEventListener('mouseenter', function () { if (!isSelected) row.style.background = '#f9fafb'; });
+                    row.addEventListener('mouseleave', function () { row.style.background = isSelected ? '#eff6ff' : ''; });
+                    row.addEventListener('click', function () {
+                        selectedCountry = c;
+                        updateCountryBtn();
+                        closeDropdown();
+                        phoneInput.focus();
+                    });
+                    countryList.appendChild(row);
+                });
+            }
+
+            countryDropdown.appendChild(countrySearch);
+            countryDropdown.appendChild(countryList);
+
+            var dropdownOpen = false;
+            function openDropdown() {
+                dropdownOpen = true;
+                countryDropdown.style.display = 'block';
+                countrySearch.value = '';
+                renderCountryList('');
+                // Auto-flip above if not enough space below
+                var wrapperRect = phoneInputWrapper.getBoundingClientRect();
+                var spaceBelow = window.innerHeight - wrapperRect.bottom;
+                if (spaceBelow < 260) {
+                    countryDropdown.style.top = 'auto';
+                    countryDropdown.style.bottom = '100%';
+                    countryDropdown.style.marginTop = '0';
+                    countryDropdown.style.marginBottom = '4px';
+                } else {
+                    countryDropdown.style.top = '100%';
+                    countryDropdown.style.bottom = 'auto';
+                    countryDropdown.style.marginTop = '4px';
+                    countryDropdown.style.marginBottom = '0';
+                }
+                setTimeout(function () { countrySearch.focus(); }, 0);
+            }
+            function closeDropdown() {
+                dropdownOpen = false;
+                countryDropdown.style.display = 'none';
+            }
+
+            countryCodeBtn.addEventListener('click', function () {
+                if (dropdownOpen) closeDropdown(); else openDropdown();
+            });
+
+            // Close on click outside
+            document.addEventListener('click', function (e) {
+                if (dropdownOpen && !phoneInputWrapper.contains(e.target)) {
+                    closeDropdown();
+                }
+            });
+
+            // Close on Escape
+            document.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape' && dropdownOpen) closeDropdown();
+            });
+
+            // Search filtering
+            countrySearch.addEventListener('input', function () {
+                renderCountryList(countrySearch.value);
+            });
+
+            // Keyboard navigation in dropdown
+            countrySearch.addEventListener('keydown', function (e) {
+                var rows = countryList.querySelectorAll('[data-idx]');
+                if (!rows.length) return;
+                var highlighted = countryList.querySelector('.cc-highlighted');
+                var hIdx = -1;
+                for (var i = 0; i < rows.length; i++) {
+                    if (rows[i] === highlighted) { hIdx = i; break; }
+                }
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    if (highlighted) { highlighted.style.background = ''; highlighted.classList.remove('cc-highlighted'); }
+                    hIdx = (hIdx + 1) % rows.length;
+                    rows[hIdx].style.background = '#e5e7eb';
+                    rows[hIdx].classList.add('cc-highlighted');
+                    rows[hIdx].scrollIntoView({ block: 'nearest' });
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    if (highlighted) { highlighted.style.background = ''; highlighted.classList.remove('cc-highlighted'); }
+                    hIdx = hIdx <= 0 ? rows.length - 1 : hIdx - 1;
+                    rows[hIdx].style.background = '#e5e7eb';
+                    rows[hIdx].classList.add('cc-highlighted');
+                    rows[hIdx].scrollIntoView({ block: 'nearest' });
+                } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (highlighted) highlighted.click();
+                }
+            });
+
+            // Helper: strip non-digit characters from phone
+            function stripPhoneDigits(val) {
+                return val.replace(/\D/g, '');
+            }
+
+            // Helper: normalize phone to E.164 format for HubSpot
+            function normalizePhoneE164(localNumber, dialCode) {
+                var digits = localNumber.replace(/\D/g, '');
+                // Strip accidental leading country code digits
+                var dialDigits = dialCode.replace(/\D/g, '');
+                if (digits.length > 0 && digits.indexOf(dialDigits) === 0 && digits.length > dialDigits.length) {
+                    var withoutDial = digits.substring(dialDigits.length);
+                    if (withoutDial.length >= 7) {
+                        digits = withoutDial;
+                    }
+                }
+                return dialCode + digits;
+            }
+
+            // Only allow digits, spaces, dashes, parens, dots in the phone field (no + needed)
+            phoneInput.addEventListener('input', function () {
+                var val = phoneInput.value;
+                var cleaned = val.replace(/[^\d\s\-\(\)\.]/g, '');
+                if (cleaned !== val) {
+                    phoneInput.value = cleaned;
+                }
+
+                // Clear error on input
+                if (phoneInput.value.trim()) {
+                    phoneInput.classList.remove('error');
+                    phoneInputWrapper.style.borderColor = '#d1d5db';
+                    phoneError.style.opacity = '0';
+                    phoneError.style.maxHeight = '0';
+                }
+            });
+
+            phoneInputWrapper.appendChild(countryCodeBtn);
+            phoneInputWrapper.appendChild(phoneInput);
+            phoneInputWrapper.appendChild(countryDropdown);
+
+            phoneInputRow.appendChild(phoneLabel);
+            phoneInputRow.appendChild(phoneInputWrapper);
+
+            // Phone error message with reserved space
+            var phoneError = document.createElement('div');
+            phoneError.style.color = '#ef4444';
+            phoneError.style.fontSize = '11px';
+            phoneError.style.marginLeft = '92px';
             phoneError.style.opacity = '0';
             phoneError.style.maxHeight = '0';
+            phoneError.style.overflow = 'hidden';
+            phoneError.style.transition = 'all 0.3s ease-in-out';
+            phoneError.innerText = 'Phone number is required';
+
+            phoneFieldContainer.appendChild(phoneInputRow);
+            phoneFieldContainer.appendChild(phoneError);
+
+            // Zip Code field (required)
+            var zipFieldContainer = document.createElement('div');
+            zipFieldContainer.style.display = 'flex';
+            zipFieldContainer.style.flexDirection = 'column';
+            zipFieldContainer.style.gap = '4px';
+            zipFieldContainer.style.marginBottom = '4px';
+            zipFieldContainer.style.height = '63px';
+
+
+            var zipInputRow = document.createElement('div');
+            zipInputRow.style.display = 'flex';
+            zipInputRow.style.alignItems = 'center';
+            zipInputRow.style.gap = '12px';
+
+            var zipLabel = document.createElement('label');
+            zipLabel.innerText = 'Zip Code:*';
+            zipLabel.style.minWidth = '80px';
+            zipLabel.style.fontSize = '14px';
+            zipLabel.style.fontWeight = '500';
+            zipLabel.style.color = '#374151';
+            zipLabel.style.flexShrink = '0';
+
+            var zipInput = document.createElement('input');
+            zipInput.type = 'text';
+            zipInput.placeholder = 'Zip code';
+            zipInput.style.flex = '1';
+            zipInput.style.padding = '10px 12px';
+            zipInput.style.border = '1px solid #d1d5db';
+            zipInput.style.borderRadius = '6px';
+            zipInput.style.fontSize = '14px';
+            zipInput.style.outline = 'none';
+            zipInput.style.transition = 'all 0.2s ease-in-out';
+            zipInput.style.fontFamily = theme.messageFontFamily || theme.fontFamily || 'sans-serif';
+
+            zipInput.addEventListener('focus', function () {
+                zipInput.style.borderColor = '#3b82f6';
+                zipInput.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+            });
+            zipInput.addEventListener('blur', function () {
+                if (!zipInput.classList.contains('error')) {
+                    zipInput.style.borderColor = '#d1d5db';
+                }
+                zipInput.style.boxShadow = 'none';
+            });
+
+            // Clear error on input
+            zipInput.addEventListener('input', function () {
+                if (zipInput.value.trim()) {
+                    zipInput.classList.remove('error');
+                    zipInput.style.borderColor = '#d1d5db';
+                    zipError.style.opacity = '0';
+                    zipError.style.maxHeight = '0';
+                }
+            });
+
+            zipInputRow.appendChild(zipLabel);
+            zipInputRow.appendChild(zipInput);
+
+            // Zip error message with reserved space
+            var zipError = document.createElement('div');
+            zipError.style.color = '#ef4444';
+            zipError.style.fontSize = '11px';
+            zipError.style.marginLeft = '92px';
             zipError.style.opacity = '0';
             zipError.style.maxHeight = '0';
+            zipError.style.overflow = 'hidden';
+            zipError.style.transition = 'all 0.3s ease-in-out';
+            zipError.innerText = 'Zip code is required';
 
-            // Validate name (required)
-            if (!nameVal) {
-                nameInput.classList.add('error');
-                nameInput.style.borderColor = '#ef4444';
-                nameError.style.opacity = '1';
-                nameError.style.maxHeight = '40px';
-                hasErrors = true;
-            }
+            zipFieldContainer.appendChild(zipInputRow);
+            zipFieldContainer.appendChild(zipError);
 
-            // Validate email (required and format)
-            if (!emailVal) {
-                emailInput.classList.add('error');
-                emailInput.style.borderColor = '#ef4444';
-                emailError.innerText = 'Email is required';
-                emailError.style.opacity = '1';
-                emailError.style.maxHeight = '40px';
-                hasErrors = true;
-            } else if (!/^\S+@\S+\.\S+$/.test(emailVal)) {
-                emailInput.classList.add('error');
-                emailInput.style.borderColor = '#ef4444';
-                emailError.innerText = 'Please enter a valid email address';
-                emailError.style.opacity = '1';
-                emailError.style.maxHeight = '40px';
-                hasErrors = true;
-            }
+            // Add all fields to form container
+            formContainer.appendChild(helperText);
+            formContainer.appendChild(nameFieldContainer);
+            formContainer.appendChild(emailFieldContainer);
+            formContainer.appendChild(phoneFieldContainer);
+            formContainer.appendChild(zipFieldContainer);
 
-            // Validate phone (required, E.164 compatible: 7-15 digits)
-            var phoneDigits = stripPhoneDigits(phoneVal);
-            if (!phoneVal) {
-                phoneInput.classList.add('error');
-                phoneInput.style.borderColor = '#ef4444';
-                phoneError.innerText = 'Phone number is required';
-                phoneError.style.opacity = '1';
-                phoneError.style.maxHeight = '40px';
-                hasErrors = true;
-            } else if (phoneDigits.length < 7) {
-                phoneInput.classList.add('error');
-                phoneInput.style.borderColor = '#ef4444';
-                phoneError.innerText = 'Phone number is too short';
-                phoneError.style.opacity = '1';
-                phoneError.style.maxHeight = '40px';
-                hasErrors = true;
-            } else if (phoneDigits.length > 15) {
-                phoneInput.classList.add('error');
-                phoneInput.style.borderColor = '#ef4444';
-                phoneError.innerText = 'Phone number is too long';
-                phoneError.style.opacity = '1';
-                phoneError.style.maxHeight = '40px';
-                hasErrors = true;
-            }
+            // Add form container to scroll container
+            formScrollContainer.appendChild(formContainer);
 
-            // Validate zip code (required, must be numeric and minimum 4 digits)
-            if (!zipVal) {
-                zipInput.classList.add('error');
-                zipInput.style.borderColor = '#ef4444';
-                zipError.innerText = 'Zip code is required';
-                zipError.style.opacity = '1';
-                zipError.style.maxHeight = '40px';
-                hasErrors = true;
-            } else if (!/^\d+$/.test(zipVal)) {
-                zipInput.classList.add('error');
-                zipInput.style.borderColor = '#ef4444';
-                zipError.innerText = 'Zip code must contain only numbers';
-                zipError.style.opacity = '1';
-                zipError.style.maxHeight = '40px';
-                hasErrors = true;
-            } else if (zipVal.length < 4) {
-                zipInput.classList.add('error');
-                zipInput.style.borderColor = '#ef4444';
-                zipError.innerText = 'Zip code must be at least 4 digits';
-                zipError.style.opacity = '1';
-                zipError.style.maxHeight = '40px';
-                hasErrors = true;
-            } else if (zipVal.length > 10) {
-                zipInput.classList.add('error');
-                zipInput.style.borderColor = '#ef4444';
-                zipError.innerText = 'Zip code must be 10 digits or less';
-                zipError.style.opacity = '1';
-                zipError.style.maxHeight = '40px';
-                hasErrors = true;
-            }
+            // Fixed button container at bottom
+            var buttonContainer = document.createElement('div');
+            buttonContainer.style.width = '100%';
+            buttonContainer.style.display = 'flex';
+            buttonContainer.style.justifyContent = 'center';
+            // buttonContainer.style.padding = '16px 0 0 0';
+            // buttonContainer.style.borderTop = '1px solid #e5e7eb';
+            buttonContainer.style.background = '#fff';
+            buttonContainer.style.flexShrink = '0';
 
-            if (hasErrors) {
-                // Focus on first error field
-                if (!nameVal) nameInput.focus();
-                else if (!emailVal || !/^\S+@\S+\.\S+$/.test(emailVal)) emailInput.focus();
-                else if (!phoneVal || phoneDigits.length < 7 || phoneDigits.length > 15) phoneInput.focus();
-                else if (!zipVal || !/^\d+$/.test(zipVal) || zipVal.length < 4 || zipVal.length > 10) zipInput.focus();
+            // Start Chat button
+            var confirmBtn = document.createElement('button');
+            confirmBtn.innerText = 'Start Chat';
+            confirmBtn.style.width = '100%';
+            confirmBtn.style.maxWidth = window.innerWidth <= 768 ? 'none' : '300px';
+            confirmBtn.style.padding = '12px 24px';
+            confirmBtn.style.background = theme.sendBtnBg || '#16a34a';
+            confirmBtn.style.color = '#ffffff';
+            confirmBtn.style.border = 'none';
+            confirmBtn.style.borderRadius = '6px';
+            confirmBtn.style.cursor = 'pointer';
+            confirmBtn.style.fontWeight = '600';
+            confirmBtn.style.fontSize = '14px';
+            confirmBtn.style.transition = 'all 0.2s ease-in-out';
+            confirmBtn.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.1)';
+
+            confirmBtn.addEventListener('mouseover', function () {
+                confirmBtn.style.backgroundColor = theme.sendBtnHover || '#15803d';
+                confirmBtn.style.transform = 'translateY(-1px)';
+                confirmBtn.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.15)';
+            });
+            confirmBtn.addEventListener('mouseout', function () {
+                confirmBtn.style.backgroundColor = theme.sendBtnBg || '#16a34a';
+                confirmBtn.style.transform = 'translateY(0)';
+                confirmBtn.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.1)';
+            });
+
+            // Confirmation button click handler
+            confirmBtn.onclick = async function () {
+                var nameVal = nameInput.value.trim();
+                var emailVal = emailInput.value.trim();
+                var phoneVal = phoneInput.value.trim();
+                var hasErrors = false;
+
+                var zipVal = zipInput.value.trim();
+                var hasErrors = false;
+
+                // Reset all error states
+                nameInput.classList.remove('error');
+                emailInput.classList.remove('error');
+                phoneInput.classList.remove('error');
+                zipInput.classList.remove('error');
+                nameInput.style.borderColor = '#d1d5db';
+                emailInput.style.borderColor = '#d1d5db';
+                phoneInput.style.borderColor = '#d1d5db';
+                zipInput.style.borderColor = '#d1d5db';
+                nameError.style.opacity = '0';
+                nameError.style.maxHeight = '0';
+                emailError.style.opacity = '0';
+                emailError.style.maxHeight = '0';
+                phoneError.style.opacity = '0';
+                phoneError.style.maxHeight = '0';
+                zipError.style.opacity = '0';
+                zipError.style.maxHeight = '0';
+
+                // Validate name (required)
+                if (!nameVal) {
+                    nameInput.classList.add('error');
+                    nameInput.style.borderColor = '#ef4444';
+                    nameError.style.opacity = '1';
+                    nameError.style.maxHeight = '40px';
+                    hasErrors = true;
+                }
+
+                // Validate email (required and format)
+                if (!emailVal) {
+                    emailInput.classList.add('error');
+                    emailInput.style.borderColor = '#ef4444';
+                    emailError.innerText = 'Email is required';
+                    emailError.style.opacity = '1';
+                    emailError.style.maxHeight = '40px';
+                    hasErrors = true;
+                } else if (!/^\S+@\S+\.\S+$/.test(emailVal)) {
+                    emailInput.classList.add('error');
+                    emailInput.style.borderColor = '#ef4444';
+                    emailError.innerText = 'Please enter a valid email address';
+                    emailError.style.opacity = '1';
+                    emailError.style.maxHeight = '40px';
+                    hasErrors = true;
+                }
+
+                // Validate phone (required, per-country length)
+                var phoneDigits = stripPhoneDigits(phoneVal);
+                // Strip accidental leading country code digits for validation
+                var dialDigits = selectedCountry.dial.replace(/\D/g, '');
+                if (phoneDigits.indexOf(dialDigits) === 0 && phoneDigits.length > dialDigits.length) {
+                    var strippedDigits = phoneDigits.substring(dialDigits.length);
+                    if (strippedDigits.length >= selectedCountry.minLen) {
+                        phoneDigits = strippedDigits;
+                    }
+                }
+                if (!phoneVal) {
+                    phoneInput.classList.add('error');
+                    phoneInputWrapper.style.borderColor = '#ef4444';
+                    phoneError.innerText = 'Phone number is required';
+                    phoneError.style.opacity = '1';
+                    phoneError.style.maxHeight = '40px';
+                    hasErrors = true;
+                } else if (phoneDigits.length < selectedCountry.minLen) {
+                    phoneInput.classList.add('error');
+                    phoneInputWrapper.style.borderColor = '#ef4444';
+                    phoneError.innerText = 'Phone number is too short for ' + selectedCountry.name;
+                    phoneError.style.opacity = '1';
+                    phoneError.style.maxHeight = '40px';
+                    hasErrors = true;
+                } else if (phoneDigits.length > selectedCountry.maxLen) {
+                    phoneInput.classList.add('error');
+                    phoneInputWrapper.style.borderColor = '#ef4444';
+                    phoneError.innerText = 'Phone number is too long for ' + selectedCountry.name;
+                    phoneError.style.opacity = '1';
+                    phoneError.style.maxHeight = '40px';
+                    hasErrors = true;
+                }
+
+                // Validate zip code (required, must be numeric and minimum 4 digits)
+                if (!zipVal) {
+                    zipInput.classList.add('error');
+                    zipInput.style.borderColor = '#ef4444';
+                    zipError.innerText = 'Zip code is required';
+                    zipError.style.opacity = '1';
+                    zipError.style.maxHeight = '40px';
+                    hasErrors = true;
+                } else if (!/^\d+$/.test(zipVal)) {
+                    zipInput.classList.add('error');
+                    zipInput.style.borderColor = '#ef4444';
+                    zipError.innerText = 'Zip code must contain only numbers';
+                    zipError.style.opacity = '1';
+                    zipError.style.maxHeight = '40px';
+                    hasErrors = true;
+                } else if (zipVal.length < 4) {
+                    zipInput.classList.add('error');
+                    zipInput.style.borderColor = '#ef4444';
+                    zipError.innerText = 'Zip code must be at least 4 digits';
+                    zipError.style.opacity = '1';
+                    zipError.style.maxHeight = '40px';
+                    hasErrors = true;
+                } else if (zipVal.length > 10) {
+                    zipInput.classList.add('error');
+                    zipInput.style.borderColor = '#ef4444';
+                    zipError.innerText = 'Zip code must be 10 digits or less';
+                    zipError.style.opacity = '1';
+                    zipError.style.maxHeight = '40px';
+                    hasErrors = true;
+                }
+
+                if (hasErrors) {
+                    // Focus on first error field
+                    if (!nameVal) nameInput.focus();
+                    else if (!emailVal || !/^\S+@\S+\.\S+$/.test(emailVal)) emailInput.focus();
+                    else if (!phoneVal || phoneDigits.length < selectedCountry.minLen || phoneDigits.length > selectedCountry.maxLen) phoneInput.focus();
+                    else if (!zipVal || !/^\d+$/.test(zipVal) || zipVal.length < 4 || zipVal.length > 10) zipInput.focus();
+                    return;
+                }
+
+                messages.innerHTML = '';
+
+                // Create visitor - either with form data or as anonymous
+                if (leadCapture) {
+                    // Create visitor with form data
+                    await createVisitor(
+                        sanitize(nameInput.value),
+                        sanitize(emailInput.value),
+                        normalizePhoneE164(phoneInput.value, selectedCountry.dial),
+                        sanitize(zipInput.value)
+                    );
+                } else {
+                    // Create anonymous visitor with browser metadata
+                    await createVisitor(null, null, null, null);
+                }
+
+                // Collect environment info
+                var userAgent = navigator.userAgent;
+                var platform = navigator.platform;
+                var url = window.location.href;
+                var timestamp = new Date().toISOString();
+                var language = navigator.language;
+                var referrer = document.referrer;
+
+                var leadData = {
+                    name: sanitize(nameInput.value),
+                    email: sanitize(emailInput.value),
+                    phone: normalizePhoneE164(phoneInput.value, selectedCountry.dial),
+                    zip: sanitize(zipInput.value),
+                    timestamp,
+                    userAgent,
+                    platform,
+                    url,
+                    language,
+                    referrer,
+                    ip: '' // Remove IP tracking for faster loading
+                };
+
+                // Store lead in localStorage array for later sending
+                var leads = JSON.parse(localStorage.getItem('simple-chat-leads') || '[]');
+                leads.push(leadData);
+                localStorage.setItem('simple-chat-leads', JSON.stringify(leads));
+
+                onComplete(leadData);
+                sendMessage(`${nameInput.value} ${emailInput.value} ${normalizePhoneE164(phoneInput.value, selectedCountry.dial)} ${zipInput.value}`);
+
+            };
+
+            // Allow pressing Enter to submit the form
+            nameInput.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') confirmBtn.click();
+            });
+            emailInput.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') confirmBtn.click();
+            });
+            phoneInput.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') confirmBtn.click();
+            });
+            zipInput.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') confirmBtn.click();
+            });
+
+            // Assemble the form
+            buttonContainer.appendChild(confirmBtn);
+            wrapper.appendChild(formScrollContainer);
+            wrapper.appendChild(buttonContainer);
+            messages.appendChild(wrapper);
+
+            // Focus the first field after a brief delay to ensure rendering
+            setTimeout(function () {
+                nameInput.focus();
+            }, 100);
+        }
+        // On load, show lead capture inside chat window
+        function maybeShowLeadCapture() {
+            // If lead capture is disabled in config, skip the form entirely
+            if (!leadCapture) {
+                window.__simpleChatEmbedLeadCaptured = true;
+                setupChatInput();
+
+                // Create anonymous visitor before establishing connection
+                createVisitor(null, null, null, null).then(() => {
+                    // Show welcome message if set
+                    if (welcomeMessage) {
+                        saveMessage(welcomeMessage, 'bot', 'welcomeMessage');
+                    }
+                    loadMessages();
+
+                    // Automatically establish WebSocket connection
+                    connectWebSocket();
+                }).catch((error) => {
+                    console.error('Failed to create anonymous visitor:', error);
+                    // Still proceed with connection even if visitor creation fails
+                    if (welcomeMessage) {
+                        saveMessage(welcomeMessage, 'bot', 'welcomeMessage');
+                    }
+                    loadMessages();
+                    connectWebSocket();
+                });
+
                 return;
             }
 
-            messages.innerHTML = '';
-            
-            // Create visitor - either with form data or as anonymous
-            if (leadCapture) {
-                // Create visitor with form data
-                await createVisitor(
-                    sanitize(nameInput.value),
-                    sanitize(emailInput.value),
-                    normalizePhoneE164(phoneInput.value),
-                    sanitize(zipInput.value)
-                );
-            } else {
-                // Create anonymous visitor with browser metadata
-                await createVisitor(null, null, null, null);
-            }
+            // Check if we have existing messages in localStorage - if yes, skip lead form
+            var existingMessages = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
+            var storedSession = localStorage.getItem('simple-chat-session');
 
-            // Collect environment info
-            var userAgent = navigator.userAgent;
-            var platform = navigator.platform;
-            var url = window.location.href;
-            var timestamp = new Date().toISOString();
-            var language = navigator.language;
-            var referrer = document.referrer;
-
-            var leadData = {
-                name: sanitize(nameInput.value),
-                email: sanitize(emailInput.value),
-                phone: normalizePhoneE164(phoneInput.value),
-                zip: sanitize(zipInput.value),
-                timestamp,
-                userAgent,
-                platform,
-                url,
-                language,
-                referrer,
-                ip: '' // Remove IP tracking for faster loading
-            };
-
-            // Store lead in localStorage array for later sending
-            var leads = JSON.parse(localStorage.getItem('simple-chat-leads') || '[]');
-            leads.push(leadData);
-            localStorage.setItem('simple-chat-leads', JSON.stringify(leads));
-
-            onComplete(leadData);
-            sendMessage(`${nameInput.value} ${emailInput.value} ${normalizePhoneE164(phoneInput.value)} ${zipInput.value}`);  
-
-        };
-
-        // Allow pressing Enter to submit the form
-        nameInput.addEventListener('keydown', function (e) {
-            if (e.key === 'Enter') confirmBtn.click();
-        });
-        emailInput.addEventListener('keydown', function (e) {
-            if (e.key === 'Enter') confirmBtn.click();
-        });
-        phoneInput.addEventListener('keydown', function (e) {
-            if (e.key === 'Enter') confirmBtn.click();
-        });
-        zipInput.addEventListener('keydown', function (e) {
-            if (e.key === 'Enter') confirmBtn.click();
-        });
-
-        // Assemble the form
-        buttonContainer.appendChild(confirmBtn);
-        wrapper.appendChild(formScrollContainer);
-        wrapper.appendChild(buttonContainer);
-        messages.appendChild(wrapper);
-
-        // Focus the first field after a brief delay to ensure rendering
-        setTimeout(function() {
-            nameInput.focus();
-        }, 100);
-    }
-
-    // On load, show lead capture inside chat window
-    function maybeShowLeadCapture() {
-        // If lead capture is disabled in config, skip the form entirely
-        if (!leadCapture) {
-            window.__simpleChatEmbedLeadCaptured = true;
-            setupChatInput();
-            
-            // Create anonymous visitor before establishing connection
-            createVisitor(null, null, null, null).then(() => {
-                // Show welcome message if set
-                if (welcomeMessage) {
-                    saveMessage(welcomeMessage, 'bot', 'welcomeMessage');
-                }
-                loadMessages();
-                
-                // Automatically establish WebSocket connection
-                connectWebSocket();
-            }).catch((error) => {
-                console.error('Failed to create anonymous visitor:', error);
-                // Still proceed with connection even if visitor creation fails
-                if (welcomeMessage) {
-                    saveMessage(welcomeMessage, 'bot', 'welcomeMessage');
-                }
-                loadMessages();
-                connectWebSocket();
-            });
-            
-            return;
-        }
-
-        // Check if we have existing messages in localStorage - if yes, skip lead form
-        var existingMessages = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
-        var storedSession = localStorage.getItem('simple-chat-session');
-
-        // If we have messages and session data, skip the form
-        if (existingMessages.length > 0 && storedSession) {
-            window.__simpleChatEmbedLeadCaptured = true;
-
-            // Load stored session data and check for handover flag
-            try {
-                var sessionData = JSON.parse(storedSession);
-                visitorInfo = sessionData.visitorInfo;
-
-                // Check if handover occurred in this session
-                if (sessionData.handoverOccurred === true) {
-                    isHandoverActive = true;
-                }
-            } catch (error) {
-                console.log('Error parsing session data:', error);
-            }
-
-            // Show chat input immediately
-            setupChatInput();
-            loadMessages();
-
-            // Ensure auto-scroll to bottom after loading existing messages with robust scroll
-            setTimeout(function () {
-                forceScrollToBottom();
-            }, 200);
-
-            // Automatically establish WebSocket connection with stored session data
-            connectWebSocket();
-            return;
-        }
-
-        // Only show lead capture form if we don't have messages or haven't captured lead yet
-        if (!window.__simpleChatEmbedLeadCaptured) {
-            inputContainer.style.display = 'none';
-            showLeadCaptureInChat(function (lead) {
-                isFormShowing = false; // Reset flag when form is completed
-                updateButtonStates(); // Update button appearance
+            // If we have messages and session data, skip the form
+            if (existingMessages.length > 0 && storedSession) {
                 window.__simpleChatEmbedLeadCaptured = true;
-                if (lead) {
-                    window.SimpleChatEmbedLead = lead;
+
+                // Load stored session data and check for handover flag
+                try {
+                    var sessionData = JSON.parse(storedSession);
+                    visitorInfo = sessionData.visitorInfo;
+
+                    // Check if handover occurred in this session
+                    if (sessionData.handoverOccurred === true) {
+                        isHandoverActive = true;
+                    }
+                } catch (error) {
+                    console.log('Error parsing session data:', error);
                 }
+
+                // Show chat input immediately
                 setupChatInput();
-
-                // Show welcome message if set and no previous messages
-                var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
-                if (welcomeMessage) {
-                    saveMessage(welcomeMessage, 'bot', 'welcomeMessage');
-                }
                 loadMessages();
+
+                // Ensure auto-scroll to bottom after loading existing messages with robust scroll
+                setTimeout(function () {
+                    forceScrollToBottom();
+                }, 200);
+
+                // Automatically establish WebSocket connection with stored session data
+                connectWebSocket();
+                return;
+            }
+
+            // Only show lead capture form if we don't have messages or haven't captured lead yet
+            if (!window.__simpleChatEmbedLeadCaptured) {
+                inputContainer.style.display = 'none';
+                showLeadCaptureInChat(function (lead) {
+                    isFormShowing = false; // Reset flag when form is completed
+                    updateButtonStates(); // Update button appearance
+                    window.__simpleChatEmbedLeadCaptured = true;
+                    if (lead) {
+                        window.SimpleChatEmbedLead = lead;
+                    }
+                    setupChatInput();
+
+                    // Show welcome message if set and no previous messages
+                    var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
+                    if (welcomeMessage) {
+                        saveMessage(welcomeMessage, 'bot', 'welcomeMessage');
+                    }
+                    loadMessages();
+                });
+            } else {
+                setupChatInput();
+                loadMessages();
+            }
+        }
+
+        // Helper function to setup chat input styling
+        function setupChatInput() {
+            inputContainer.style.display = 'flex';
+            inputContainer.style.flexDirection = 'column';
+            inputContainer.style.width = '100%';
+            inputContainer.style.boxSizing = 'border-box';
+            inputContainer.style.padding = inputContainerPadding;
+            inputContainer.style.gap = '0';
+            inputContainer.style.flex = '0 0 auto';
+            inputContainer.style.borderTop = inputContainerBorderTop;
+            inputContainer.style.background = theme.inputContainerBg || '#ffffff';
+
+            // Style the input form container
+            inputForm.style.display = 'grid';
+            inputForm.style.gridTemplateColumns = '1fr auto';
+            inputForm.style.gap = '16px';
+            inputForm.style.alignItems = 'center';
+            inputForm.style.width = '100%';
+
+            input.style.padding = '12px 16px';
+            input.style.border = '1px solid #d1d5db';
+            input.style.borderRadius = '6px';
+            input.style.background = theme.inputBg;
+            input.style.color = theme.inputText;
+            input.style.fontSize = '14px';
+            input.style.lineHeight = '20px';
+            input.style.outline = 'none';
+            input.style.transition = 'border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out';
+
+            sendBtn.style.padding = '12px';
+            sendBtn.style.background = theme.sendBtnBg || '#3b82f6';
+            sendBtn.style.color = '#ffffff';
+            sendBtn.style.border = 'none';
+            sendBtn.style.borderRadius = '6px';
+            sendBtn.style.cursor = 'pointer';
+            sendBtn.style.display = 'flex';
+            sendBtn.style.alignItems = 'center';
+            sendBtn.style.justifyContent = 'center';
+            sendBtn.style.transition = 'background-color 0.2s ease-in-out';
+        }
+
+        // Sanitize input to prevent XSS
+        function sanitize(str) {
+            return String(str).replace(/[&<>"']/g, function (c) {
+                return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', '\'': '&#39;' }[c]);
             });
-        } else {
-            setupChatInput();
-            loadMessages();
         }
-    }
 
-    // Helper function to setup chat input styling
-    function setupChatInput() {
-        inputContainer.style.display = 'flex';
-        inputContainer.style.flexDirection = 'column';
-        inputContainer.style.width = '100%';
-        inputContainer.style.boxSizing = 'border-box';
-        inputContainer.style.padding = inputContainerPadding;
-        inputContainer.style.gap = '0';
-        inputContainer.style.flex = '0 0 auto';
-        inputContainer.style.borderTop = inputContainerBorderTop;
-        inputContainer.style.background = theme.inputContainerBg || '#ffffff';
-        
-        // Style the input form container
-        inputForm.style.display = 'grid';
-        inputForm.style.gridTemplateColumns = '1fr auto';
-        inputForm.style.gap = '16px';
-        inputForm.style.alignItems = 'center';
-        inputForm.style.width = '100%';
-        
-        input.style.padding = '12px 16px';
-        input.style.border = '1px solid #d1d5db';
-        input.style.borderRadius = '6px';
-        input.style.background = theme.inputBg;
-        input.style.color = theme.inputText;
-        input.style.fontSize = '14px';
-        input.style.lineHeight = '20px';
-        input.style.outline = 'none';
-        input.style.transition = 'border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out';
-        
-        sendBtn.style.padding = '12px';
-        sendBtn.style.background = theme.sendBtnBg || '#3b82f6';
-        sendBtn.style.color = '#ffffff';
-        sendBtn.style.border = 'none';
-        sendBtn.style.borderRadius = '6px';
-        sendBtn.style.cursor = 'pointer';
-        sendBtn.style.display = 'flex';
-        sendBtn.style.alignItems = 'center';
-        sendBtn.style.justifyContent = 'center';
-        sendBtn.style.transition = 'background-color 0.2s ease-in-out';
-    }
+        // Create chat toggle button
+        var chatToggle = document.createElement('button');
+        chatToggle.setAttribute("id", 'chat-embed-toggle-button')
 
-    // Sanitize input to prevent XSS
-    function sanitize(str) {
-        return String(str).replace(/[&<>"']/g, function (c) {
-            return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', '\'': '&#39;' }[c]);
-        });
-    }
+        // Set the icon based on customIcon config (SVG string or URL)
+        var defaultIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-message-circle-icon lucide-message-circle"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>';
 
-    // Create chat toggle button
-    var chatToggle = document.createElement('button');
-    chatToggle.setAttribute("id",'chat-embed-toggle-button')
-    
-    // Set the icon based on customIcon config (SVG string or URL)
-    var defaultIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-message-circle-icon lucide-message-circle"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>';
-    
-    if (config.customIcon) {
-        // Check if it's a URL (contains http/https or ends with common image extensions)
-        if (config.customIcon.match(/^https?:\/\//) || config.customIcon.match(/\.(png|jpg|jpeg|gif|svg|webp)$/i)) {
-            chatToggle.innerHTML = '<img src="' + config.customIcon + '" alt="Chat" style="width: 34px; height: 34px; object-fit: contain;" />';
-        } else {
-            // Assume it's an SVG string
-            chatToggle.innerHTML = config.customIcon;
-        }
-    } else {
-        chatToggle.innerHTML = defaultIcon;
-    }
-    
-    chatToggle.style.position = 'fixed';
-    chatToggle.style.bottom = '20px';
-    
-    // Set horizontal position based on config
-    if (config.position === 'left') {
-        chatToggle.style.left = '20px';
-        chatToggle.style.right = 'auto';
-    } else {
-        chatToggle.style.right = '20px';
-        chatToggle.style.left = 'auto';
-    }
-    
-    chatToggle.style.width = '80px';
-    chatToggle.style.height = '80px';
-    chatToggle.style.borderRadius = '50%';
-    chatToggle.style.backgroundColor = theme.sendBtnBg || '#16a34a';
-    chatToggle.style.color = '#ffffff';
-    chatToggle.style.border = 'none';
-    chatToggle.style.cursor = 'pointer';
-    chatToggle.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
-    chatToggle.style.display = 'flex';
-    chatToggle.style.alignItems = 'center';
-    chatToggle.style.justifyContent = 'center';
-    chatToggle.style.transition = 'all 0.3s ease';
-    chatToggle.style.zIndex = theme.zIndex - 1;
-
-    // Responsive positioning for mobile
-    function setToggleResponsive() {
-        if (window.innerWidth < 768) {
-            chatToggle.style.bottom = '20px';
-            
-            // Set horizontal position based on config (mobile)
-            if (config.position === 'left') {
-                chatToggle.style.left = '20px';
-                chatToggle.style.right = 'auto';
+        if (config.customIcon) {
+            // Check if it's a URL (contains http/https or ends with common image extensions)
+            if (config.customIcon.match(/^https?:\/\//) || config.customIcon.match(/\.(png|jpg|jpeg|gif|svg|webp)$/i)) {
+                chatToggle.innerHTML = '<img src="' + config.customIcon + '" alt="Chat" style="width: 34px; height: 34px; object-fit: contain;" />';
             } else {
-                chatToggle.style.right = '20px';
-                chatToggle.style.left = 'auto';
+                // Assume it's an SVG string
+                chatToggle.innerHTML = config.customIcon;
             }
         } else {
-            chatToggle.style.bottom = '20px';
-            
-            // Set horizontal position based on config (desktop)
-            if (config.position === 'left') {
-                chatToggle.style.left = '20px';
-                chatToggle.style.right = 'auto';
-            } else {
-                chatToggle.style.right = '20px';
-                chatToggle.style.left = 'auto';
-            }
+            chatToggle.innerHTML = defaultIcon;
         }
-    }
-    setToggleResponsive();
-    window.addEventListener('resize', setToggleResponsive);
 
-    // Initially hide the chat container
-    chatContainer.style.display = 'none';
+        chatToggle.style.position = 'fixed';
+        chatToggle.style.bottom = '20px';
 
-    // Toggle functionality
-    var chatOpen = false;
-    chatToggle.addEventListener('click', function () {
-        chatOpen = !chatOpen;
-        if (chatOpen) {
-            chatContainer.style.display = 'flex';
-            chatToggle.style.display = 'none';
-
-            // Auto-scroll to bottom when chat opens with robust scroll function
-            setTimeout(function () {
-                forceScrollToBottom();
-            }, 150);
+        // Set horizontal position based on config
+        if (config.position === 'left') {
+            chatToggle.style.left = '20px';
+            chatToggle.style.right = 'auto';
         } else {
-            chatContainer.style.display = 'none';
-            chatToggle.style.display = 'flex';
+            chatToggle.style.right = '20px';
+            chatToggle.style.left = 'auto';
         }
-    });
 
-    // Close button functionality from header
-    chatCloseBtn.onclick = function () {
-        chatOpen = false;
-        chatContainer.style.display = 'none';
+        chatToggle.style.width = '80px';
+        chatToggle.style.height = '80px';
+        chatToggle.style.borderRadius = '50%';
+        chatToggle.style.backgroundColor = theme.sendBtnBg || '#16a34a';
+        chatToggle.style.color = '#ffffff';
+        chatToggle.style.border = 'none';
+        chatToggle.style.cursor = 'pointer';
+        chatToggle.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
         chatToggle.style.display = 'flex';
-    };
+        chatToggle.style.alignItems = 'center';
+        chatToggle.style.justifyContent = 'center';
+        chatToggle.style.transition = 'all 0.3s ease';
+        chatToggle.style.zIndex = theme.zIndex - 1;
 
-    // Add both toggle button and chat container to body
-    document.body.appendChild(chatToggle);
+        // Responsive positioning for mobile
+        function setToggleResponsive() {
+            if (window.innerWidth < 768) {
+                chatToggle.style.bottom = '20px';
 
-    // Expose chat control functions globally
-    window.openChat = function() {
-        if (!chatOpen) {
-            chatOpen = true;
-            chatContainer.style.display = 'flex';
-            chatToggle.style.display = 'none';
-            setTimeout(function () {
-                forceScrollToBottom();
-            }, 150);
+                // Set horizontal position based on config (mobile)
+                if (config.position === 'left') {
+                    chatToggle.style.left = '20px';
+                    chatToggle.style.right = 'auto';
+                } else {
+                    chatToggle.style.right = '20px';
+                    chatToggle.style.left = 'auto';
+                }
+            } else {
+                chatToggle.style.bottom = '20px';
+
+                // Set horizontal position based on config (desktop)
+                if (config.position === 'left') {
+                    chatToggle.style.left = '20px';
+                    chatToggle.style.right = 'auto';
+                } else {
+                    chatToggle.style.right = '20px';
+                    chatToggle.style.left = 'auto';
+                }
+            }
         }
-    };
+        setToggleResponsive();
+        window.addEventListener('resize', setToggleResponsive);
 
-    window.closeChat = function() {
-        if (chatOpen) {
+        // Initially hide the chat container
+        chatContainer.style.display = 'none';
+
+        // Toggle functionality
+        var chatOpen = false;
+        chatToggle.addEventListener('click', function () {
+            chatOpen = !chatOpen;
+            if (chatOpen) {
+                chatContainer.style.display = 'flex';
+                chatToggle.style.display = 'none';
+
+                // Non-blocking session validation when widget opens
+                var storedSession = localStorage.getItem('simple-chat-session');
+                if (storedSession) {
+                    try {
+                        var sessionData = JSON.parse(storedSession);
+                        if (sessionData.chatID) {
+                            validateSession(sessionData.chatID).then(function (isValid) {
+                                if (!isValid) {
+                                    showSessionClosedNotification('This chat session has been closed.');
+                                }
+                            });
+                        }
+                    } catch (e) {
+                        // Ignore parse errors
+                    }
+                }
+
+                // Auto-scroll to bottom when chat opens with robust scroll function
+                setTimeout(function () {
+                    forceScrollToBottom();
+                }, 150);
+            } else {
+                chatContainer.style.display = 'none';
+                chatToggle.style.display = 'flex';
+            }
+        });
+
+        // Close button functionality from header
+        chatCloseBtn.onclick = function () {
             chatOpen = false;
             chatContainer.style.display = 'none';
             chatToggle.style.display = 'flex';
-        }
-    };
-
-    window.toggleChat = function() {
-        if (chatOpen) {
-            window.closeChat();
-        } else {
-            window.openChat();
-        }
-    };
-
-    // Expose functions globally for testing
-    window.saveMessage = saveMessage;
-    window.loadMessages = loadMessages;
-    window.generateChatId = generateChatId;
-    window.connectWebSocket = connectWebSocket;
-
-    // Helper function to collect browser metadata
-    const collectBrowserMetadata = () => {
-        return {
-            userAgent: navigator.userAgent,
-            platform: navigator.platform,
-            language: navigator.language,
-            referrer: document.referrer || 'direct',
-            url: window.location.href,
-            timestamp: new Date().toISOString(),
-            screenResolution: `${window.screen.width}x${window.screen.height}`,
-            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-            cookiesEnabled: navigator.cookieEnabled
         };
-    };
 
-    // Helper function to create visitor (regular or anonymous)
-    const createVisitor = async (name, email, phone, zip) => {
-        try {
-            var baseUrl = config.baseUrl;
-            var token = config.token;
-            
-            if (!baseUrl || !token) {
-                console.error('baseUrl and token must be provided in SimpleChatEmbedConfig');
-                throw new Error('Missing required configuration: baseUrl and token');
+        // Add both toggle button and chat container to body
+        document.body.appendChild(chatToggle);
+
+        // Expose chat control functions globally
+        window.openChat = function () {
+            if (!chatOpen) {
+                chatOpen = true;
+                chatContainer.style.display = 'flex';
+                chatToggle.style.display = 'none';
+                setTimeout(function () {
+                    forceScrollToBottom();
+                }, 150);
             }
+        };
 
-            // For anonymous visitors (when leadCapture is false), use browser fingerprint as email
-            const isAnonymous = !email;
-            const browserMetadata = collectBrowserMetadata();
-            
-            if (isAnonymous) {
-                // Create a truly unique identifier from multiple browser characteristics
-                const fingerprintData = [
-                    browserMetadata.userAgent,
-                    browserMetadata.platform,
-                    browserMetadata.language,
-                    browserMetadata.screenResolution,
-                    browserMetadata.timezone,
-                    browserMetadata.cookiesEnabled,
-                    navigator.hardwareConcurrency || 'unknown', // CPU cores
-                    navigator.maxTouchPoints || 0, // Touch support
-                    screen.colorDepth || 'unknown', // Color depth
-                    new Date().getTimezoneOffset(), // Timezone offset in minutes
-                ].join('|');
-                
-                // Create hash using a more robust approach
-                const fingerprint = btoa(fingerprintData)
-                    .replace(/[^a-zA-Z0-9]/g, '') // Remove special characters
-                    .substring(0, 40); // Use longer hash
-                
-                email = `anonymous_${fingerprint}@memox.local`;
-                name = 'Anonymous Visitor';
+        window.closeChat = function () {
+            if (chatOpen) {
+                chatOpen = false;
+                chatContainer.style.display = 'none';
+                chatToggle.style.display = 'flex';
             }
+        };
 
-            console.log(baseUrl,'before getvisitor')
-            
-            const getVisitor = await fetch(`${baseUrl}visitors/?email=${email}`, {
-                method: "GET",
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...(isMobileDevice && {'X-App-Platform': 'react-native-webview'}),
-                    'Authorization': `Token ${token} `,
-                    ...(ngrok && {'ngrok-skip-browser-warning': 'true'})
+        window.toggleChat = function () {
+            if (chatOpen) {
+                window.closeChat();
+            } else {
+                window.openChat();
+            }
+        };
 
-                }
-            })
+        // Expose functions globally for testing
+        window.saveMessage = saveMessage;
+        window.loadMessages = loadMessages;
+        window.generateChatId = generateChatId;
+        window.connectWebSocket = connectWebSocket;
 
-            const getVisitorJson = await getVisitor.json();
+        // Validate whether a stored session is still active on the backend
+        async function validateSession(sessionChatID) {
+            try {
+                var baseUrl = config.baseUrl;
+                var token = config.token;
+                if (!baseUrl || !token || !sessionChatID) return true;
 
-            console.log(getVisitorJson,'my json')
-
-
-            if (getVisitorJson.detail === "Not found." || !getVisitorJson.results?.length) {
-                // If visitor does not exist, create a new one
-                const visitorPayload = {
-                    name,
-                    email,
-                    phone_number: phone || '',
-                    zip_code: zip || '',
-                    organization: config.org_id,
-                    metadata: {
-                        anonymous: isAnonymous
-                    }
-                };
-                
-                const visitor = await fetch(`${baseUrl}visitors/`, {
-                    method: "POST",
+                var response = await fetch(baseUrl + 'sessions/' + sessionChatID + '/', {
+                    method: 'GET',
                     headers: {
                         'Content-Type': 'application/json',
+                        'Authorization': 'Token ' + token,
+                        ...(isMobileDevice && { 'X-App-Platform': 'react-native-webview' }),
+                        ...(ngrok && { 'ngrok-skip-browser-warning': 'true' })
+                    }
+                });
+
+                if (response.status === 404) return false;
+                if (!response.ok) return true; // Fail-open on server errors
+
+                var data = await response.json();
+                var status = data.status;
+                // Session is active if open, unanswered, or pending
+                if (status === 'close') return false;
+                return true;
+            } catch (error) {
+                console.log('Session validation failed, assuming valid:', error);
+                return true; // Fail-open on network errors
+            }
+        }
+
+        // Helper function to collect browser metadata
+        const collectBrowserMetadata = () => {
+            return {
+                userAgent: navigator.userAgent,
+                platform: navigator.platform,
+                language: navigator.language,
+                referrer: document.referrer || 'direct',
+                url: window.location.href,
+                timestamp: new Date().toISOString(),
+                screenResolution: `${window.screen.width}x${window.screen.height}`,
+                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                cookiesEnabled: navigator.cookieEnabled
+            };
+        };
+
+        // Helper function to create visitor (regular or anonymous)
+        const createVisitor = async (name, email, phone, zip) => {
+            try {
+                var baseUrl = config.baseUrl;
+                var token = config.token;
+
+                if (!baseUrl || !token) {
+                    console.error('baseUrl and token must be provided in SimpleChatEmbedConfig');
+                    throw new Error('Missing required configuration: baseUrl and token');
+                }
+
+                // For anonymous visitors (when leadCapture is false), use browser fingerprint as email
+                const isAnonymous = !email;
+                const browserMetadata = collectBrowserMetadata();
+
+                if (isAnonymous) {
+                    // Create a truly unique identifier from multiple browser characteristics
+                    const fingerprintData = [
+                        browserMetadata.userAgent,
+                        browserMetadata.platform,
+                        browserMetadata.language,
+                        browserMetadata.screenResolution,
+                        browserMetadata.timezone,
+                        browserMetadata.cookiesEnabled,
+                        navigator.hardwareConcurrency || 'unknown', // CPU cores
+                        navigator.maxTouchPoints || 0, // Touch support
+                        screen.colorDepth || 'unknown', // Color depth
+                        new Date().getTimezoneOffset(), // Timezone offset in minutes
+                    ].join('|');
+
+                    // Create hash using a more robust approach
+                    const fingerprint = btoa(fingerprintData)
+                        .replace(/[^a-zA-Z0-9]/g, '') // Remove special characters
+                        .substring(0, 40); // Use longer hash
+
+                    email = `anonymous_${fingerprint}@memox.local`;
+                    name = 'Anonymous Visitor';
+                }
+
+
+                const getVisitor = await fetch(`${baseUrl}visitors/?email=${email}`, {
+                    method: "GET",
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(isMobileDevice && { 'X-App-Platform': 'react-native-webview' }),
                         'Authorization': `Token ${token} `,
-                    ...(isMobileDevice && {'X-App-Platform': 'react-native-webview'}),
-                    ...(ngrok && {'ngrok-skip-browser-warning': 'true'})
-                    },
-                    body: JSON.stringify(visitorPayload)
+                        ...(ngrok && { 'ngrok-skip-browser-warning': 'true' })
+
+                    }
                 })
 
-                if (!visitor.ok) {
-                    throw new Error(`Failed to create visitor: ${visitor.status}`);
-                }
+                const getVisitorJson = await getVisitor.json();
 
-                const visitorData = await visitor.json();
-                visitorInfo = {
-                    "id": visitorData.id,
-                    "name": visitorData.name
-                };
-            }
-            else {
-                visitorInfo = {
-                    "id": getVisitorJson?.results[0].id,
-                    "name": getVisitorJson?.results[0].name
-                };
-            }
-        } catch (error) {
-            console.error('Error creating/fetching visitor:', error);
-            // Create fallback visitor info for offline mode
-            visitorInfo = {
-                "id": "offline_" + Date.now(),
-                "name": name
-            };
-        }
-    }
 
-    // Function to check and auto-connect with stored session on widget load
-    function checkAndAutoConnect() {
-        var storedSession = localStorage.getItem('simple-chat-session');
 
-        if (storedSession) {
-            try {
-                var sessionData = JSON.parse(storedSession);
-                // Check if session data is complete and not too old (24 hours)
+                if (getVisitorJson.detail === "Not found." || !getVisitorJson.results?.length) {
+                    // If visitor does not exist, create a new one
+                    const visitorPayload = {
+                        name,
+                        email,
+                        phone_number: phone || '',
+                        zip_code: zip || '',
+                        organization: config.org_id,
+                        metadata: {
+                            anonymous: isAnonymous
+                        }
+                    };
 
-                if (sessionData.chatID && sessionData.visitorInfo) {
+                    const visitor = await fetch(`${baseUrl}visitors/`, {
+                        method: "POST",
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Token ${token} `,
+                            ...(isMobileDevice && { 'X-App-Platform': 'react-native-webview' }),
+                            ...(ngrok && { 'ngrok-skip-browser-warning': 'true' })
+                        },
+                        body: JSON.stringify(visitorPayload)
+                    })
 
-                    // Set visitor info from stored session
-                    visitorInfo = sessionData.visitorInfo;
-
-                    // Auto-connect if not already connected
-                    if (!isWebSocketConnected && !currentSocket) {
-                        connectWebSocket();
+                    if (!visitor.ok) {
+                        throw new Error(`Failed to create visitor: ${visitor.status}`);
                     }
+
+                    const visitorData = await visitor.json();
+                    visitorInfo = {
+                        "id": visitorData.id,
+                        "name": visitorData.name
+                    };
+                }
+                else {
+                    visitorInfo = {
+                        "id": getVisitorJson?.results[0].id,
+                        "name": getVisitorJson?.results[0].name
+                    };
                 }
             } catch (error) {
-                console.log('Error checking stored session for auto-connect:', error);
+                console.error('Error creating/fetching visitor:', error);
+                // Create fallback visitor info for offline mode
+                visitorInfo = {
+                    "id": "offline_" + Date.now(),
+                    "name": name
+                };
             }
         }
+
+        // Function to check and auto-connect with stored session on widget load
+        function checkAndAutoConnect() {
+            var storedSession = localStorage.getItem('simple-chat-session');
+
+            if (storedSession) {
+                try {
+                    var sessionData = JSON.parse(storedSession);
+                    // Check if session data is complete and not too old (24 hours)
+
+                    if (sessionData.chatID && sessionData.visitorInfo) {
+
+                        // Set visitor info from stored session
+                        visitorInfo = sessionData.visitorInfo;
+
+                        // Auto-connect if not already connected
+                        if (!isWebSocketConnected && !currentSocket) {
+                            connectWebSocket();
+                        }
+                    }
+                } catch (error) {
+                    console.log('Error checking stored session for auto-connect:', error);
+                }
+            }
+        }
+
+        // Initial load
+        maybeShowLeadCapture();
+
+        // Check for auto-connection after initial setup
+        setTimeout(checkAndAutoConnect, 100);
     }
-
-    // Initial load
-    maybeShowLeadCapture();
-
-    // Check for auto-connection after initial setup
-    setTimeout(checkAndAutoConnect, 100);
-} // End of initializeChatEmbed function
+    // End of initializeChatEmbed function
 
 })(); // End of main IIFE
