@@ -27,8 +27,12 @@
                 width: '24px',         // Width of the bot icon container
                 height: '24px',        // Height of the bot icon container
                 objectFit: 'contain',  // How image should fit: contain, cover, fill, etc.
-                botAvatarUrl: null     // URL for custom bot avatar icon
+                botAvatarUrl: null,    // URL for custom bot avatar icon
+                botIconAvatarWidth: '40px',   // Width of the bot avatar container
+                botIconAvatarHeight: '40px',  // Height of the bot avatar container
+                botIconAvatarDisplay: 'flex'  // Display property of the bot avatar container
             },
+            botMessageWidth: '70%',  // Width of bot message content container
             theme: {
                 primary: '#0078d4',
                 userBubble: '#e6f0fa',
@@ -977,10 +981,11 @@
                     avatar.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" style="width:26px;height:26px;color:' + iconColor + ';" width="200" height="200" viewBox="0 0 24 24"><path fill="currentColor" d="M19.938 8H21a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-1.062A8.001 8.001 0 0 1 12 23v-2a6 6 0 0 0 6-6V9A6 6 0 0 0 6 9v7H3a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h1.062a8.001 8.001 0 0 1 15.876 0ZM3 10v4h1v-4H3Zm17 0v4h1v-4h-1ZM7.76 15.785l1.06-1.696A5.972 5.972 0 0 0 12 15a5.972 5.972 0 0 0 3.18-.911l1.06 1.696A7.963 7.963 0 0 1 12 17a7.962 7.962 0 0 1-4.24-1.215Z"/></svg>'; // Sales rep icon
                 } else if (msg.sender === 'bot' || msg.sender === 'ai') {
                     avatar = document.createElement('div');
-                    avatar.style.width = '40px';
-                    avatar.style.height = '40px';
+                    var botIconConfig = theme.botIcon || config.botIcon || {};
+                    avatar.style.width = botIconConfig.botIconAvatarWidth || '40px';
+                    avatar.style.height = botIconConfig.botIconAvatarHeight || '40px';
                     avatar.style.borderRadius = '50%';
-                    avatar.style.display = 'flex';
+                    avatar.style.display = botIconConfig.botIconAvatarDisplay || 'flex';
                     avatar.style.alignItems = 'center';
                     avatar.style.justifyContent = 'center';
                     avatar.style.background = theme.botAvatar || '#E4E7FC';
@@ -989,7 +994,7 @@
 
                     // Load bot icon - either custom URL or default SVG
                     var botSvg = document.createElement('div');
-                    var botIconConfig = theme.botIcon || config.botIcon || {};
+                    // botIconConfig already declared above for avatar styling
 
                     // Container dimensions for botSvg
                     var containerWidth = botIconConfig.width || '24px';
@@ -1038,7 +1043,8 @@
                 contentContainer.style.display = 'flex';
                 contentContainer.style.flexDirection = 'column';
                 contentContainer.style.gap = '8px';
-                contentContainer.style.maxWidth = msg.sender === 'user' ? '70%' : '70%'; // All message types now have avatars
+                var botMsgWidth = (theme.botIcon && theme.botIcon.botMessageWidth) || config.botMessageWidth || '70%';
+                contentContainer.style.maxWidth = msg.sender === 'user' ? '70%' : botMsgWidth;
 
                 var msgDiv = document.createElement('div');
                 msgDiv.style.padding = '12px 16px';
