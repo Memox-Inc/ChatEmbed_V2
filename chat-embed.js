@@ -33,6 +33,12 @@
                 botIconAvatarDisplay: 'flex'  // Display property of the bot avatar container
             },
             botMessageWidth: '70%',  // Width of bot message content container
+            userIcon: {
+                userIconAvatarWidth: '40px',   // Width of the user avatar container
+                userIconAvatarHeight: '40px',  // Height of the user avatar container
+                userIconAvatarDisplay: 'flex', // Display property of the user avatar container
+                userMessageWidth: '70%'        // Max width of user message content
+            },
             theme: {
                 primary: '#0078d4',
                 userBubble: '#e6f0fa',
@@ -119,6 +125,16 @@
         var isBotResponding = false;
         var chatID = null
         var isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+        // Smooth streaming state
+        var activeStreamingEl = null;       // Reference to the currently streaming content wrapper DOM element
+        var streamingText = '';             // Accumulated text for the current streaming message
+        var streamingRafId = null;          // requestAnimationFrame ID for batching DOM updates
+        var streamingDirty = false;         // Whether there's a pending DOM update
+
+        // Chunk deduplication state — prevents duplicate WebSocket messages from doubling text
+        var lastChunkContent = '';
+        var lastChunkTime = 0;
 
         // Function to enable/disable input while bot is responding
         function setBotResponding(responding) {
@@ -948,10 +964,11 @@
                 var avatar = null;
                 if (msg.sender === 'user') {
                     avatar = document.createElement('div');
-                    avatar.style.width = '40px';
-                    avatar.style.height = '40px';
+                    var userIconConfig = theme.userIcon || config.userIcon || {};
+                    avatar.style.width = userIconConfig.userIconAvatarWidth || '40px';
+                    avatar.style.height = userIconConfig.userIconAvatarHeight || '40px';
                     avatar.style.borderRadius = '50%';
-                    avatar.style.display = 'flex';
+                    avatar.style.display = userIconConfig.userIconAvatarDisplay || 'flex';
                     avatar.style.alignItems = 'center';
                     avatar.style.justifyContent = 'center';
                     avatar.style.background = theme.userAvatar || '#8349ff';
@@ -1044,7 +1061,8 @@
                 contentContainer.style.flexDirection = 'column';
                 contentContainer.style.gap = '8px';
                 var botMsgWidth = (theme.botIcon && theme.botIcon.botMessageWidth) || config.botMessageWidth || '70%';
-                contentContainer.style.maxWidth = msg.sender === 'user' ? '70%' : botMsgWidth;
+                var userMsgWidth = (theme.userIcon && theme.userIcon.userMessageWidth) || (config.userIcon && config.userIcon.userMessageWidth) || '70%';
+                contentContainer.style.maxWidth = msg.sender === 'user' ? userMsgWidth : botMsgWidth;
 
                 var msgDiv = document.createElement('div');
                 msgDiv.style.padding = '12px 16px';
@@ -1131,6 +1149,14 @@
                         }
 
                         contentWrapper.innerHTML = html;
+
+                        // If this is the last message and it's still streaming, store a reference
+                        // so we can update it directly without full DOM rebuilds
+                        if (msg.isStreaming && i === msgs.length - 1) {
+                            contentWrapper.setAttribute('data-streaming', 'true');
+                            activeStreamingEl = contentWrapper;
+                            streamingText = msg.text;
+                        }
                     } else if (msg.sender === 'sales_rep') {
                         // Sales rep messages with clean formatting and sender name at top
                         var messageText = escapeHtml(msg.text).replace(/\n/g, '<br>');
@@ -1234,6 +1260,38 @@
             }
 
             tryScroll();
+        }
+
+        // Smooth streaming: update only the streaming message's DOM, batched via rAF
+        function flushStreamingUpdate() {
+            streamingRafId = null;
+            if (!streamingDirty || !activeStreamingEl) return;
+            streamingDirty = false;
+            activeStreamingEl.innerHTML = markdownToHtml(streamingText);
+            // Smooth scroll to bottom during streaming
+            var isNearBottom = messages.scrollHeight - messages.scrollTop <= messages.clientHeight + 150;
+            if (isNearBottom) {
+                messages.scrollTo({ top: messages.scrollHeight, behavior: 'smooth' });
+            }
+        }
+
+        function scheduleStreamingUpdate() {
+            streamingDirty = true;
+            if (!streamingRafId) {
+                streamingRafId = requestAnimationFrame(flushStreamingUpdate);
+            }
+        }
+
+        function resetStreamingState() {
+            activeStreamingEl = null;
+            streamingText = '';
+            streamingDirty = false;
+            lastChunkContent = '';
+            lastChunkTime = 0;
+            if (streamingRafId) {
+                cancelAnimationFrame(streamingRafId);
+                streamingRafId = null;
+            }
         }
 
         // Add scroll event listener to messages container
@@ -1384,12 +1442,23 @@
 
                             var content = msgData.content || msgData.message || '';
 
+                            // Deduplicate: skip if identical chunk arrives within 200ms (server echo protection)
+                            if (content && content === lastChunkContent && (Date.now() - lastChunkTime) < 200) {
+                                return;
+                            }
+                            if (content) {
+                                lastChunkContent = content;
+                                lastChunkTime = Date.now();
+                            }
+
                             // Handle completion signal (empty content with is_complete flag)
                             if (msgData.is_complete === true && content === '') {
                                 if (lastMessage && lastMessage.isStreaming) {
                                     lastMessage.isStreaming = false;
                                     msgs[msgs.length - 1] = lastMessage;
                                     localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
+                                    // Final render: flush any pending streaming update, then do a clean loadMessages
+                                    resetStreamingState();
                                     loadMessages();
                                 }
                                 setBotResponding(false);
@@ -1404,10 +1473,21 @@
                                     lastMessage.isStreaming === true) {
                                     // Append to existing streaming message
                                     lastMessage.text += content;
-                                    lastMessage.lastChunkTime = Date.now(); // Track when last chunk arrived
+                                    lastMessage.lastChunkTime = Date.now();
                                     msgs[msgs.length - 1] = lastMessage;
+                                    localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
+
+                                    // Smooth path: if we already have a DOM reference, just update it
+                                    if (activeStreamingEl) {
+                                        streamingText = lastMessage.text;
+                                        scheduleStreamingUpdate(); // batched via rAF — no full DOM rebuild
+                                    } else {
+                                        // First chunk after a loadMessages — need full render to get DOM ref
+                                        loadMessages();
+                                    }
                                 } else {
-                                    // Create new streaming message
+                                    // Create new streaming message — needs full render to build DOM
+                                    resetStreamingState();
                                     msgs.push({
                                         text: content,
                                         sender: 'bot',
@@ -1415,11 +1495,11 @@
                                         isStreaming: true,
                                         messageId: msgData.message_id,
                                         created_at: formatTimeStamp(msgData.created_at),
-                                        lastChunkTime: Date.now() // Track when last chunk arrived
+                                        lastChunkTime: Date.now()
                                     });
+                                    localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
+                                    loadMessages(); // full render to create the message bubble + get DOM ref
                                 }
-                                localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
-                                loadMessages(); // Use immediate loading for streaming
                             }
                         } else if ((msgData.sender_type === "sales_rep" || msgData.sender === "sales_rep")) {
                             var content = msgData.content || '';
