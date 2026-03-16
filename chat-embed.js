@@ -1366,7 +1366,8 @@
 
             // Collect browser metadata for websocket connection
             const browserMetadata = collectBrowserMetadata();
-            var wsUrl = `${socketUrl}${config.org_id}/?visitor_info=${JSON.stringify(visitorInfo)}&browser_metadata=${encodeURIComponent(JSON.stringify(browserMetadata))}`;
+            var agentParam = config.agent_id ? `&agent_id=${config.agent_id}` : '';
+            var wsUrl = `${socketUrl}${config.org_id}/?visitor_info=${JSON.stringify(visitorInfo)}&browser_metadata=${encodeURIComponent(JSON.stringify(browserMetadata))}${agentParam}`;
             try {
                 currentSocket = new WebSocket(wsUrl);
                 currentSocket.onopen = function () {
