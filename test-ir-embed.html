@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Microsoft Investor Relations</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Manrope:wght@600;700;800&display=swap');
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f8f9fb;
+      color: #1a1a2e;
+      line-height: 1.6;
+    }
+
+    /* --- Header --- */
+    header {
+      background: #fff;
+      border-bottom: 1px solid #e5e7eb;
+      padding: 16px 0;
+    }
+    .header-inner {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .logo-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .logo-group svg { flex-shrink: 0; }
+    .logo-group h1 {
+      font-family: 'Manrope', sans-serif;
+      font-size: 20px;
+      font-weight: 700;
+      color: #1a1a2e;
+    }
+    .powered-by {
+      font-size: 12px;
+      color: #9ca3af;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .powered-by span {
+      color: #8349ff;
+      font-weight: 600;
+    }
+
+    /* --- Hero --- */
+    .hero {
+      background: linear-gradient(135deg, #0078d4 0%, #005a9e 100%);
+      color: #fff;
+      padding: 64px 24px;
+      text-align: center;
+    }
+    .hero h2 {
+      font-family: 'Manrope', sans-serif;
+      font-size: 36px;
+      font-weight: 800;
+      margin-bottom: 12px;
+    }
+    .hero p {
+      font-size: 17px;
+      opacity: 0.9;
+      max-width: 640px;
+      margin: 0 auto;
+    }
+
+    /* --- Quick Links --- */
+    .quick-links {
+      max-width: 1120px;
+      margin: -32px auto 48px;
+      padding: 0 24px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 20px;
+      position: relative;
+      z-index: 1;
+    }
+    .link-card {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 24px;
+      text-decoration: none;
+      color: inherit;
+      transition: box-shadow 0.2s, border-color 0.2s;
+    }
+    .link-card:hover {
+      border-color: #8349ff;
+      box-shadow: 0 4px 16px rgba(131,73,255,0.1);
+    }
+    .link-card h3 {
+      font-family: 'Manrope', sans-serif;
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 6px;
+      color: #1a1a2e;
+    }
+    .link-card p {
+      font-size: 13px;
+      color: #6b7280;
+    }
+    .link-card .icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 12px;
+      font-size: 18px;
+    }
+    .icon-blue   { background: rgba(0,120,212,0.1); }
+    .icon-green  { background: rgba(16,185,129,0.1); }
+    .icon-purple { background: rgba(131,73,255,0.1); }
+    .icon-amber  { background: rgba(245,158,11,0.1); }
+
+    /* --- Content section --- */
+    .content-section {
+      max-width: 1120px;
+      margin: 0 auto 64px;
+      padding: 0 24px;
+    }
+    .content-section h2 {
+      font-family: 'Manrope', sans-serif;
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 16px;
+    }
+    .content-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+    @media (max-width: 640px) {
+      .content-grid { grid-template-columns: 1fr; }
+    }
+    .content-card {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 24px;
+    }
+    .content-card h3 {
+      font-size: 14px;
+      font-weight: 600;
+      color: #6b7280;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 8px;
+    }
+    .content-card .big-number {
+      font-family: 'Manrope', sans-serif;
+      font-size: 28px;
+      font-weight: 800;
+      color: #1a1a2e;
+    }
+    .content-card .sub {
+      font-size: 13px;
+      color: #6b7280;
+      margin-top: 4px;
+    }
+
+    /* --- Footer --- */
+    footer {
+      background: #fff;
+      border-top: 1px solid #e5e7eb;
+      padding: 24px;
+      text-align: center;
+      font-size: 12px;
+      color: #9ca3af;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <div class="header-inner">
+      <div class="logo-group">
+        <svg width="28" height="28" viewBox="0 0 23 23" fill="none">
+          <rect width="11" height="11" fill="#f25022"/>
+          <rect x="12" width="11" height="11" fill="#7fba00"/>
+          <rect y="12" width="11" height="11" fill="#00a4ef"/>
+          <rect x="12" y="12" width="11" height="11" fill="#ffb900"/>
+        </svg>
+        <h1>Microsoft Investor Relations</h1>
+      </div>
+      <div class="powered-by">
+        IR Assistant by <span>Memox</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero -->
+  <section class="hero">
+    <h2>Investor Relations</h2>
+    <p>Access financial results, SEC filings, dividend information, and corporate governance resources for Microsoft Corporation (NASDAQ: MSFT).</p>
+  </section>
+
+  <!-- Quick Links -->
+  <div class="quick-links">
+    <a href="#" class="link-card">
+      <div class="icon icon-blue">&#128200;</div>
+      <h3>Financial Results</h3>
+      <p>Quarterly and annual reports, earnings releases, and financial highlights.</p>
+    </a>
+    <a href="#" class="link-card">
+      <div class="icon icon-green">&#128176;</div>
+      <h3>Dividends &amp; Buybacks</h3>
+      <p>Current dividend, payment dates, and share repurchase program details.</p>
+    </a>
+    <a href="#" class="link-card">
+      <div class="icon icon-purple">&#128221;</div>
+      <h3>SEC Filings</h3>
+      <p>10-K, 10-Q, proxy statements, and other regulatory filings on EDGAR.</p>
+    </a>
+    <a href="#" class="link-card">
+      <div class="icon icon-amber">&#128197;</div>
+      <h3>Events &amp; Calendar</h3>
+      <p>Upcoming earnings calls, annual meetings, and investor conferences.</p>
+    </a>
+  </div>
+
+  <!-- Highlights -->
+  <div class="content-section">
+    <h2>Q2 FY2025 Highlights</h2>
+    <div class="content-grid">
+      <div class="content-card">
+        <h3>Revenue</h3>
+        <div class="big-number">$69.6B</div>
+        <div class="sub">Up 12% year-over-year</div>
+      </div>
+      <div class="content-card">
+        <h3>Net Income</h3>
+        <div class="big-number">$16.4B</div>
+        <div class="sub">Q2 FY2025 (ended Dec 31, 2024)</div>
+      </div>
+      <div class="content-card">
+        <h3>Microsoft Cloud</h3>
+        <div class="big-number">$40.9B</div>
+        <div class="sub">Growing 21% year-over-year</div>
+      </div>
+      <div class="content-card">
+        <h3>Quarterly Dividend</h3>
+        <div class="big-number">$0.91</div>
+        <div class="sub">Per share ($3.64 annualized)</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer>
+    &copy; 2026 Microsoft Corporation. All rights reserved. This is a demo page for the Memox IR chatbot.
+  </footer>
+
+  <!-- Memox Chat Widget Configuration -->
+  <script>
+    window.SimpleChatEmbedConfig = {
+      socketUrl: "ws://localhost:8000",
+      baseUrl: "http://localhost:8000/api/v1/",
+      // TODO: Fill in org_id and agent_id from your seed_ir_agent output
+      // Run: docker compose -f local.yml run --rm django python manage.py seed_ir_agent --org-id <ORG_ID> --update
+      // Then check the Django admin or seed output for the agent ID
+      org_id: "1",       // <-- Replace with your organization ID
+      agent_id: "",      // <-- Replace with the IR agent ID from seed output
+      title: "MSFT IR Assistant",
+      welcomeMessage: "Welcome! I can help you with Microsoft's financials, dividends, filings, and more.",
+      leadCapture: false,
+      ir_config: {
+        symbol: "MSFT",
+        companyName: "Microsoft",
+        accentColor: "#8349ff",
+        enabledComponents: [
+          "data_card",
+          "comparison_table",
+          "inline_chart",
+          "source_card",
+          "executive_card",
+          "event_card",
+          "compliance_banner",
+          "esg_card"
+        ]
+      },
+      quickQuestions: ["Latest revenue", "Dividend info", "Who's the CEO?"],
+      theme: {
+        primary: '#8349ff',
+        userBubble: '#8349ff',
+        botBubble: '#f1f5f9',
+        userText: '#fff',
+        botText: '#1a1a2e',
+        background: '#fff',
+        border: '#e5e7eb',
+        text: '#1a1a2e',
+        inputBg: '#fff',
+        inputText: '#1a1a2e',
+        sendBtnBg: '#8349ff',
+        sendBtnText: '#fff',
+        sendBtnHover: '#6b30e0',
+        shadow: '#8349ff',
+        headerStyle: {
+          backgroundColor: '#8349ff',
+          textColor: '#fff',
+          fontWeight: '700',
+          fontFamily: "'Manrope', sans-serif",
+          fontSize: '16px'
+        }
+      }
+    };
+  </script>
+  <script src="./chat-embed.js"></script>
+
+</body>
+</html>
