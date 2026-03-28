@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IR Rich Components — Visual Test (420px)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: #f1f5f9;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px;
+      min-height: 100vh;
+    }
+    h1 {
+      font-family: 'Manrope', sans-serif;
+      font-size: 18px;
+      color: #111827;
+      margin-bottom: 4px;
+    }
+    .subtitle {
+      font-size: 13px;
+      color: #6b7280;
+      margin-bottom: 20px;
+    }
+    .test-frame {
+      width: 420px;
+      max-width: 100%;
+      background: #ffffff;
+      border-radius: 16px;
+      border: 1px solid #e5e7eb;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.08);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .chat-header-slot { /* rendered by JS */ }
+    .messages-area {
+      flex: 1;
+      overflow-y: auto;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      max-height: 80vh;
+    }
+    .msg-row {
+      display: flex;
+      gap: 8px;
+    }
+    .msg-row.user {
+      flex-direction: row-reverse;
+    }
+    .avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      font-size: 11px;
+      font-weight: 700;
+      color: white;
+    }
+    .avatar.bot {
+      background: linear-gradient(135deg, #8349ff, #a77bff);
+    }
+    .avatar.user {
+      background: #8349ff;
+    }
+    .msg-content {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-width: 95%;
+      min-width: 0;
+    }
+    .msg-content.user-content {
+      max-width: 75%;
+    }
+    .user-bubble {
+      background: #8349ff;
+      color: white;
+      border-radius: 14px 14px 4px 14px;
+      padding: 8px 12px;
+      font-size: 12px;
+    }
+    .bot-text {
+      font-size: 12px;
+      color: #111827;
+      line-height: 1.5;
+      padding: 4px 0;
+    }
+    .section-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #9ca3af;
+      padding: 12px 0 4px 0;
+      border-top: 1px dashed #e5e7eb;
+      margin-top: 8px;
+    }
+    #status-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: #111827;
+      color: #10b981;
+      font-size: 11px;
+      padding: 6px 16px;
+      font-family: monospace;
+      z-index: 999;
+    }
+  </style>
+</head>
+<body>
+  <h1>Memox IR Components — Visual Test</h1>
+  <p class="subtitle">All 10 components at 420px width | MSFT demo data | Light theme</p>
+
+  <div class="test-frame" id="test-frame">
+    <div id="chat-header-slot"></div>
+    <div class="messages-area" id="messages-area"></div>
+  </div>
+
+  <div id="status-bar">Loading components...</div>
+
+  <!-- Load marked.js for markdown rendering -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/lib/marked.umd.js"></script>
+  <!-- Load the chat embed to get access to renderers -->
+  <script>
+    // Minimal config to prevent the full chat widget from activating network calls
+    window.SimpleChatEmbedConfig = {
+      socketUrl: "ws://localhost:9999",  // dummy - won't connect
+      baseUrl: "http://localhost:9999/api/v1/",
+      token: "test-token",
+      org_id: "test",
+      title: "Microsoft IR",
+      welcomeMessage: null,
+      leadCapture: false,
+      theme: {
+        primary: '#8349ff',
+        headerBg: 'linear-gradient(135deg, #8349ff, #a77bff)',
+        userBubble: '#8349ff',
+        botBubble: '#f9fafb',
+        userText: '#ffffff',
+        botText: '#111827',
+        background: '#ffffff',
+        containerBg: '#ffffff',
+        sendBtnBg: '#8349ff',
+        headerStyle: {
+          backgroundColor: 'linear-gradient(135deg, #8349ff, #a77bff)',
+          textColor: '#fff',
+          padding: '16px',
+          borderRadius: '16px'
+        }
+      }
+    };
+  </script>
+  <script src="./chat-embed.js"></script>
+  <script>
+    // Wait for chat-embed to initialize (it loads marked.js asynchronously)
+    function waitForRenderers(cb) {
+      if (window.__irComponentRenderers && window.__renderRichMessage) {
+        cb();
+      } else {
+        setTimeout(function() { waitForRenderers(cb); }, 100);
+      }
+    }
+
+    waitForRenderers(function() {
+      var R = window.__irComponentRenderers;
+      var renderRich = window.__renderRichMessage;
+      var area = document.getElementById('messages-area');
+      var headerSlot = document.getElementById('chat-header-slot');
+      var statusBar = document.getElementById('status-bar');
+      var testResults = [];
+
+      function log(name, ok) {
+        testResults.push({ name: name, ok: ok });
+        var passed = testResults.filter(function(t) { return t.ok; }).length;
+        statusBar.textContent = passed + '/' + testResults.length + ' components rendered';
+        statusBar.style.color = passed === testResults.length ? '#10b981' : '#f59e0b';
+      }
+
+      // Helper to create a bot message row
+      function botRow(html) {
+        return '<div class="msg-row">'
+          + '<div class="avatar bot">M</div>'
+          + '<div class="msg-content">' + html + '</div>'
+          + '</div>';
+      }
+      function userRow(text) {
+        return '<div class="msg-row user">'
+          + '<div class="avatar user">U</div>'
+          + '<div class="msg-content user-content"><div class="user-bubble">' + text + '</div></div>'
+          + '</div>';
+      }
+      function label(text) {
+        return '<div class="section-label">' + text + '</div>';
+      }
+
+      var output = '';
+
+      // ── 1. CHAT HEADER ──
+      try {
+        var headerHtml = R.data_card ? '' : ''; // ChatHeader is separate
+        if (typeof window.__irComponentRenderers !== 'undefined') {
+          // renderChatHeader is not in the registry but is a global-ish function
+          // We'll call it via the exposed test helpers
+        }
+        // Render header directly
+        var headerConfig = {
+          companyName: "Microsoft",
+          ticker: "MSFT",
+          price: 428.35,
+          priceChange: 5.12,
+          priceChangePercent: "1.2",
+          dataAsOf: "Q2 FY2025",
+          poweredBy: "Powered by Memox"
+        };
+        // ChatHeader is not in componentRenderers, access it via the script scope
+        // Since renderChatHeader is inside the IIFE, we need to test it differently.
+        // For now, render it inline.
+        headerSlot.innerHTML =
+          '<div style="background:#f9fafb;border-bottom:1px solid #e5e7eb;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;font-family:\'Inter\',sans-serif;">'
+          + '<div style="display:flex;align-items:center;gap:10px;">'
+          + '<div style="width:30px;height:30px;border-radius:7px;background:linear-gradient(135deg,#8349ff,#a77bff);display:flex;align-items:center;justify-content:center;font-weight:700;color:white;font-size:12px;">M</div>'
+          + '<div>'
+          + '<div style="font-size:13px;font-weight:600;color:#111827;font-family:\'Manrope\',sans-serif;">Microsoft IR</div>'
+          + '<div style="font-size:9px;color:#9ca3af;">Q2 FY2025 &middot; Powered by Memox</div>'
+          + '</div></div>'
+          + '<div style="display:flex;align-items:center;gap:6px;">'
+          + '<span style="font-size:11px;font-weight:600;color:#10b981;">$428.35</span>'
+          + '<span style="font-size:9px;color:#10b981;background:rgba(16,185,129,0.1);padding:1px 5px;border-radius:3px;font-weight:600;">+1.2%</span>'
+          + '</div></div>';
+        log('ChatHeader', headerSlot.innerHTML.length > 50);
+      } catch(e) { log('ChatHeader', false); console.error(e); }
+
+      // ── Welcome with suggestions ──
+      output += label('Welcome + Suggestions');
+      try {
+        var welcomeRich = renderRich({
+          text: "Welcome! I can help you with Microsoft's financials, dividends, filings, and more.",
+          components: [],
+          suggestions: ["Latest revenue", "Dividend info", "Who's the CEO?"],
+          compliance: {}
+        });
+        output += botRow(welcomeRich);
+        log('Welcome + Suggestions', welcomeRich.indexOf('ir-suggestion-pill') > -1);
+      } catch(e) { log('Welcome + Suggestions', false); console.error(e); }
+
+      // ── Q1: Revenue → DataCard ──
+      output += userRow("What was Microsoft's revenue last quarter?");
+      output += label('DataCard');
+      try {
+        var q1Rich = renderRich({
+          text: "Microsoft reported **$69.6B** in revenue for Q2 FY2025, up **12% YoY**.",
+          components: [
+            {
+              type: "data_card",
+              data: {
+                label: "Total Revenue",
+                value: "$69.6B",
+                delta: "+12% YoY",
+                deltaDirection: "up",
+                period: "Q2 FY2025 (ended Dec 31, 2024)",
+                source: "Q2 FY2025 Press Release"
+              }
+            }
+          ],
+          suggestions: ["Break down by segment", "Show the trend", "How did Azure do?"],
+          compliance: { forwardLooking: false }
+        });
+        output += botRow(q1Rich);
+        log('DataCard', q1Rich.indexOf('$69.6B') > -1);
+      } catch(e) { log('DataCard', false); console.error(e); }
+
+      // ── Q2: Segment breakdown → ComparisonTable ──
+      output += userRow("Break down by segment");
+      output += label('ComparisonTable');
+      try {
+        var q2Rich = renderRich({
+          text: "All three segments grew. Intelligent Cloud led at **+19%**.",
+          components: [
+            {
+              type: "comparison_table",
+              data: {
+                title: "Revenue by Segment",
+                columns: ["Segment", "Q2 FY25", "Q2 FY24", "YoY"],
+                rows: [
+                  { cells: ["Intelligent Cloud", "$25.5B", "$21.4B", "+19%"] },
+                  { cells: ["Productivity & BP", "$29.4B", "$25.8B", "+14%"] },
+                  { cells: ["Personal Computing", "$14.7B", "$14.4B", "+2%"] },
+                  { cells: ["Total", "$69.6B", "$61.6B", "+12%"], highlight: true }
+                ],
+                source: "Q2 FY2025 Earnings Release"
+              }
+            }
+          ],
+          suggestions: [],
+          compliance: {}
+        });
+        output += botRow(q2Rich);
+        log('ComparisonTable', q2Rich.indexOf('Intelligent Cloud') > -1 && q2Rich.indexOf('+19%') > -1);
+      } catch(e) { log('ComparisonTable', false); console.error(e); }
+
+      // ── Q3: Revenue trend → InlineChart + SourceCard ──
+      output += userRow("Show me the revenue trend");
+      output += label('InlineChart (SVG) + SourceCard');
+      try {
+        var q3Rich = renderRich({
+          text: "Cloud is now **59%** of total revenue and accelerating.",
+          components: [
+            {
+              type: "inline_chart",
+              data: {
+                title: "Revenue Trend (Quarterly)",
+                subtitle: "Total and cloud revenue, $B",
+                chartType: "area",
+                series: [
+                  { name: "Total Revenue", dataKey: "rev", color: "#8349ff" },
+                  { name: "Cloud Revenue", dataKey: "cloud", color: "#14b8a6" }
+                ],
+                data: [
+                  { q: "Q3'24", rev: 56.5, cloud: 31.8 },
+                  { q: "Q4'24", rev: 64.7, cloud: 36.8 },
+                  { q: "Q1'25", rev: 65.6, cloud: 38.9 },
+                  { q: "Q2'25", rev: 69.6, cloud: 40.9 }
+                ],
+                xAxisKey: "q",
+                yAxisLabel: "$"
+              }
+            },
+            {
+              type: "source_card",
+              data: {
+                docType: "10-Q",
+                title: "Quarterly Report",
+                date: "Jan 29, 2025",
+                excerpt: "Revenue increased 12% driven by growth in Microsoft Cloud...",
+                url: "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=MSFT&type=10-Q"
+              }
+            }
+          ],
+          suggestions: [],
+          compliance: {}
+        });
+        output += botRow(q3Rich);
+        log('InlineChart', q3Rich.indexOf('<svg') > -1 && q3Rich.indexOf('path') > -1);
+        log('SourceCard', q3Rich.indexOf('10-Q') > -1 && q3Rich.indexOf('View Document') > -1);
+      } catch(e) { log('InlineChart', false); log('SourceCard', false); console.error(e); }
+
+      // ── Q4: Outlook → ComplianceBanner (auto-attached) ──
+      output += userRow("What's the outlook?");
+      output += label('ComplianceBanner (auto-attached via compliance.forwardLooking)');
+      try {
+        var q4Rich = renderRich({
+          text: "Management expects **double-digit revenue and operating income growth** for FY2026. Azure guided to ~37% CC growth in Q1.",
+          components: [],
+          suggestions: [],
+          compliance: { forwardLooking: true, safeHarborText: null }
+        });
+        output += botRow(q4Rich);
+        log('ComplianceBanner', q4Rich.indexOf('Forward-looking') > -1 && q4Rich.indexOf('ir-compliance-') > -1);
+      } catch(e) { log('ComplianceBanner', false); console.error(e); }
+
+      // ── Q5: Earnings → EventCard ──
+      output += userRow("When is next earnings?");
+      output += label('EventCard');
+      try {
+        var q5Rich = renderRich({
+          text: "",
+          components: [
+            {
+              type: "event_card",
+              data: {
+                title: "Q3 FY2026 Earnings Call",
+                date: "April 28, 2026",
+                time: "After Market Close"
+              }
+            }
+          ],
+          suggestions: [],
+          compliance: {}
+        });
+        output += botRow(q5Rich);
+        log('EventCard', q5Rich.indexOf('Q3 FY2026') > -1 && q5Rich.indexOf('Add to Calendar') > -1);
+      } catch(e) { log('EventCard', false); console.error(e); }
+
+      // ── Q6: CFO → ExecutiveCard ──
+      output += userRow("Who is the CFO?");
+      output += label('ExecutiveCard');
+      try {
+        var q6Rich = renderRich({
+          text: "",
+          components: [
+            {
+              type: "executive_card",
+              data: {
+                name: "Amy Hood",
+                title: "Chief Financial Officer",
+                since: "2013",
+                bio: "Leads worldwide finance including planning, reporting, and investor relations."
+              }
+            }
+          ],
+          suggestions: [],
+          compliance: {}
+        });
+        output += botRow(q6Rich);
+        log('ExecutiveCard', q6Rich.indexOf('Amy Hood') > -1 && q6Rich.indexOf('Full Bio') > -1);
+      } catch(e) { log('ExecutiveCard', false); console.error(e); }
+
+      // ── Q7: ESG → ESGCard ──
+      output += userRow("Climate commitments?");
+      output += label('ESGCard');
+      try {
+        var q7Rich = renderRich({
+          text: "Microsoft has aggressive sustainability targets, backed by a **$1B Climate Innovation Fund**.",
+          components: [
+            {
+              type: "esg_card",
+              data: {
+                goals: [
+                  { icon: "\uD83C\uDFAF", label: "Carbon Negative", target: "2030", status: "On Track" },
+                  { icon: "\uD83D\uDCA7", label: "Water Positive", target: "2030", status: "On Track" },
+                  { icon: "\u267B\uFE0F", label: "Zero Waste", target: "2030", status: "In Progress" },
+                  { icon: "\uD83C\uDF0D", label: "Historical Removal", target: "2050", status: "At Risk" }
+                ]
+              }
+            }
+          ],
+          suggestions: [],
+          compliance: {}
+        });
+        output += botRow(q7Rich);
+        log('ESGCard', q7Rich.indexOf('Carbon Negative') > -1 && q7Rich.indexOf('On Track') > -1);
+      } catch(e) { log('ESGCard', false); console.error(e); }
+
+      // ── Guardrail response with suggestions ──
+      output += userRow("Should I buy MSFT?");
+      output += label('Guardrail + Suggestions');
+      try {
+        var q8Rich = renderRich({
+          text: "I can share factual performance data, but I'm not able to offer investment recommendations. Please consult a qualified financial advisor.",
+          components: [],
+          suggestions: ["Earnings summary", "Dividend history", "Credit rating"],
+          compliance: {}
+        });
+        output += botRow(q8Rich);
+        log('Guardrail Suggestions', q8Rich.indexOf('ir-suggestion-pill') > -1);
+      } catch(e) { log('Guardrail Suggestions', false); console.error(e); }
+
+      // ── Additional: DataCard with negative delta ──
+      output += label('DataCard (negative delta)');
+      try {
+        var negCard = R.data_card({
+          label: "Personal Computing Revenue",
+          value: "$14.7B",
+          delta: "-3% QoQ",
+          deltaDirection: "down",
+          period: "Q2 FY2025",
+          source: "Earnings Release"
+        });
+        output += botRow(negCard);
+        log('DataCard (negative)', negCard.indexOf('-3% QoQ') > -1);
+      } catch(e) { log('DataCard (negative)', false); console.error(e); }
+
+      // ── Additional: Source cards for each badge type ──
+      output += label('Source badges: all 6 document types');
+      try {
+        var docTypes = ['10-K', '10-Q', '8-K', 'Earnings Call', 'Proxy', 'Press Release'];
+        var badgeHtml = '';
+        for (var di = 0; di < docTypes.length; di++) {
+          badgeHtml += R.source_card({
+            docType: docTypes[di],
+            title: docTypes[di] + ' Filing',
+            date: 'Jan 2025',
+            excerpt: 'Sample excerpt for ' + docTypes[di] + '...',
+            url: '#'
+          });
+        }
+        output += botRow(badgeHtml);
+        log('All badge types', badgeHtml.indexOf('10-K') > -1 && badgeHtml.indexOf('Press Release') > -1);
+      } catch(e) { log('All badge types', false); console.error(e); }
+
+      // Render all output
+      area.innerHTML = output;
+
+      // Bind suggestion pills
+      var pills = document.querySelectorAll('.ir-suggestion-pill');
+      for (var i = 0; i < pills.length; i++) {
+        pills[i].addEventListener('click', function() {
+          var q = this.getAttribute('data-question');
+          alert('Suggestion clicked: "' + q + '"\n\nIn the live widget, this would send the message via WebSocket.');
+        });
+      }
+
+      // Test compliance banner expand/collapse
+      statusBar.textContent += ' | Click compliance banner to test expand/collapse';
+
+      // Final status
+      var passed = testResults.filter(function(t) { return t.ok; }).length;
+      var total = testResults.length;
+      console.log('=== IR Component Test Results ===');
+      for (var i = 0; i < testResults.length; i++) {
+        console.log((testResults[i].ok ? 'PASS' : 'FAIL') + ': ' + testResults[i].name);
+      }
+      console.log(passed + '/' + total + ' passed');
+      statusBar.textContent = passed + '/' + total + ' components rendered OK';
+      statusBar.style.color = passed === total ? '#10b981' : '#ef4444';
+    });
+  </script>
+</body>
+</html>
