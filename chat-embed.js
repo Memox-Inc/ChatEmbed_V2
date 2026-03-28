@@ -1062,7 +1062,12 @@
                 contentContainer.style.gap = '8px';
                 var botMsgWidth = (theme.botIcon && theme.botIcon.botMessageWidth) || config.botMessageWidth || '70%';
                 var userMsgWidth = (theme.userIcon && theme.userIcon.userMessageWidth) || (config.userIcon && config.userIcon.userMessageWidth) || '70%';
-                contentContainer.style.maxWidth = msg.sender === 'user' ? userMsgWidth : botMsgWidth;
+                // Rich content messages use wider width to accommodate cards and charts
+                if (msg.message_type === 'rich_content') {
+                    contentContainer.style.maxWidth = '95%';
+                } else {
+                    contentContainer.style.maxWidth = msg.sender === 'user' ? userMsgWidth : botMsgWidth;
+                }
 
                 var msgDiv = document.createElement('div');
                 msgDiv.style.padding = '12px 16px';
@@ -1109,7 +1114,15 @@
                     var contentWrapper = document.createElement('div');
 
                     // Use markdown conversion for bot messages, plain text for others
-                    if (msg.sender === 'bot' || msg.sender === 'ai') {
+                    if (msg.message_type === 'rich_content' && (msg.sender === 'bot' || msg.sender === 'ai')) {
+                        // Rich content: render via renderRichMessage
+                        contentWrapper.innerHTML = renderRichMessage(msg);
+                        // Remove the standard bubble styling for rich content —
+                        // the components have their own card styling
+                        msgDiv.style.background = 'transparent';
+                        msgDiv.style.boxShadow = 'none';
+                        msgDiv.style.padding = '4px 0';
+                    } else if (msg.sender === 'bot' || msg.sender === 'ai') {
                         var html = markdownToHtml(msg.text);
 
                         // Apply welcomeMessageStyle to welcome message paragraphs
@@ -1221,6 +1234,9 @@
             }
 
             messages.scrollTop = messages.scrollHeight;
+
+            // Bind suggestion pill click handlers for rich content messages
+            bindSuggestionPills();
 
             // Check if scroll button should be visible with a small delay to ensure proper rendering
             setTimeout(function () {
@@ -1425,6 +1441,34 @@
                             localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
 
                             // Reload messages to show the stored handover message
+                            loadMessages();
+                            return;
+                        }
+
+                        // Handle rich_content messages (complete, not streamed)
+                        if (msgData.message_type === 'rich_content' && !isHandoverActive) {
+                            var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
+                            // Remove typing indicator if present
+                            var lastMessage = msgs[msgs.length - 1];
+                            if (lastMessage && lastMessage.text === '' && (lastMessage.sender === 'bot' || lastMessage.sender === 'ai')) {
+                                msgs.pop();
+                            }
+                            // Store full rich payload
+                            msgs.push({
+                                text: msgData.content || '',
+                                sender: 'bot',
+                                message_type: 'rich_content',
+                                components: msgData.components || [],
+                                suggestions: msgData.suggestions || [],
+                                compliance: msgData.compliance || {},
+                                isWelcomeMessage: false,
+                                isStreaming: false,
+                                messageId: msgData.message_id,
+                                created_at: formatTimeStamp(msgData.created_at || new Date().toISOString())
+                            });
+                            localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
+                            resetStreamingState();
+                            setBotResponding(false);
                             loadMessages();
                             return;
                         }
@@ -2723,6 +2767,432 @@
                 return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', '\'': '&#39;' }[c]);
             });
         }
+
+        // ═══════════════════════════════════════════════════════
+        // IR RICH COMPONENT RENDERERS (W2 + W3)
+        // Each function takes a data object, returns an HTML string.
+        // Colors use the Memox LIGHT theme.
+        // ═══════════════════════════════════════════════════════
+
+        var irTheme = {
+            bg: '#ffffff',
+            surface: '#f9fafb',
+            card: '#ffffff',
+            border: '#e5e7eb',
+            text: '#111827',
+            textMuted: '#6b7280',
+            textDim: '#9ca3af',
+            accent: '#8349ff',
+            accentLight: '#a77bff',
+            green: '#10b981',
+            greenBg: 'rgba(16,185,129,0.1)',
+            red: '#ef4444',
+            redBg: 'rgba(239,68,68,0.1)',
+            amber: '#f59e0b',
+            amberBg: 'rgba(245,158,11,0.1)',
+            fontHeading: "'Manrope', sans-serif",
+            fontBody: "'Inter', sans-serif"
+        };
+
+        var irBadgeColors = {
+            '10-K':          { bg: 'rgba(131,73,255,0.12)',  text: '#8349ff' },
+            '10-Q':          { bg: 'rgba(20,184,166,0.12)',   text: '#14b8a6' },
+            '8-K':           { bg: 'rgba(139,92,246,0.12)',   text: '#8b5cf6' },
+            'Earnings Call': { bg: 'rgba(16,185,129,0.12)',   text: '#10b981' },
+            'Proxy':         { bg: 'rgba(249,115,22,0.12)',   text: '#f97316' },
+            'Press Release': { bg: 'rgba(107,114,128,0.12)',  text: '#6b7280' }
+        };
+
+        // 1. DATA CARD — Single KPI metric
+        function renderDataCard(data) {
+            var isUp = data.deltaDirection === 'up';
+            var isDown = data.deltaDirection === 'down';
+            var deltaColor = isUp ? irTheme.green : isDown ? irTheme.red : irTheme.textMuted;
+            var arrowSvg = isUp
+                ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="' + deltaColor + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>'
+                : '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="' + deltaColor + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/></svg>';
+            var deltaHtml = data.delta
+                ? '<span style="font-size:12px;font-weight:600;color:' + deltaColor + ';display:inline-flex;align-items:center;gap:2px;">' + arrowSvg + ' ' + escapeHtml(data.delta) + '</span>'
+                : '';
+            var periodHtml = data.period
+                ? '<div style="font-size:10px;color:' + irTheme.textDim + ';margin-top:2px;">' + escapeHtml(data.period) + '</div>'
+                : '';
+            var sourceHtml = data.source
+                ? '<div style="border-top:1px solid ' + irTheme.border + ';margin-top:8px;padding-top:6px;font-size:10px;color:' + irTheme.textDim + ';display:flex;align-items:center;gap:3px;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> ' + escapeHtml(data.source) + '</div>'
+                : '';
+            return '<div style="background:' + irTheme.card + ';border:1px solid ' + irTheme.border + ';border-radius:10px;padding:12px 14px;font-family:' + irTheme.fontBody + ';">'
+                + '<div style="font-size:10px;color:' + irTheme.textMuted + ';text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px;">' + escapeHtml(data.label) + '</div>'
+                + '<div style="display:flex;align-items:baseline;gap:8px;">'
+                + '<span style="font-size:24px;font-weight:700;color:' + irTheme.text + ';">' + escapeHtml(data.value) + '</span>'
+                + deltaHtml
+                + '</div>'
+                + periodHtml
+                + sourceHtml
+                + '</div>';
+        }
+
+        // 2. COMPARISON TABLE — Multi-row structured data
+        function renderComparisonTable(data) {
+            var titleHtml = data.title
+                ? '<div style="padding:8px 10px;font-size:12px;font-weight:600;color:' + irTheme.text + ';border-bottom:1px solid ' + irTheme.border + ';font-family:' + irTheme.fontHeading + ';">' + escapeHtml(data.title) + '</div>'
+                : '';
+            var headerCells = '';
+            for (var ci = 0; ci < data.columns.length; ci++) {
+                headerCells += '<th style="text-align:' + (ci === 0 ? 'left' : 'right') + ';padding:7px 10px;color:' + irTheme.textMuted + ';font-weight:500;font-size:9px;text-transform:uppercase;letter-spacing:0.05em;">' + escapeHtml(data.columns[ci]) + '</th>';
+            }
+            var bodyRows = '';
+            for (var ri = 0; ri < data.rows.length; ri++) {
+                var row = data.rows[ri];
+                var rowBg = row.highlight ? 'rgba(131,73,255,0.04)' : 'transparent';
+                var rowBorder = row.highlight ? '2px solid ' + irTheme.border : '1px solid ' + irTheme.border;
+                var cells = '';
+                for (var cj = 0; cj < row.cells.length; cj++) {
+                    var cell = row.cells[cj];
+                    var cellStr = String(cell);
+                    var isDelta = cj > 0 && cellStr.match(/^[+-]/);
+                    var isPositive = isDelta && cellStr.charAt(0) === '+';
+                    var cellColor = isDelta ? (isPositive ? irTheme.green : irTheme.red) : irTheme.text;
+                    var cellWeight = row.highlight ? 700 : (cj === 0 ? 500 : 400);
+                    cells += '<td style="padding:7px 10px;text-align:' + (cj === 0 ? 'left' : 'right') + ';color:' + cellColor + ';font-weight:' + cellWeight + ';font-size:11px;">' + escapeHtml(cellStr) + '</td>';
+                }
+                bodyRows += '<tr style="border-top:' + rowBorder + ';background:' + rowBg + ';">' + cells + '</tr>';
+            }
+            var sourceHtml = data.source
+                ? '<div style="padding:6px 10px;font-size:9px;color:' + irTheme.textDim + ';border-top:1px solid ' + irTheme.border + ';display:flex;align-items:center;gap:3px;"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> Source: ' + escapeHtml(data.source) + '</div>'
+                : '';
+            return '<div style="background:' + irTheme.card + ';border:1px solid ' + irTheme.border + ';border-radius:8px;overflow:hidden;font-family:' + irTheme.fontBody + ';">'
+                + titleHtml
+                + '<table style="width:100%;border-collapse:collapse;font-size:11px;"><thead><tr style="background:rgba(131,73,255,0.06);">' + headerCells + '</tr></thead><tbody>' + bodyRows + '</tbody></table>'
+                + sourceHtml
+                + '</div>';
+        }
+
+        // 3. INLINE CHART — SVG area chart (Option B)
+        function renderInlineChart(data) {
+            var chartWidth = 370;
+            var chartHeight = 150;
+            var padLeft = 10;
+            var padRight = 10;
+            var padTop = 10;
+            var padBottom = 25;
+            var plotW = chartWidth - padLeft - padRight;
+            var plotH = chartHeight - padTop - padBottom;
+
+            var points = data.data || [];
+            var series = data.series || [];
+            var xKey = data.xAxisKey || 'q';
+            var numPoints = points.length;
+            if (numPoints === 0) return '<div style="padding:12px;font-size:11px;color:' + irTheme.textDim + ';">No chart data</div>';
+
+            // Calculate global min/max across all series
+            var globalMin = Infinity;
+            var globalMax = -Infinity;
+            for (var si = 0; si < series.length; si++) {
+                for (var pi = 0; pi < numPoints; pi++) {
+                    var v = parseFloat(points[pi][series[si].dataKey]);
+                    if (!isNaN(v)) {
+                        if (v < globalMin) globalMin = v;
+                        if (v > globalMax) globalMax = v;
+                    }
+                }
+            }
+            // Add 10% padding to range
+            var range = globalMax - globalMin || 1;
+            globalMin = globalMin - range * 0.1;
+            globalMax = globalMax + range * 0.1;
+
+            function xPos(idx) { return padLeft + (idx / Math.max(numPoints - 1, 1)) * plotW; }
+            function yPos(val) { return padTop + plotH - ((val - globalMin) / (globalMax - globalMin)) * plotH; }
+
+            var defs = '';
+            var areas = '';
+            var lines = '';
+
+            for (var si = 0; si < series.length; si++) {
+                var s = series[si];
+                var color = s.color || (si === 0 ? irTheme.accent : '#14b8a6');
+                var gradId = 'ir-grad-' + si;
+                defs += '<linearGradient id="' + gradId + '" x1="0" y1="0" x2="0" y2="1">'
+                    + '<stop offset="0%" stop-color="' + color + '" stop-opacity="0.25"/>'
+                    + '<stop offset="100%" stop-color="' + color + '" stop-opacity="0.02"/>'
+                    + '</linearGradient>';
+
+                var linePath = '';
+                var areaPath = '';
+                for (var pi = 0; pi < numPoints; pi++) {
+                    var val = parseFloat(points[pi][s.dataKey]) || 0;
+                    var px = xPos(pi);
+                    var py = yPos(val);
+                    if (pi === 0) {
+                        linePath += 'M' + px.toFixed(1) + ',' + py.toFixed(1);
+                        areaPath += 'M' + px.toFixed(1) + ',' + py.toFixed(1);
+                    } else {
+                        linePath += ' L' + px.toFixed(1) + ',' + py.toFixed(1);
+                        areaPath += ' L' + px.toFixed(1) + ',' + py.toFixed(1);
+                    }
+                }
+                // Close area path
+                areaPath += ' L' + xPos(numPoints - 1).toFixed(1) + ',' + (padTop + plotH).toFixed(1);
+                areaPath += ' L' + xPos(0).toFixed(1) + ',' + (padTop + plotH).toFixed(1) + ' Z';
+
+                areas += '<path d="' + areaPath + '" fill="url(#' + gradId + ')"/>';
+                lines += '<path d="' + linePath + '" fill="none" stroke="' + color + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>';
+                // Dots at data points
+                for (var pi = 0; pi < numPoints; pi++) {
+                    var val = parseFloat(points[pi][s.dataKey]) || 0;
+                    lines += '<circle cx="' + xPos(pi).toFixed(1) + '" cy="' + yPos(val).toFixed(1) + '" r="2.5" fill="' + color + '" stroke="' + irTheme.card + '" stroke-width="1.5"/>';
+                }
+            }
+
+            // X-axis labels
+            var xLabels = '';
+            for (var pi = 0; pi < numPoints; pi++) {
+                var label = points[pi][xKey] || '';
+                xLabels += '<text x="' + xPos(pi).toFixed(1) + '" y="' + (chartHeight - 3) + '" text-anchor="middle" font-size="9" fill="' + irTheme.textDim + '" font-family="' + irTheme.fontBody + '">' + escapeHtml(String(label)) + '</text>';
+            }
+
+            // Grid lines
+            var gridLines = '';
+            var gridCount = 4;
+            for (var gi = 0; gi <= gridCount; gi++) {
+                var gy = padTop + (gi / gridCount) * plotH;
+                gridLines += '<line x1="' + padLeft + '" y1="' + gy.toFixed(1) + '" x2="' + (chartWidth - padRight) + '" y2="' + gy.toFixed(1) + '" stroke="' + irTheme.border + '" stroke-dasharray="3 3" stroke-width="0.5"/>';
+            }
+
+            // Legend
+            var legendHtml = '<div style="display:flex;gap:12px;margin-top:6px;font-size:9px;color:' + irTheme.textDim + ';">';
+            for (var si = 0; si < series.length; si++) {
+                var color = series[si].color || (si === 0 ? irTheme.accent : '#14b8a6');
+                legendHtml += '<span style="display:flex;align-items:center;gap:3px;"><span style="width:6px;height:6px;border-radius:50%;background:' + color + ';display:inline-block;"></span>' + escapeHtml(series[si].name) + '</span>';
+            }
+            legendHtml += '</div>';
+
+            var titleHtml = data.title ? '<div style="font-size:11px;font-weight:600;color:' + irTheme.text + ';margin-bottom:2px;font-family:' + irTheme.fontHeading + ';">' + escapeHtml(data.title) + '</div>' : '';
+            var subtitleHtml = data.subtitle ? '<div style="font-size:9px;color:' + irTheme.textDim + ';margin-bottom:8px;">' + escapeHtml(data.subtitle) + '</div>' : '';
+
+            return '<div style="background:' + irTheme.card + ';border:1px solid ' + irTheme.border + ';border-radius:8px;padding:12px;font-family:' + irTheme.fontBody + ';">'
+                + titleHtml + subtitleHtml
+                + '<svg viewBox="0 0 ' + chartWidth + ' ' + chartHeight + '" width="100%" preserveAspectRatio="xMidYMid meet" style="display:block;">'
+                + '<defs>' + defs + '</defs>'
+                + gridLines + areas + lines + xLabels
+                + '</svg>'
+                + legendHtml
+                + '</div>';
+        }
+
+        // 4. SOURCE DOCUMENT CARD — Citation with filing link
+        function renderSourceCard(data) {
+            var badge = irBadgeColors[data.docType] || irBadgeColors['Press Release'];
+            var dateHtml = data.date ? '<div style="font-size:10px;color:' + irTheme.textDim + ';margin-bottom:4px;">Filed: ' + escapeHtml(data.date) + '</div>' : '';
+            var excerptHtml = data.excerpt
+                ? '<div style="font-size:11px;color:' + irTheme.textMuted + ';font-style:italic;border-left:2px solid ' + irTheme.border + ';padding-left:8px;margin-bottom:8px;">&ldquo;' + escapeHtml(data.excerpt) + '&rdquo;</div>'
+                : '';
+            var linkHtml = data.url
+                ? '<a href="' + escapeHtml(data.url) + '" target="_blank" rel="noopener noreferrer" style="background:rgba(131,73,255,0.1);color:' + irTheme.accent + ';border:none;border-radius:5px;padding:4px 10px;font-size:10px;cursor:pointer;display:inline-flex;align-items:center;gap:3px;text-decoration:none;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg> View Document</a>'
+                : '';
+            return '<div style="background:' + irTheme.card + ';border:1px solid ' + irTheme.border + ';border-radius:8px;padding:10px 12px;font-family:' + irTheme.fontBody + ';">'
+                + '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">'
+                + '<span style="background:' + badge.bg + ';color:' + badge.text + ';font-size:10px;font-weight:600;padding:1px 6px;border-radius:3px;">' + escapeHtml(data.docType) + '</span>'
+                + '<span style="font-size:12px;font-weight:600;color:' + irTheme.text + ';">' + escapeHtml(data.title) + '</span>'
+                + '</div>'
+                + dateHtml + excerptHtml
+                + '<div style="display:flex;gap:6px;">' + linkHtml + '</div>'
+                + '</div>';
+        }
+
+        // 5. EXECUTIVE CARD — Leadership bio
+        function renderExecutiveCard(data) {
+            var avatarBg = data.photoUrl
+                ? 'url(' + escapeHtml(data.photoUrl) + ') center/cover'
+                : 'rgba(131,73,255,0.15)';
+            var avatarContent = data.photoUrl
+                ? ''
+                : '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="' + irTheme.accent + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>';
+            var sinceHtml = data.since ? ' &middot; Since ' + escapeHtml(data.since) : '';
+            var bioHtml = data.bio ? '<div style="font-size:10px;color:' + irTheme.textDim + ';line-height:1.4;margin-bottom:6px;">' + escapeHtml(data.bio) + '</div>' : '';
+            return '<div style="background:' + irTheme.card + ';border:1px solid ' + irTheme.border + ';border-radius:8px;padding:10px 12px;font-family:' + irTheme.fontBody + ';display:flex;gap:10px;">'
+                + '<div style="width:40px;height:40px;border-radius:50%;background:' + avatarBg + ';display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + avatarContent + '</div>'
+                + '<div style="min-width:0;">'
+                + '<div style="font-size:13px;font-weight:600;color:' + irTheme.text + ';font-family:' + irTheme.fontHeading + ';">' + escapeHtml(data.name) + '</div>'
+                + '<div style="font-size:10px;color:' + irTheme.textMuted + ';margin-bottom:4px;">' + escapeHtml(data.title) + sinceHtml + '</div>'
+                + bioHtml
+                + '<div style="display:flex;gap:6px;">'
+                + '<button style="background:rgba(131,73,255,0.1);color:' + irTheme.accent + ';border:none;border-radius:4px;padding:3px 8px;font-size:9px;cursor:pointer;">Full Bio</button>'
+                + '</div></div></div>';
+        }
+
+        // 6. EVENT CARD — Upcoming IR events
+        function renderEventCard(data) {
+            var timeHtml = data.time ? ' &mdash; ' + escapeHtml(data.time) : '';
+            var calBtn = data.calendarUrl
+                ? '<button onclick="window.open(\'' + escapeHtml(data.calendarUrl) + '\')" style="background:rgba(131,73,255,0.1);color:' + irTheme.accent + ';border:none;border-radius:5px;padding:4px 10px;font-size:10px;cursor:pointer;">Add to Calendar</button>'
+                : '<button style="background:rgba(131,73,255,0.1);color:' + irTheme.accent + ';border:none;border-radius:5px;padding:4px 10px;font-size:10px;cursor:pointer;">Add to Calendar</button>';
+            return '<div style="background:' + irTheme.card + ';border:1px solid ' + irTheme.border + ';border-radius:8px;padding:10px 12px;font-family:' + irTheme.fontBody + ';">'
+                + '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">'
+                + '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="' + irTheme.accent + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>'
+                + '<span style="font-size:12px;font-weight:600;color:' + irTheme.text + ';font-family:' + irTheme.fontHeading + ';">' + escapeHtml(data.title) + '</span>'
+                + '</div>'
+                + '<div style="font-size:11px;color:' + irTheme.textMuted + ';margin-bottom:8px;">' + escapeHtml(data.date) + timeHtml + '</div>'
+                + '<div style="display:flex;gap:6px;">' + calBtn + '</div>'
+                + '</div>';
+        }
+
+        // 7. COMPLIANCE BANNER — Forward-looking disclaimer
+        var DEFAULT_SAFE_HARBOR = 'These statements are based on current expectations and are subject to risks and uncertainties that may cause actual results to differ materially. Investors should not rely on forward-looking statements as predictions of future events. Please refer to the company\'s SEC filings for a discussion of risk factors.';
+
+        function renderComplianceBanner(data) {
+            var safeText = (data && data.safeHarborText) ? data.safeHarborText : DEFAULT_SAFE_HARBOR;
+            var bannerId = 'ir-compliance-' + Math.random().toString(36).substring(2, 9);
+            return '<div style="background:' + irTheme.amberBg + ';border:1px solid rgba(245,158,11,0.2);border-radius:6px;padding:6px 10px;font-family:' + irTheme.fontBody + ';">'
+                + '<div onclick="(function(e){var d=document.getElementById(\'' + bannerId + '\');var c=e.querySelector(\'svg:last-child\');if(d.style.display===\'none\'){d.style.display=\'block\';c.style.transform=\'rotate(90deg)\';}else{d.style.display=\'none\';c.style.transform=\'rotate(0deg)\';}})(this)" style="display:flex;align-items:center;gap:5px;cursor:pointer;">'
+                + '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="' + irTheme.amber + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>'
+                + '<span style="font-size:10px;color:' + irTheme.amber + ';flex:1;">Forward-looking statements included.</span>'
+                + '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="' + irTheme.amber + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition:transform 0.2s;"><polyline points="9 18 15 12 9 6"/></svg>'
+                + '</div>'
+                + '<div id="' + bannerId + '" style="display:none;font-size:9px;color:rgba(245,158,11,0.7);margin-top:6px;line-height:1.5;border-top:1px solid rgba(245,158,11,0.15);padding-top:6px;">'
+                + escapeHtml(safeText)
+                + '</div></div>';
+        }
+
+        // 8. ESG SUMMARY CARD — Sustainability commitments
+        function renderESGCard(data) {
+            var goalsHtml = '';
+            var goals = data.goals || [];
+            for (var gi = 0; gi < goals.length; gi++) {
+                var g = goals[gi];
+                var statusColor = g.status === 'On Track' ? irTheme.green : g.status === 'At Risk' ? irTheme.red : irTheme.amber;
+                var statusBg = g.status === 'On Track' ? irTheme.greenBg : g.status === 'At Risk' ? irTheme.redBg : irTheme.amberBg;
+                var borderTop = gi > 0 ? 'border-top:1px solid ' + irTheme.border + ';' : '';
+                goalsHtml += '<div style="display:flex;align-items:center;padding:5px 0;' + borderTop + 'gap:6px;">'
+                    + '<span style="font-size:12px;width:20px;">' + (g.icon || '') + '</span>'
+                    + '<span style="font-size:11px;color:' + irTheme.text + ';flex:1;">' + escapeHtml(g.label) + '</span>'
+                    + '<span style="font-size:9px;color:' + irTheme.textDim + ';width:40px;">' + escapeHtml(g.target) + '</span>'
+                    + '<span style="font-size:9px;font-weight:600;color:' + statusColor + ';background:' + statusBg + ';padding:1px 6px;border-radius:3px;">' + escapeHtml(g.status) + '</span>'
+                    + '</div>';
+            }
+            var reportHtml = data.reportUrl
+                ? '<a href="' + escapeHtml(data.reportUrl) + '" target="_blank" rel="noopener noreferrer" style="display:block;background:rgba(16,185,129,0.1);color:' + irTheme.green + ';border:none;border-radius:5px;padding:4px 10px;font-size:10px;cursor:pointer;margin-top:8px;width:100%;text-align:center;text-decoration:none;box-sizing:border-box;">View Sustainability Report</a>'
+                : '';
+            return '<div style="background:' + irTheme.card + ';border:1px solid ' + irTheme.border + ';border-radius:8px;padding:12px;font-family:' + irTheme.fontBody + ';">'
+                + '<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">'
+                + '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="' + irTheme.green + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 8C8 10 5.9 16.17 3.82 21.34l1.89.66L7 18h0a11.29 11.29 0 0 1 6-5c5.39-1.63 8.19 2 12-3"/><path d="M11 15c.78-.55 1.6-1 2.5-1.26"/></svg>'
+                + '<span style="font-size:12px;font-weight:600;color:' + irTheme.text + ';font-family:' + irTheme.fontHeading + ';">ESG Commitments</span>'
+                + '</div>'
+                + goalsHtml
+                + reportHtml
+                + '</div>';
+        }
+
+        // 9. SUGGESTED QUESTIONS — Contextual follow-up pills
+        function renderSuggestions(questions) {
+            if (!questions || !questions.length) return '';
+            var btns = '';
+            for (var qi = 0; qi < questions.length; qi++) {
+                var q = questions[qi];
+                btns += '<button class="ir-suggestion-pill" data-question="' + escapeHtml(q) + '" style="background:rgba(131,73,255,0.08);color:' + irTheme.accent + ';border:1px solid rgba(131,73,255,0.2);border-radius:14px;padding:4px 10px;font-size:10px;cursor:pointer;white-space:nowrap;font-family:' + irTheme.fontBody + ';transition:all 0.15s;">' + escapeHtml(q) + '</button>';
+            }
+            return '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:4px;">' + btns + '</div>';
+        }
+
+        // 10. CHAT HEADER — Persistent top bar with ticker
+        function renderChatHeader(cfg) {
+            var isPositive = (cfg.priceChange || 0) >= 0;
+            var changeColor = isPositive ? irTheme.green : irTheme.red;
+            var changeBg = isPositive ? irTheme.greenBg : irTheme.redBg;
+            var priceHtml = '';
+            if (cfg.price) {
+                var priceStr = typeof cfg.price === 'number' ? '$' + cfg.price.toFixed(2) : '$' + cfg.price;
+                var changeStr = (isPositive ? '+' : '') + (cfg.priceChangePercent || '0') + '%';
+                priceHtml = '<div style="display:flex;align-items:center;gap:6px;">'
+                    + '<span style="font-size:11px;font-weight:600;color:' + changeColor + ';">' + priceStr + '</span>'
+                    + '<span style="font-size:9px;color:' + changeColor + ';background:' + changeBg + ';padding:1px 5px;border-radius:3px;font-weight:600;">' + changeStr + '</span>'
+                    + '</div>';
+            }
+            var logoHtml = cfg.logo
+                ? '<div style="width:30px;height:30px;border-radius:7px;background:url(' + escapeHtml(cfg.logo) + ') center/cover;"></div>'
+                : '<div style="width:30px;height:30px;border-radius:7px;background:linear-gradient(135deg,' + irTheme.accent + ',' + irTheme.accentLight + ');display:flex;align-items:center;justify-content:center;font-weight:700;color:white;font-size:12px;">' + ((cfg.companyName || 'M').charAt(0)) + '</div>';
+            return '<div style="background:' + irTheme.surface + ';border-bottom:1px solid ' + irTheme.border + ';padding:10px 14px;display:flex;align-items:center;justify-content:space-between;font-family:' + irTheme.fontBody + ';border-radius:16px 16px 0 0;">'
+                + '<div style="display:flex;align-items:center;gap:10px;">'
+                + logoHtml
+                + '<div>'
+                + '<div style="font-size:13px;font-weight:600;color:' + irTheme.text + ';font-family:' + irTheme.fontHeading + ';">' + escapeHtml(cfg.companyName || 'Company') + ' IR</div>'
+                + '<div style="font-size:9px;color:' + irTheme.textDim + ';">' + escapeHtml(cfg.dataAsOf || '') + ' &middot; ' + escapeHtml(cfg.poweredBy || 'Powered by Memox') + '</div>'
+                + '</div></div>'
+                + priceHtml
+                + '</div>';
+        }
+
+        // Component registry — maps type keys to renderer functions
+        var componentRenderers = {
+            data_card: renderDataCard,
+            comparison_table: renderComparisonTable,
+            inline_chart: renderInlineChart,
+            source_card: renderSourceCard,
+            executive_card: renderExecutiveCard,
+            event_card: renderEventCard,
+            compliance_banner: renderComplianceBanner,
+            esg_card: renderESGCard
+        };
+
+        // ═══════════════════════════════════════════════════════
+        // RICH MESSAGE HANDLER (W1)
+        // Renders rich_content messages with components,
+        // compliance banners, and suggestion pills.
+        // ═══════════════════════════════════════════════════════
+
+        function renderRichMessage(msgData) {
+            var html = '';
+
+            // 1. Render text content as markdown
+            if (msgData.text || msgData.content) {
+                html += '<div style="font-size:12px;color:' + irTheme.text + ';line-height:1.5;font-family:' + irTheme.fontBody + ';margin-bottom:8px;">' + markdownToHtml(msgData.text || msgData.content) + '</div>';
+            }
+
+            // 2. Render each component via registry
+            var components = msgData.components || [];
+            for (var ci = 0; ci < components.length; ci++) {
+                var comp = components[ci];
+                var renderer = componentRenderers[comp.type];
+                if (renderer) {
+                    html += '<div style="margin-bottom:8px;">' + renderer(comp.data) + '</div>';
+                }
+            }
+
+            // 3. Auto-append compliance banner if forwardLooking is true
+            var compliance = msgData.compliance || {};
+            if (compliance.forwardLooking) {
+                html += '<div style="margin-bottom:8px;">' + renderComplianceBanner({ safeHarborText: compliance.safeHarborText }) + '</div>';
+            }
+
+            // 4. Append suggestion pills
+            var suggestions = msgData.suggestions || [];
+            if (suggestions.length > 0) {
+                html += renderSuggestions(suggestions);
+            }
+
+            return html;
+        }
+
+        // Bind suggestion pill clicks (called after rendering rich messages into the DOM)
+        function bindSuggestionPills() {
+            var pills = document.querySelectorAll('#simple-chat-embed .ir-suggestion-pill');
+            for (var i = 0; i < pills.length; i++) {
+                // Avoid rebinding
+                if (pills[i].getAttribute('data-bound')) continue;
+                pills[i].setAttribute('data-bound', '1');
+                pills[i].addEventListener('click', function() {
+                    var question = this.getAttribute('data-question');
+                    if (question) {
+                        input.value = question;
+                        sendMessage();
+                    }
+                });
+            }
+        }
+
+        // Expose renderers for testing
+        window.__irComponentRenderers = componentRenderers;
+        window.__renderRichMessage = renderRichMessage;
 
         // Create chat toggle button
         var chatToggle = document.createElement('button');
