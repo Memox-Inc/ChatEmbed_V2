@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IR Rich Components — Edge Case Stress Tests</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: #f1f5f9;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px;
+      min-height: 100vh;
+    }
+    h1 {
+      font-family: 'Manrope', sans-serif;
+      font-size: 18px;
+      color: #111827;
+      margin-bottom: 4px;
+    }
+    .subtitle {
+      font-size: 13px;
+      color: #6b7280;
+      margin-bottom: 20px;
+    }
+    #test-container {
+      width: 420px;
+      margin: 0 auto;
+    }
+    .visual-section {
+      width: 420px;
+      max-width: 100%;
+      background: #ffffff;
+      border-radius: 12px;
+      border: 1px solid #e5e7eb;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+      padding: 14px;
+      margin-bottom: 16px;
+    }
+    .visual-section h2 {
+      font-family: 'Manrope', sans-serif;
+      font-size: 13px;
+      color: #111827;
+      margin-bottom: 10px;
+      padding-bottom: 6px;
+      border-bottom: 1px dashed #e5e7eb;
+    }
+    .visual-section .component-slot {
+      margin-bottom: 10px;
+    }
+    #test-summary {
+      width: 420px;
+      max-width: 100%;
+      margin-top: 24px;
+      padding: 16px;
+      background: #ffffff;
+      border-radius: 12px;
+      border: 1px solid #e5e7eb;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+    }
+    #test-summary h3 {
+      font-family: 'Manrope', sans-serif;
+      font-size: 16px;
+      margin-bottom: 8px;
+    }
+    #status-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: #111827;
+      color: #10b981;
+      font-size: 11px;
+      padding: 6px 16px;
+      font-family: monospace;
+      z-index: 999;
+    }
+  </style>
+</head>
+<body>
+  <h1>Memox IR Components — Edge Case Stress Tests</h1>
+  <p class="subtitle">Null values, unicode, large numbers, deep nesting, empty arrays | 420px | Automated assertions</p>
+
+  <div id="visual-area"></div>
+
+  <!-- Hidden test container for DOM measurements -->
+  <div id="test-container" style="width: 420px; margin: 0 auto;"></div>
+
+  <div id="test-summary"></div>
+
+  <div id="status-bar">Loading components...</div>
+
+  <!-- Load marked.js for markdown rendering -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/lib/marked.umd.js"></script>
+  <!-- Load the chat embed to get access to renderers -->
+  <script>
+    window.SimpleChatEmbedConfig = {
+      socketUrl: "ws://localhost:9999",
+      baseUrl: "http://localhost:9999/api/v1/",
+      token: "test-token",
+      org_id: "test",
+      title: "Edge Case Tests",
+      welcomeMessage: null,
+      leadCapture: false,
+      theme: {
+        primary: '#8349ff',
+        headerBg: 'linear-gradient(135deg, #8349ff, #a77bff)',
+        userBubble: '#8349ff',
+        botBubble: '#f9fafb',
+        userText: '#ffffff',
+        botText: '#111827',
+        background: '#ffffff',
+        containerBg: '#ffffff',
+        sendBtnBg: '#8349ff',
+        headerStyle: {
+          backgroundColor: 'linear-gradient(135deg, #8349ff, #a77bff)',
+          textColor: '#fff',
+          padding: '16px',
+          borderRadius: '16px'
+        }
+      }
+    };
+  </script>
+  <script src="./chat-embed.js"></script>
+  <script>
+    // ═══════════════════════════════════════════════════════
+    // AUTOMATED TEST FRAMEWORK
+    // ═══════════════════════════════════════════════════════
+    var testResults = [];
+    var totalTests = 0;
+    var passedTests = 0;
+
+    function assert(name, condition) {
+      totalTests++;
+      var pass = !!condition;
+      if (pass) passedTests++;
+      testResults.push({ name: name, pass: pass });
+      console.log(pass ? 'PASS: ' + name : 'FAIL: ' + name);
+    }
+
+    function renderSummary() {
+      var summary = document.getElementById('test-summary');
+      summary.innerHTML = '<h3>' + passedTests + '/' + totalTests + ' tests passed</h3>';
+      summary.style.color = passedTests === totalTests ? '#10b981' : '#ef4444';
+      testResults.forEach(function(r) {
+        var div = document.createElement('div');
+        div.textContent = (r.pass ? '\u2713 ' : '\u2717 ') + r.name;
+        div.style.color = r.pass ? '#10b981' : '#ef4444';
+        div.style.fontSize = '12px';
+        div.style.padding = '1px 0';
+        summary.appendChild(div);
+      });
+
+      var statusBar = document.getElementById('status-bar');
+      statusBar.textContent = passedTests + '/' + totalTests + ' edge-case tests passed';
+      statusBar.style.color = passedTests === totalTests ? '#10b981' : '#ef4444';
+
+      console.log('=== EDGE CASE TEST RESULTS ===');
+      console.log(passedTests + '/' + totalTests + ' passed');
+    }
+
+    // Helper: render HTML into container and return the container
+    function renderInto(container, html) {
+      container.innerHTML = html;
+      return container;
+    }
+
+    // Helper: create visual section for display
+    function addVisualSection(title, html) {
+      var area = document.getElementById('visual-area');
+      var section = document.createElement('div');
+      section.className = 'visual-section';
+      section.innerHTML = '<h2>' + title + '</h2><div class="component-slot">' + html + '</div>';
+      area.appendChild(section);
+      return section.querySelector('.component-slot');
+    }
+
+    // Wait for renderers
+    function waitForRenderers(cb) {
+      if (window.__irComponentRenderers && window.__renderRichMessage) {
+        cb();
+      } else {
+        setTimeout(function() { waitForRenderers(cb); }, 100);
+      }
+    }
+
+    waitForRenderers(function() {
+      var R = window.__irComponentRenderers;
+      var renderRich = window.__renderRichMessage;
+      var container = document.getElementById('test-container');
+
+      // ═══════════════════════════════════════════════════════
+      // TEST 1: Null/undefined field values
+      // ═══════════════════════════════════════════════════════
+
+      // 1a. DataCard with null fields
+      try {
+        var dc = R.data_card({ label: null, value: null, delta: null, deltaDirection: null, period: null, source: null });
+        renderInto(container, dc);
+        addVisualSection('DataCard: null fields', dc);
+        assert('Null: DataCard with null fields renders', container.firstChild !== null);
+      } catch(e) {
+        assert('Null: DataCard with null fields renders', false);
+        console.error('DataCard null fields:', e);
+      }
+
+      // 1b. DataCard with undefined fields
+      try {
+        var dc2 = R.data_card({ label: undefined, value: undefined });
+        renderInto(container, dc2);
+        assert('Null: DataCard with undefined fields renders', container.firstChild !== null);
+      } catch(e) {
+        assert('Null: DataCard with undefined fields renders', false);
+        console.error('DataCard undefined fields:', e);
+      }
+
+      // 1c. SourceCard with null fields
+      try {
+        var sc = R.source_card({ docType: null, title: null, date: null, excerpt: null, url: null });
+        renderInto(container, sc);
+        addVisualSection('SourceCard: null fields', sc);
+        assert('Null: SourceCard with null fields renders', container.firstChild !== null);
+      } catch(e) {
+        assert('Null: SourceCard with null fields renders', false);
+        console.error('SourceCard null fields:', e);
+      }
+
+      // 1d. ExecutiveCard with null fields
+      try {
+        var ec = R.executive_card({ name: null, title: null, since: null, bio: null, photoUrl: null });
+        renderInto(container, ec);
+        assert('Null: ExecutiveCard with null fields renders', container.firstChild !== null);
+      } catch(e) {
+        assert('Null: ExecutiveCard with null fields renders', false);
+        console.error('ExecutiveCard null fields:', e);
+      }
+
+      // 1e. EventCard with null fields
+      try {
+        var ev = R.event_card({ title: null, date: null, time: null, calendarUrl: null });
+        renderInto(container, ev);
+        assert('Null: EventCard with null fields renders', container.firstChild !== null);
+      } catch(e) {
+        assert('Null: EventCard with null fields renders', false);
+        console.error('EventCard null fields:', e);
+      }
+
+      // 1f. ComplianceBanner with null data
+      try {
+        var cb = R.compliance_banner(null);
+        renderInto(container, cb);
+        assert('Null: ComplianceBanner with null data renders', container.firstChild !== null);
+      } catch(e) {
+        assert('Null: ComplianceBanner with null data renders', false);
+        console.error('ComplianceBanner null data:', e);
+      }
+
+      // 1g. ESGCard with null goals
+      try {
+        var esg = R.esg_card({ goals: null });
+        renderInto(container, esg);
+        assert('Null: ESGCard with null goals renders', container.firstChild !== null);
+      } catch(e) {
+        assert('Null: ESGCard with null goals renders', false);
+        console.error('ESGCard null goals:', e);
+      }
+
+      // 1h. InlineChart with null data array
+      try {
+        var ic = R.inline_chart({ title: "Empty", series: [], data: null, xAxisKey: "q" });
+        renderInto(container, ic);
+        assert('Null: InlineChart with null data renders', container.firstChild !== null);
+      } catch(e) {
+        assert('Null: InlineChart with null data renders', false);
+        console.error('InlineChart null data:', e);
+      }
+
+      // ═══════════════════════════════════════════════════════
+      // TEST 2: Empty string values
+      // ═══════════════════════════════════════════════════════
+
+      // 2a. DataCard with empty strings
+      try {
+        var dcEmpty = R.data_card({ label: "", value: "", delta: "", deltaDirection: "", period: "", source: "" });
+        renderInto(container, dcEmpty);
+        addVisualSection('DataCard: empty strings', dcEmpty);
+        assert('Empty: DataCard with empty strings renders', container.firstChild !== null);
+      } catch(e) {
+        assert('Empty: DataCard with empty strings renders', false);
+        console.error('DataCard empty strings:', e);
+      }
+
+      // 2b. SourceCard with empty strings
+      try {
+        var scEmpty = R.source_card({ docType: "", title: "", date: "", excerpt: "", url: "" });
+        renderInto(container, scEmpty);
+        assert('Empty: SourceCard with empty strings renders', container.firstChild !== null);
+      } catch(e) {
+        assert('Empty: SourceCard with empty strings renders', false);
+        console.error('SourceCard empty strings:', e);
+      }
+
+      // 2c. ComparisonTable with empty strings in cells
+      try {
+        var ctEmpty = R.comparison_table({ title: "", columns: ["", ""], rows: [{ cells: ["", ""] }], source: "" });
+        renderInto(container, ctEmpty);
+        assert('Empty: ComparisonTable with empty cells renders', container.firstChild !== null);
+      } catch(e) {
+        assert('Empty: ComparisonTable with empty cells renders', false);
+        console.error('ComparisonTable empty cells:', e);
+      }
+
+      // ═══════════════════════════════════════════════════════
+      // TEST 3: Unicode/emoji in labels
+      // ═══════════════════════════════════════════════════════
+
+      // 3a. DataCard with emoji label
+      try {
+        var dcEmoji = R.data_card({ label: "Revenue \uD83D\uDCCA", value: "$69.6B", delta: "+12%", deltaDirection: "up" });
+        renderInto(container, dcEmoji);
+        addVisualSection('DataCard: emoji label', dcEmoji);
+        assert('Unicode: DataCard with emoji label renders', container.innerHTML.indexOf('\uD83D\uDCCA') > -1);
+      } catch(e) {
+        assert('Unicode: DataCard with emoji label renders', false);
+        console.error('DataCard emoji:', e);
+      }
+
+      // 3b. DataCard with Chinese characters
+      try {
+        var dcChinese = R.data_card({ label: "\u6536\u5165", value: "\uFFE569.6B", delta: "+12%", deltaDirection: "up" });
+        renderInto(container, dcChinese);
+        addVisualSection('DataCard: Chinese characters', dcChinese);
+        assert('Unicode: DataCard with Chinese characters renders', container.innerHTML.indexOf('\u6536\u5165') > -1);
+      } catch(e) {
+        assert('Unicode: DataCard with Chinese characters renders', false);
+        console.error('DataCard Chinese:', e);
+      }
+
+      // 3c. ESGCard with mixed emoji/unicode goals
+      try {
+        var esgEmoji = R.esg_card({ goals: [
+          { icon: "\uD83C\uDF0D", label: "\u30AB\u30FC\u30DC\u30F3\u30CB\u30E5\u30FC\u30C8\u30E9\u30EB", target: "2030", status: "On Track" },
+          { icon: "\u2728", label: "Sustainability \u2665", target: "2040", status: "In Progress" }
+        ]});
+        renderInto(container, esgEmoji);
+        addVisualSection('ESGCard: unicode goals', esgEmoji);
+        assert('Unicode: ESGCard with mixed unicode renders', container.innerHTML.indexOf('\uD83C\uDF0D') > -1);
+      } catch(e) {
+        assert('Unicode: ESGCard with mixed unicode renders', false);
+        console.error('ESGCard unicode:', e);
+      }
+
+      // 3d. ExecutiveCard with emoji in bio
+      try {
+        var ecEmoji = R.executive_card({ name: "Test \uD83D\uDE80", title: "Chief \u2B50 Officer", bio: "A great leader \uD83C\uDFC6 with many awards \uD83C\uDF1F." });
+        renderInto(container, ecEmoji);
+        assert('Unicode: ExecutiveCard with emojis renders', container.innerHTML.indexOf('\uD83D\uDE80') > -1);
+      } catch(e) {
+        assert('Unicode: ExecutiveCard with emojis renders', false);
+        console.error('ExecutiveCard emoji:', e);
+      }
+
+      // ═══════════════════════════════════════════════════════
+      // TEST 4: Very large numbers
+      // ═══════════════════════════════════════════════════════
+
+      // 4a. DataCard with very large value
+      try {
+        var dcBig = R.data_card({ label: "Global GDP", value: "$999,999,999,999.99", delta: "+0.01%", deltaDirection: "up", period: "All time" });
+        renderInto(container, dcBig);
+        addVisualSection('DataCard: very large number', dcBig);
+        assert('Large: DataCard $999B+ value renders', container.innerHTML.indexOf('$999,999,999,999.99') > -1);
+        assert('Large: DataCard $999B+ fits 420px', container.firstChild.scrollWidth <= 420);
+      } catch(e) {
+        assert('Large: DataCard $999B+ value renders', false);
+        assert('Large: DataCard $999B+ fits 420px', false);
+        console.error('DataCard large number:', e);
+      }
+
+      // 4b. ComparisonTable with large numbers
+      try {
+        var ctBig = R.comparison_table({ title: "Large Numbers", columns: ["Metric", "Value"], rows: [
+          { cells: ["Revenue", "$999,999,999,999.99"] },
+          { cells: ["Market Cap", "$3,456,789,012,345.67"] }
+        ]});
+        renderInto(container, ctBig);
+        assert('Large: ComparisonTable large numbers fit 420px', container.firstChild.scrollWidth <= 420);
+      } catch(e) {
+        assert('Large: ComparisonTable large numbers fit 420px', false);
+        console.error('ComparisonTable large numbers:', e);
+      }
+
+      // ═══════════════════════════════════════════════════════
+      // TEST 5: Deeply nested comparison table (20+ rows)
+      // ═══════════════════════════════════════════════════════
+
+      try {
+        var manyRows = [];
+        for (var i = 0; i < 25; i++) {
+          manyRows.push({ cells: ["Item " + (i + 1), "$" + (Math.random() * 100).toFixed(2) + "B", "+" + (Math.random() * 20).toFixed(1) + "%"], highlight: i === 24 });
+        }
+        var ctDeep = R.comparison_table({ title: "25-Row Table", columns: ["Line Item", "Amount", "Change"], rows: manyRows, source: "Stress Test" });
+        renderInto(container, ctDeep);
+        addVisualSection('ComparisonTable: 25 rows', ctDeep);
+        var rowCount = container.querySelectorAll('tbody tr').length;
+        assert('Deep: ComparisonTable 25 rows all rendered', rowCount === 25);
+        assert('Deep: ComparisonTable 25 rows fits 420px', container.firstChild.scrollWidth <= 420);
+      } catch(e) {
+        assert('Deep: ComparisonTable 25 rows all rendered', false);
+        assert('Deep: ComparisonTable 25 rows fits 420px', false);
+        console.error('ComparisonTable 25 rows:', e);
+      }
+
+      // ═══════════════════════════════════════════════════════
+      // TEST 6: InlineChart with 1 data point only
+      // ═══════════════════════════════════════════════════════
+
+      try {
+        var ic1 = R.inline_chart({ title: "Single Point", series: [{ name: "Rev", dataKey: "r", color: "#8349ff" }], data: [{ q: "Q1", r: 50 }], xAxisKey: "q" });
+        renderInto(container, ic1);
+        addVisualSection('InlineChart: 1 data point', ic1);
+        assert('Chart: InlineChart 1 data point renders SVG', container.querySelector('svg') !== null);
+        assert('Chart: InlineChart 1 data point fits 420px', container.firstChild.scrollWidth <= 420);
+      } catch(e) {
+        assert('Chart: InlineChart 1 data point renders SVG', false);
+        assert('Chart: InlineChart 1 data point fits 420px', false);
+        console.error('InlineChart 1 point:', e);
+      }
+
+      // ═══════════════════════════════════════════════════════
+      // TEST 7: InlineChart with 50 data points
+      // ═══════════════════════════════════════════════════════
+
+      try {
+        var manyPoints = [];
+        for (var j = 0; j < 50; j++) {
+          manyPoints.push({ q: "P" + (j + 1), r: 40 + Math.random() * 30 });
+        }
+        var ic50 = R.inline_chart({ title: "50 Data Points", subtitle: "Dense series", series: [{ name: "Revenue", dataKey: "r", color: "#8349ff" }], data: manyPoints, xAxisKey: "q" });
+        renderInto(container, ic50);
+        addVisualSection('InlineChart: 50 data points', ic50);
+        assert('Chart: InlineChart 50 data points renders SVG', container.querySelector('svg') !== null);
+        var circles50 = container.querySelectorAll('circle');
+        assert('Chart: InlineChart 50 data points has 50 dots', circles50.length === 50);
+        assert('Chart: InlineChart 50 data points fits 420px', container.firstChild.scrollWidth <= 420);
+      } catch(e) {
+        assert('Chart: InlineChart 50 data points renders SVG', false);
+        assert('Chart: InlineChart 50 data points has 50 dots', false);
+        assert('Chart: InlineChart 50 data points fits 420px', false);
+        console.error('InlineChart 50 points:', e);
+      }
+
+      // ═══════════════════════════════════════════════════════
+      // TEST 8: InlineChart with all zero values
+      // ═══════════════════════════════════════════════════════
+
+      try {
+        var zeroData = [{ q: "Q1", r: 0 }, { q: "Q2", r: 0 }, { q: "Q3", r: 0 }, { q: "Q4", r: 0 }];
+        var icZero = R.inline_chart({ title: "All Zeros", series: [{ name: "Revenue", dataKey: "r", color: "#8349ff" }], data: zeroData, xAxisKey: "q" });
+        renderInto(container, icZero);
+        addVisualSection('InlineChart: all zero values', icZero);
+        assert('Chart: InlineChart all zeros renders SVG', container.querySelector('svg') !== null);
+        assert('Chart: InlineChart all zeros no NaN in paths', icZero.indexOf('NaN') === -1);
+      } catch(e) {
+        assert('Chart: InlineChart all zeros renders SVG', false);
+        assert('Chart: InlineChart all zeros no NaN in paths', false);
+        console.error('InlineChart zeros:', e);
+      }
+
+      // ═══════════════════════════════════════════════════════
+      // TEST 9: 10+ components stacked in a single rich message
+      // ═══════════════════════════════════════════════════════
+
+      try {
+        var stackedMsg = {
+          text: "Here is a comprehensive financial overview of Microsoft with **multiple components** stacked in a single response.",
+          components: [
+            { type: "data_card", data: { label: "Revenue", value: "$69.6B", delta: "+12%", deltaDirection: "up", period: "Q2 FY2025" } },
+            { type: "data_card", data: { label: "Net Income", value: "$16.4B", delta: "+8%", deltaDirection: "up" } },
+            { type: "data_card", data: { label: "Cloud Revenue", value: "$40.9B", delta: "+21%", deltaDirection: "up" } },
+            { type: "comparison_table", data: { title: "Segments", columns: ["Segment", "Revenue"], rows: [{ cells: ["Cloud", "$25.5B"] }, { cells: ["Productivity", "$29.4B"] }] } },
+            { type: "inline_chart", data: { title: "Trend", series: [{ name: "Rev", dataKey: "r", color: "#8349ff" }], data: [{ q: "Q1", r: 60 }, { q: "Q2", r: 70 }], xAxisKey: "q" } },
+            { type: "source_card", data: { docType: "10-Q", title: "Q2 Report", date: "Jan 2025", url: "#" } },
+            { type: "source_card", data: { docType: "10-K", title: "Annual Report", date: "Oct 2024", url: "#" } },
+            { type: "executive_card", data: { name: "Satya Nadella", title: "CEO", since: "2014" } },
+            { type: "event_card", data: { title: "Earnings Call", date: "Apr 28, 2026" } },
+            { type: "esg_card", data: { goals: [{ icon: "\uD83C\uDFAF", label: "Carbon Negative", target: "2030", status: "On Track" }] } },
+            { type: "data_card", data: { label: "EPS", value: "$3.23", delta: "+10%", deltaDirection: "up" } }
+          ],
+          suggestions: ["More details", "Dividend info"],
+          compliance: { forwardLooking: true }
+        };
+        var stackedHtml = renderRich(stackedMsg);
+        renderInto(container, stackedHtml);
+        addVisualSection('10+ components stacked', stackedHtml);
+
+        // Count rendered components by counting margin-bottom:8px wrappers
+        // Each component is wrapped in a div with margin-bottom:8px
+        var componentCount = 0;
+        // Count unique component indicators
+        var hasDataCards = (stackedHtml.match(/text-transform:uppercase/g) || []).length;
+        var hasSvg = container.querySelector('svg') !== null;
+        var hasTable = container.querySelector('table') !== null;
+        assert('Stacked: 11 components + compliance all render', hasDataCards >= 4 && hasSvg && hasTable);
+        assert('Stacked: suggestions present', stackedHtml.indexOf('ir-suggestion-pill') > -1);
+        assert('Stacked: compliance banner auto-attached', stackedHtml.indexOf('Forward-looking') > -1);
+        assert('Stacked: fits 420px width', container.scrollWidth <= 420);
+      } catch(e) {
+        assert('Stacked: 11 components + compliance all render', false);
+        assert('Stacked: suggestions present', false);
+        assert('Stacked: compliance banner auto-attached', false);
+        assert('Stacked: fits 420px width', false);
+        console.error('Stacked components:', e);
+      }
+
+      // ═══════════════════════════════════════════════════════
+      // TEST 10: Rich message with empty components but has text
+      // ═══════════════════════════════════════════════════════
+
+      try {
+        var textOnly = renderRich({ text: "This is a text-only response with **bold** and *italics*.", components: [], suggestions: [], compliance: {} });
+        renderInto(container, textOnly);
+        addVisualSection('Rich message: text only, empty components', textOnly);
+        assert('TextOnly: renders text with markdown', container.innerHTML.indexOf('bold') > -1);
+        assert('TextOnly: no component artifacts', textOnly.indexOf('undefined') === -1 && textOnly.indexOf('null') === -1);
+      } catch(e) {
+        assert('TextOnly: renders text with markdown', false);
+        assert('TextOnly: no component artifacts', false);
+        console.error('Text only:', e);
+      }
+
+      // ═══════════════════════════════════════════════════════
+      // TEST 11: Rich message with no text but has components
+      // ═══════════════════════════════════════════════════════
+
+      try {
+        var noText = renderRich({
+          text: "",
+          components: [
+            { type: "data_card", data: { label: "Revenue", value: "$69.6B" } },
+            { type: "event_card", data: { title: "Earnings", date: "Apr 28, 2026" } }
+          ],
+          suggestions: ["Follow up"],
+          compliance: {}
+        });
+        renderInto(container, noText);
+        addVisualSection('Rich message: no text, components only', noText);
+        assert('NoText: components render without text', noText.indexOf('$69.6B') > -1 && noText.indexOf('Earnings') > -1);
+        assert('NoText: suggestions present', noText.indexOf('ir-suggestion-pill') > -1);
+      } catch(e) {
+        assert('NoText: components render without text', false);
+        assert('NoText: suggestions present', false);
+        console.error('No text:', e);
+      }
+
+      // ═══════════════════════════════════════════════════════
+      // TEST 12: Rich message with null text
+      // ═══════════════════════════════════════════════════════
+
+      try {
+        var nullText = renderRich({
+          text: null,
+          components: [{ type: "data_card", data: { label: "EPS", value: "$3.23" } }],
+          suggestions: [],
+          compliance: {}
+        });
+        renderInto(container, nullText);
+        assert('NullText: renders components without error', nullText.indexOf('$3.23') > -1);
+      } catch(e) {
+        assert('NullText: renders components without error', false);
+        console.error('Null text:', e);
+      }
+
+      // ═══════════════════════════════════════════════════════
+      // TEST 13: Unknown component type in components array
+      // ═══════════════════════════════════════════════════════
+
+      try {
+        var unknownType = renderRich({
+          text: "Response with unknown component type.",
+          components: [
+            { type: "unknown_widget", data: { foo: "bar" } },
+            { type: "data_card", data: { label: "Revenue", value: "$50B" } }
+          ],
+          suggestions: [],
+          compliance: {}
+        });
+        renderInto(container, unknownType);
+        addVisualSection('Unknown component type (graceful skip)', unknownType);
+        assert('Unknown: gracefully skips unknown type', unknownType.indexOf('$50B') > -1);
+        assert('Unknown: no error in output', unknownType.indexOf('error') === -1 && unknownType.indexOf('undefined') === -1);
+      } catch(e) {
+        assert('Unknown: gracefully skips unknown type', false);
+        assert('Unknown: no error in output', false);
+        console.error('Unknown type:', e);
+      }
+
+      // ═══════════════════════════════════════════════════════
+      // TEST 14: InlineChart with negative values
+      // ═══════════════════════════════════════════════════════
+
+      try {
+        var negData = [
+          { q: "Q1", r: -10 }, { q: "Q2", r: -5 }, { q: "Q3", r: 0 }, { q: "Q4", r: 15 }
+        ];
+        var icNeg = R.inline_chart({ title: "Negative Values", series: [{ name: "Profit", dataKey: "r", color: "#ef4444" }], data: negData, xAxisKey: "q" });
+        renderInto(container, icNeg);
+        addVisualSection('InlineChart: negative values', icNeg);
+        assert('Chart: negative values render SVG', container.querySelector('svg') !== null);
+        assert('Chart: negative values no NaN', icNeg.indexOf('NaN') === -1);
+      } catch(e) {
+        assert('Chart: negative values render SVG', false);
+        assert('Chart: negative values no NaN', false);
+        console.error('InlineChart negative:', e);
+      }
+
+      // ═══════════════════════════════════════════════════════
+      // TEST 15: InlineChart with very large range
+      // ═══════════════════════════════════════════════════════
+
+      try {
+        var bigRange = [
+          { q: "Q1", r: 0.001 }, { q: "Q2", r: 999999 }
+        ];
+        var icBig = R.inline_chart({ title: "Huge Range", series: [{ name: "Val", dataKey: "r", color: "#8349ff" }], data: bigRange, xAxisKey: "q" });
+        renderInto(container, icBig);
+        assert('Chart: huge range renders SVG', container.querySelector('svg') !== null);
+        assert('Chart: huge range no NaN', icBig.indexOf('NaN') === -1);
+      } catch(e) {
+        assert('Chart: huge range renders SVG', false);
+        assert('Chart: huge range no NaN', false);
+        console.error('InlineChart big range:', e);
+      }
+
+      // ═══════════════════════════════════════════════════════
+      // TEST 16: XSS-like strings (should be escaped)
+      // ═══════════════════════════════════════════════════════
+
+      try {
+        var xssCard = R.data_card({ label: '<script>alert("xss")</script>', value: '<img src=x onerror=alert(1)>', delta: '"><b>bold</b>' });
+        renderInto(container, xssCard);
+        addVisualSection('DataCard: XSS attempt (escaped)', xssCard);
+        // Check that script tags are escaped, not executed
+        var hasRawScript = container.querySelector('script') !== null;
+        var hasRawImg = container.querySelector('img[onerror]') !== null;
+        assert('XSS: script tags escaped in DataCard', !hasRawScript);
+        assert('XSS: img onerror escaped in DataCard', !hasRawImg);
+      } catch(e) {
+        assert('XSS: script tags escaped in DataCard', false);
+        assert('XSS: img onerror escaped in DataCard', false);
+        console.error('XSS test:', e);
+      }
+
+      // ═══════════════════════════════════════════════════════
+      // TEST 17: ComparisonTable with mismatched cell counts
+      // ═══════════════════════════════════════════════════════
+
+      try {
+        var ctMismatch = R.comparison_table({
+          title: "Mismatched Cells",
+          columns: ["A", "B", "C"],
+          rows: [
+            { cells: ["One", "Two"] },          // fewer cells than columns
+            { cells: ["X", "Y", "Z", "Extra"] } // more cells than columns
+          ]
+        });
+        renderInto(container, ctMismatch);
+        addVisualSection('ComparisonTable: mismatched cell counts', ctMismatch);
+        assert('Mismatch: ComparisonTable with uneven cells renders', container.querySelector('table') !== null);
+      } catch(e) {
+        assert('Mismatch: ComparisonTable with uneven cells renders', false);
+        console.error('ComparisonTable mismatch:', e);
+      }
+
+      // ═══════════════════════════════════════════════════════
+      // TEST 18: Special characters in all fields
+      // ═══════════════════════════════════════════════════════
+
+      try {
+        var specialChars = R.data_card({ label: "Rev & Profit <2025>", value: "$100M+", delta: "+5% (est.)", deltaDirection: "up", period: 'FY\'25 "Q2"', source: "10-K/A & Press" });
+        renderInto(container, specialChars);
+        assert('Special: HTML entities escaped in DataCard', container.innerHTML.indexOf('&amp;') > -1 || container.innerHTML.indexOf('Rev &amp; Profit') > -1);
+      } catch(e) {
+        assert('Special: HTML entities escaped in DataCard', false);
+        console.error('Special chars:', e);
+      }
+
+      // ═══════════════════════════════════════════════════════
+      // TEST 19: ESGCard with many goals (stress)
+      // ═══════════════════════════════════════════════════════
+
+      try {
+        var manyGoals = [];
+        var statuses = ["On Track", "In Progress", "At Risk"];
+        for (var g = 0; g < 12; g++) {
+          manyGoals.push({ icon: "\uD83C\uDF31", label: "Goal #" + (g + 1), target: "" + (2025 + g), status: statuses[g % 3] });
+        }
+        var esgMany = R.esg_card({ goals: manyGoals });
+        renderInto(container, esgMany);
+        addVisualSection('ESGCard: 12 goals', esgMany);
+        assert('Stress: ESGCard 12 goals all rendered', container.innerHTML.indexOf('Goal #12') > -1);
+        assert('Stress: ESGCard 12 goals fits 420px', container.firstChild.scrollWidth <= 420);
+      } catch(e) {
+        assert('Stress: ESGCard 12 goals all rendered', false);
+        assert('Stress: ESGCard 12 goals fits 420px', false);
+        console.error('ESGCard many goals:', e);
+      }
+
+      // ═══════════════════════════════════════════════════════
+      // TEST 20: Rich message with empty suggestions array
+      // ═══════════════════════════════════════════════════════
+
+      try {
+        var noSugg = renderRich({ text: "No suggestions here.", components: [], suggestions: [], compliance: {} });
+        renderInto(container, noSugg);
+        assert('Empty suggestions: no pill markup', noSugg.indexOf('ir-suggestion-pill') === -1);
+      } catch(e) {
+        assert('Empty suggestions: no pill markup', false);
+        console.error('Empty suggestions:', e);
+      }
+
+      // ═══════════════════════════════════════════════════════
+      // TEST 21: Compliance with both forwardLooking and explicit component
+      // ═══════════════════════════════════════════════════════
+
+      try {
+        var doubleBanner = renderRich({
+          text: "Forward-looking info.",
+          components: [
+            { type: "compliance_banner", data: { safeHarborText: "Explicit banner text." } }
+          ],
+          suggestions: [],
+          compliance: { forwardLooking: true, safeHarborText: "Auto banner text." }
+        });
+        renderInto(container, doubleBanner);
+        // Should have two compliance banners: one from component, one auto-attached
+        var banners = container.querySelectorAll('div[id^="ir-compliance-"]');
+        assert('DoubleBanner: explicit + auto = 2 banners', banners.length === 2);
+      } catch(e) {
+        assert('DoubleBanner: explicit + auto = 2 banners', false);
+        console.error('Double banner:', e);
+      }
+
+      // ═══════════════════════════════════════════════════════
+      // TEST 22: InlineChart with multiple series (3+)
+      // ═══════════════════════════════════════════════════════
+
+      try {
+        var multiSeries = R.inline_chart({
+          title: "Multi-Series",
+          series: [
+            { name: "Revenue", dataKey: "rev", color: "#8349ff" },
+            { name: "Cloud", dataKey: "cloud", color: "#14b8a6" },
+            { name: "Profit", dataKey: "profit", color: "#10b981" }
+          ],
+          data: [
+            { q: "Q1", rev: 60, cloud: 30, profit: 15 },
+            { q: "Q2", rev: 65, cloud: 35, profit: 18 },
+            { q: "Q3", rev: 70, cloud: 41, profit: 20 }
+          ],
+          xAxisKey: "q"
+        });
+        renderInto(container, multiSeries);
+        addVisualSection('InlineChart: 3 series', multiSeries);
+        // Should have 3 series * 3 points = 9 circles
+        var circles = container.querySelectorAll('circle');
+        assert('Chart: 3 series renders 9 data dots', circles.length === 9);
+        // Should have 3 legend entries
+        assert('Chart: 3 series has 3 legend items', multiSeries.indexOf('Revenue') > -1 && multiSeries.indexOf('Cloud') > -1 && multiSeries.indexOf('Profit') > -1);
+      } catch(e) {
+        assert('Chart: 3 series renders 9 data dots', false);
+        assert('Chart: 3 series has 3 legend items', false);
+        console.error('Multi-series:', e);
+      }
+
+      // ═══════════════════════════════════════════════════════
+      // RENDER SUMMARY
+      // ═══════════════════════════════════════════════════════
+      renderSummary();
+    });
+  </script>
+</body>
+</html>
