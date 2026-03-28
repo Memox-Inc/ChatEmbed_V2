@@ -642,7 +642,7 @@
       // ═══════════════════════════════════════════════════════
 
       try {
-        var xssCard = R.data_card({ label: '<script>alert("xss")</script>', value: '<img src=x onerror=alert(1)>', delta: '"><b>bold</b>' });
+        var xssCard = R.data_card({ label: '<scr' + 'ipt>alert("xss")<\/scr' + 'ipt>', value: '<img src=x onerror=alert(1)>', delta: '"><b>bold</b>' });
         renderInto(container, xssCard);
         addVisualSection('DataCard: XSS attempt (escaped)', xssCard);
         // Check that script tags are escaped, not executed
