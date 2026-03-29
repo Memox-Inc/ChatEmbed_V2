@@ -136,6 +136,9 @@
         var lastChunkContent = '';
         var lastChunkTime = 0;
 
+        // Rich content animation state (in-memory, not persisted to localStorage)
+        var animateMessageIds = new Set();
+
         // Function to enable/disable input while bot is responding
         function setBotResponding(responding) {
             isBotResponding = responding;
@@ -583,9 +586,12 @@
         document.head.appendChild(style);
 
         // IR rich content transition animations
-        var irAnimStyle = document.createElement('style');
-        irAnimStyle.textContent = '@keyframes ir-fade-out{from{opacity:1;transform:translateY(0) scale(1)}to{opacity:0;transform:translateY(-8px) scale(0.97)}}@keyframes ir-slide-in{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}';
-        document.head.appendChild(irAnimStyle);
+        if (!document.getElementById('ir-anim-styles')) {
+            var irAnimStyle = document.createElement('style');
+            irAnimStyle.id = 'ir-anim-styles';
+            irAnimStyle.textContent = '@keyframes ir-fade-out{from{opacity:1;transform:translateY(0) scale(1)}to{opacity:0;transform:translateY(-8px) scale(0.97)}}@keyframes ir-slide-in{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}';
+            document.head.appendChild(irAnimStyle);
+        }
 
         chatContainer.appendChild(messages);
 
@@ -1130,11 +1136,9 @@
                         msgDiv.style.boxShadow = 'none';
                         msgDiv.style.padding = '4px 0';
                         // Slide-in animation for newly arrived rich content
-                        if (msg._animate) {
+                        if (msg.messageId && animateMessageIds.has(msg.messageId)) {
                             msgDiv.style.animation = 'ir-slide-in 0.4s ease-out';
-                            msg._animate = false;
-                            msgs[i] = msg;
-                            localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
+                            animateMessageIds.delete(msg.messageId);
                         }
                     } else if (msg.sender === 'bot' || msg.sender === 'ai') {
                         var html = markdownToHtml(msg.text);
@@ -1478,6 +1482,8 @@
                             if (lastMessage && (lastMessage.sender === 'bot' || lastMessage.sender === 'ai')) {
                                 msgs.pop();
                             }
+                            var richMsgId = msgData.message_id || Date.now();
+                            animateMessageIds.add(richMsgId);
                             msgs.push({
                                 text: msgData.content || '',
                                 sender: 'bot',
@@ -1487,10 +1493,10 @@
                                 compliance: msgData.compliance || {},
                                 isWelcomeMessage: false,
                                 isStreaming: false,
-                                _animate: true,
-                                messageId: msgData.message_id,
+                                messageId: richMsgId,
                                 created_at: formatTimeStamp(msgData.created_at || new Date().toISOString())
                             });
+                            if (msgs.length > 200) { msgs = msgs.slice(msgs.length - 200); }
                             localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
                             resetStreamingState();
                             setBotResponding(false);
