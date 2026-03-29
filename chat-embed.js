@@ -582,6 +582,11 @@
     `;
         document.head.appendChild(style);
 
+        // IR rich content transition animations
+        var irAnimStyle = document.createElement('style');
+        irAnimStyle.textContent = '@keyframes ir-fade-out{from{opacity:1;transform:translateY(0) scale(1)}to{opacity:0;transform:translateY(-8px) scale(0.97)}}@keyframes ir-slide-in{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}';
+        document.head.appendChild(irAnimStyle);
+
         chatContainer.appendChild(messages);
 
         // Get scroll button styles from config
@@ -1076,6 +1081,7 @@
                 msgDiv.style.lineHeight = '20px';
                 msgDiv.style.fontFamily = theme.messageFontFamily || theme.fontFamily || 'sans-serif';
                 msgDiv.style.position = 'relative';
+                msgDiv.setAttribute('data-sender', msg.sender);
 
                 if (msg.sender === 'user') {
                     // User message styling
@@ -1117,11 +1123,19 @@
                     if (msg.message_type === 'rich_content' && (msg.sender === 'bot' || msg.sender === 'ai')) {
                         // Rich content: render via renderRichMessage
                         contentWrapper.innerHTML = renderRichMessage(msg);
+                        msgDiv.setAttribute('data-message-type', 'rich_content');
                         // Remove the standard bubble styling for rich content —
                         // the components have their own card styling
                         msgDiv.style.background = 'transparent';
                         msgDiv.style.boxShadow = 'none';
                         msgDiv.style.padding = '4px 0';
+                        // Slide-in animation for newly arrived rich content
+                        if (msg._animate) {
+                            msgDiv.style.animation = 'ir-slide-in 0.4s ease-out';
+                            msg._animate = false;
+                            msgs[i] = msg;
+                            localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
+                        }
                     } else if (msg.sender === 'bot' || msg.sender === 'ai') {
                         var html = markdownToHtml(msg.text);
 
@@ -1447,13 +1461,23 @@
 
                         // Handle rich_content messages (complete, not streamed)
                         if (msgData.message_type === 'rich_content' && !isHandoverActive) {
+                            // Find the streaming text bubble to animate out
+                            var lastBotEl = null;
+                            var msgChildren = messages.children;
+                            for (var ci = msgChildren.length - 1; ci >= 0; ci--) {
+                                var sender = msgChildren[ci].getAttribute('data-sender');
+                                if (sender === 'bot' || sender === 'ai') {
+                                    lastBotEl = msgChildren[ci];
+                                    break;
+                                }
+                            }
+
+                            // Prepare the rich content in localStorage
                             var msgs = JSON.parse(localStorage.getItem('simple-chat-messages') || '[]');
-                            // Remove typing indicator if present
                             var lastMessage = msgs[msgs.length - 1];
-                            if (lastMessage && lastMessage.text === '' && (lastMessage.sender === 'bot' || lastMessage.sender === 'ai')) {
+                            if (lastMessage && (lastMessage.sender === 'bot' || lastMessage.sender === 'ai')) {
                                 msgs.pop();
                             }
-                            // Store full rich payload
                             msgs.push({
                                 text: msgData.content || '',
                                 sender: 'bot',
@@ -1463,13 +1487,23 @@
                                 compliance: msgData.compliance || {},
                                 isWelcomeMessage: false,
                                 isStreaming: false,
+                                _animate: true,
                                 messageId: msgData.message_id,
                                 created_at: formatTimeStamp(msgData.created_at || new Date().toISOString())
                             });
                             localStorage.setItem('simple-chat-messages', JSON.stringify(msgs));
                             resetStreamingState();
                             setBotResponding(false);
-                            loadMessages();
+
+                            // Animate: fade out streaming text, then rebuild with rich content
+                            if (lastBotEl) {
+                                lastBotEl.style.animation = 'ir-fade-out 0.3s ease-in forwards';
+                                setTimeout(function() {
+                                    loadMessages();
+                                }, 300);
+                            } else {
+                                loadMessages();
+                            }
                             return;
                         }
 
@@ -3091,7 +3125,7 @@
                 var q = questions[qi];
                 btns += '<button class="ir-suggestion-pill" data-question="' + escapeHtml(q) + '" style="background:rgba(131,73,255,0.08);color:' + irTheme.accent + ';border:1px solid rgba(131,73,255,0.2);border-radius:14px;padding:4px 10px;font-size:10px;cursor:pointer;white-space:nowrap;font-family:' + irTheme.fontBody + ';transition:all 0.15s;">' + escapeHtml(q) + '</button>';
             }
-            return '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:4px;">' + btns + '</div>';
+            return '<div data-component="suggestions" style="display:flex;gap:5px;flex-wrap:wrap;margin-top:4px;">' + btns + '</div>';
         }
 
         // 10. CHAT HEADER — Persistent top bar with ticker
@@ -3154,14 +3188,14 @@
                 var comp = components[ci];
                 var renderer = componentRenderers[comp.type];
                 if (renderer) {
-                    html += '<div style="margin-bottom:8px;">' + renderer(comp.data) + '</div>';
+                    html += '<div style="margin-bottom:8px;" data-component="' + comp.type + '">' + renderer(comp.data) + '</div>';
                 }
             }
 
             // 3. Auto-append compliance banner if forwardLooking is true
             var compliance = msgData.compliance || {};
             if (compliance.forwardLooking) {
-                html += '<div style="margin-bottom:8px;">' + renderComplianceBanner({ safeHarborText: compliance.safeHarborText }) + '</div>';
+                html += '<div style="margin-bottom:8px;" data-component="compliance_banner">' + renderComplianceBanner({ safeHarborText: compliance.safeHarborText }) + '</div>';
             }
 
             // 4. Append suggestion pills
