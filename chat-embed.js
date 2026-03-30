@@ -2839,8 +2839,27 @@
             fontBody: "'Inter', sans-serif"
         };
 
+        // Override accent from ir_config if provided
+        var irConfig = config.ir_config || {};
+        if (irConfig.accentColor) {
+            irTheme.accent = irConfig.accentColor;
+        }
+
+        // Helper: convert a hex color to rgba() string for use in backgrounds/borders.
+        // Falls back to the original rgba(131,73,255,...) values when accent is the default.
+        function irAccentRgba(alpha) {
+            var hex = irTheme.accent.replace('#', '');
+            if (hex.length === 3) {
+                hex = hex[0]+hex[0]+hex[1]+hex[1]+hex[2]+hex[2];
+            }
+            var r = parseInt(hex.substring(0, 2), 16);
+            var g = parseInt(hex.substring(2, 4), 16);
+            var b = parseInt(hex.substring(4, 6), 16);
+            return 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
+        }
+
         var irBadgeColors = {
-            '10-K':          { bg: 'rgba(131,73,255,0.12)',  text: '#8349ff' },
+            '10-K':          { bg: irAccentRgba(0.12),  text: irTheme.accent },
             '10-Q':          { bg: 'rgba(20,184,166,0.12)',   text: '#14b8a6' },
             '8-K':           { bg: 'rgba(139,92,246,0.12)',   text: '#8b5cf6' },
             'Earnings Call': { bg: 'rgba(16,185,129,0.12)',   text: '#10b981' },
@@ -2888,7 +2907,7 @@
             var bodyRows = '';
             for (var ri = 0; ri < data.rows.length; ri++) {
                 var row = data.rows[ri];
-                var rowBg = row.highlight ? 'rgba(131,73,255,0.04)' : 'transparent';
+                var rowBg = row.highlight ? irAccentRgba(0.04) : 'transparent';
                 var rowBorder = row.highlight ? '2px solid ' + irTheme.border : '1px solid ' + irTheme.border;
                 var cells = '';
                 for (var cj = 0; cj < row.cells.length; cj++) {
@@ -2907,7 +2926,7 @@
                 : '';
             return '<div style="background:' + irTheme.card + ';border:1px solid ' + irTheme.border + ';border-radius:8px;overflow:hidden;font-family:' + irTheme.fontBody + ';">'
                 + titleHtml
-                + '<table style="width:100%;border-collapse:collapse;font-size:11px;"><thead><tr style="background:rgba(131,73,255,0.06);">' + headerCells + '</tr></thead><tbody>' + bodyRows + '</tbody></table>'
+                + '<table style="width:100%;border-collapse:collapse;font-size:11px;"><thead><tr style="background:' + irAccentRgba(0.06) + ';">' + headerCells + '</tr></thead><tbody>' + bodyRows + '</tbody></table>'
                 + sourceHtml
                 + '</div>';
         }
@@ -3033,7 +3052,7 @@
                 ? '<div style="font-size:11px;color:' + irTheme.textMuted + ';font-style:italic;border-left:2px solid ' + irTheme.border + ';padding-left:8px;margin-bottom:8px;">&ldquo;' + escapeHtml(data.excerpt) + '&rdquo;</div>'
                 : '';
             var linkHtml = data.url
-                ? '<a href="' + escapeHtml(data.url) + '" target="_blank" rel="noopener noreferrer" style="background:rgba(131,73,255,0.1);color:' + irTheme.accent + ';border:none;border-radius:5px;padding:4px 10px;font-size:10px;cursor:pointer;display:inline-flex;align-items:center;gap:3px;text-decoration:none;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg> View Document</a>'
+                ? '<a href="' + escapeHtml(data.url) + '" target="_blank" rel="noopener noreferrer" style="background:' + irAccentRgba(0.1) + ';color:' + irTheme.accent + ';border:none;border-radius:5px;padding:4px 10px;font-size:10px;cursor:pointer;display:inline-flex;align-items:center;gap:3px;text-decoration:none;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg> View Document</a>'
                 : '';
             return '<div style="background:' + irTheme.card + ';border:1px solid ' + irTheme.border + ';border-radius:8px;padding:10px 12px;font-family:' + irTheme.fontBody + ';">'
                 + '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">'
@@ -3049,7 +3068,7 @@
         function renderExecutiveCard(data) {
             var avatarBg = data.photoUrl
                 ? 'url(' + escapeHtml(data.photoUrl) + ') center/cover'
-                : 'rgba(131,73,255,0.15)';
+                : irAccentRgba(0.15);
             var avatarContent = data.photoUrl
                 ? ''
                 : '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="' + irTheme.accent + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>';
@@ -3062,7 +3081,7 @@
                 + '<div style="font-size:10px;color:' + irTheme.textMuted + ';margin-bottom:4px;">' + escapeHtml(data.title) + sinceHtml + '</div>'
                 + bioHtml
                 + '<div style="display:flex;gap:6px;">'
-                + '<button style="background:rgba(131,73,255,0.1);color:' + irTheme.accent + ';border:none;border-radius:4px;padding:3px 8px;font-size:9px;cursor:pointer;">Full Bio</button>'
+                + '<button style="background:' + irAccentRgba(0.1) + ';color:' + irTheme.accent + ';border:none;border-radius:4px;padding:3px 8px;font-size:9px;cursor:pointer;">Full Bio</button>'
                 + '</div></div></div>';
         }
 
@@ -3070,8 +3089,8 @@
         function renderEventCard(data) {
             var timeHtml = data.time ? ' &mdash; ' + escapeHtml(data.time) : '';
             var calBtn = data.calendarUrl
-                ? '<button onclick="window.open(\'' + escapeHtml(data.calendarUrl) + '\')" style="background:rgba(131,73,255,0.1);color:' + irTheme.accent + ';border:none;border-radius:5px;padding:4px 10px;font-size:10px;cursor:pointer;">Add to Calendar</button>'
-                : '<button style="background:rgba(131,73,255,0.1);color:' + irTheme.accent + ';border:none;border-radius:5px;padding:4px 10px;font-size:10px;cursor:pointer;">Add to Calendar</button>';
+                ? '<button onclick="window.open(\'' + escapeHtml(data.calendarUrl) + '\')" style="background:' + irAccentRgba(0.1) + ';color:' + irTheme.accent + ';border:none;border-radius:5px;padding:4px 10px;font-size:10px;cursor:pointer;">Add to Calendar</button>'
+                : '<button style="background:' + irAccentRgba(0.1) + ';color:' + irTheme.accent + ';border:none;border-radius:5px;padding:4px 10px;font-size:10px;cursor:pointer;">Add to Calendar</button>';
             return '<div style="background:' + irTheme.card + ';border:1px solid ' + irTheme.border + ';border-radius:8px;padding:10px 12px;font-family:' + irTheme.fontBody + ';">'
                 + '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">'
                 + '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="' + irTheme.accent + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>'
@@ -3134,7 +3153,7 @@
             var btns = '';
             for (var qi = 0; qi < questions.length; qi++) {
                 var q = questions[qi];
-                btns += '<button type="button" class="ir-suggestion-pill" data-question="' + escapeHtml(q) + '" style="background:rgba(131,73,255,0.08);color:' + irTheme.accent + ';border:1px solid rgba(131,73,255,0.2);border-radius:14px;padding:4px 10px;font-size:10px;cursor:pointer;white-space:nowrap;font-family:' + irTheme.fontBody + ';transition:all 0.15s;">' + escapeHtml(q) + '</button>';
+                btns += '<button type="button" class="ir-suggestion-pill" data-question="' + escapeHtml(q) + '" style="background:' + irAccentRgba(0.08) + ';color:' + irTheme.accent + ';border:1px solid ' + irAccentRgba(0.2) + ';border-radius:14px;padding:4px 10px;font-size:10px;cursor:pointer;white-space:nowrap;font-family:' + irTheme.fontBody + ';transition:all 0.15s;">' + escapeHtml(q) + '</button>';
             }
             return '<div data-component="suggestions" style="display:flex;gap:5px;flex-wrap:wrap;margin-top:4px;">' + btns + '</div>';
         }
