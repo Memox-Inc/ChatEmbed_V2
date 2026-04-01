@@ -666,6 +666,7 @@
         if (config.quickQuestions && config.quickQuestions.length > 0) {
             config.quickQuestions.forEach(function (question, index) {
                 var quickBtn = document.createElement('button');
+                quickBtn.type = 'button';
                 quickBtn.innerText = question;
                 quickBtn.style.padding = '8px 16px';
                 quickBtn.style.background = '#ffffff';
@@ -1365,8 +1366,12 @@
                         // Validate that the stored session is still active on the backend
                         var isValid = await validateSession(chatID);
                         if (!isValid) {
-                            showSessionClosedNotification('This chat session has been closed.');
-                            return;
+                            // Stale/closed session — clear it and start fresh
+                            console.log('Session expired or not found, starting fresh');
+                            localStorage.removeItem('simple-chat-session');
+                            localStorage.removeItem('simple-chat-messages');
+                            storedSession = null;
+                            chatID = null;
                         }
                     } else {
                         // Session is invalid or expired, generate new data
@@ -3129,7 +3134,7 @@
             var btns = '';
             for (var qi = 0; qi < questions.length; qi++) {
                 var q = questions[qi];
-                btns += '<button class="ir-suggestion-pill" data-question="' + escapeHtml(q) + '" style="background:rgba(131,73,255,0.08);color:' + irTheme.accent + ';border:1px solid rgba(131,73,255,0.2);border-radius:14px;padding:4px 10px;font-size:10px;cursor:pointer;white-space:nowrap;font-family:' + irTheme.fontBody + ';transition:all 0.15s;">' + escapeHtml(q) + '</button>';
+                btns += '<button type="button" class="ir-suggestion-pill" data-question="' + escapeHtml(q) + '" style="background:rgba(131,73,255,0.08);color:' + irTheme.accent + ';border:1px solid rgba(131,73,255,0.2);border-radius:14px;padding:4px 10px;font-size:10px;cursor:pointer;white-space:nowrap;font-family:' + irTheme.fontBody + ';transition:all 0.15s;">' + escapeHtml(q) + '</button>';
             }
             return '<div data-component="suggestions" style="display:flex;gap:5px;flex-wrap:wrap;margin-top:4px;">' + btns + '</div>';
         }
