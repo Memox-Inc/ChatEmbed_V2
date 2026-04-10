@@ -1,25 +1,25 @@
 {
   "name": "chatembed-v2",
-  "version": "1.0.0",
-  "description": "Chat embed widget for web applications",
-  "main": "chat-embed.js",
+  "version": "2.0.0",
+  "description": "Memox Chat Embed Widget — TypeScript + Vite rewrite",
+  "private": true,
+  "type": "module",
   "scripts": {
-    "dev": "npx serve . -p 8080 --cors",
-    "serve": "npx serve . -p 8080 --cors",
-    "start": "npm run serve",
-    "build": "uglifyjs chat-embed.js -c -m -o chat-embed-min.js",
-    "prebuild": "echo 'Building minified version of chat-embed.js...'"
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
-  "keywords": [
-    "chat",
-    "embed",
-    "widget",
-    "javascript"
-  ],
-  "author": "Memox Inc",
-  "license": "MIT",
+  "dependencies": {
+    "dompurify": "^3.0.9",
+    "marked": "^12.0.1"
+  },
   "devDependencies": {
-    "serve": "^14.2.1",
-    "uglify-js": "^3.17.4"
+    "@types/dompurify": "^3.0.5",
+    "terser": "^5.46.1",
+    "typescript": "^5.4.5",
+    "vite": "^5.2.11",
+    "vitest": "^1.6.0"
   }
 }
