@@ -506,10 +506,17 @@ function init(): void {
     isFormShowing = true;
     headerRefs.setButtonsDisabled(true);
 
-    const form = createLeadCaptureForm(config, async (lead) => {
+    let formEl: HTMLDivElement | null = null;
+    formEl = createLeadCaptureForm(config, async (lead) => {
       isFormShowing = false;
       headerRefs.setButtonsDisabled(false);
       window.__simpleChatEmbedLeadCaptured = true;
+      // Remove form, restore widget content
+      if (formEl && formEl.parentElement) formEl.remove();
+      messagesEl.style.display = '';
+      scrollBtn.style.display = '';
+      if (quickQuestionsEl) quickQuestionsEl.style.display = '';
+      poweredBy.style.display = '';
 
       if (lead) {
         window.SimpleChatEmbedLead = lead;
@@ -533,8 +540,12 @@ function init(): void {
       loadMessages();
     });
 
-    messagesEl.innerHTML = '';
-    messagesEl.appendChild(form);
+    // Hide all widget content, show form
+    messagesEl.style.display = 'none';
+    scrollBtn.style.display = 'none';
+    if (quickQuestionsEl) quickQuestionsEl.style.display = 'none';
+    poweredBy.style.display = 'none';
+    widget.appendChild(formEl);
   }
 
   function setupChatInput(): void {

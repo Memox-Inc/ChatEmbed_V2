@@ -106,16 +106,11 @@
 .mcx-widget--inline {
   position: relative;
   width: 100%;
-  height: 100%;
+  flex: 1;
   min-height: 0;
   max-height: none;
   border-radius: 0;
   box-shadow: none;
-  bottom: auto;
-  right: auto;
-  left: auto;
-  top: auto;
-  flex: 1;
 }
 .mcx-widget--inline.mcx-widget--open {
   animation: none;
@@ -583,7 +578,8 @@
 .mcx-lead-conv {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  flex: 1;
+  min-height: 0;
   width: 100%;
   background: #fff;
 }
