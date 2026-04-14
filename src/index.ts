@@ -92,7 +92,7 @@ function init(): void {
     quickQuestionsEl = createQuickQuestions(
       config.quickQuestions,
       (q) => { handleSend(q); },
-      !!config.quickQuestionsPermanent,
+      config.quickQuestionsPermanent !== false,
     );
   }
 
@@ -191,11 +191,11 @@ function init(): void {
     // Quick questions
     if (quickQuestionsEl) {
       messagesEl.appendChild(quickQuestionsEl);
-      const isFirstSession = msgs.length === 0 || (msgs.length === 1 && msgs[0].isWelcomeMessage);
-      if (config.quickQuestionsPermanent || isFirstSession) {
+      if (config.quickQuestionsPermanent !== false) {
         quickQuestionsEl.style.display = 'flex';
       } else {
-        quickQuestionsEl.style.display = 'none';
+        const isFirstSession = msgs.length === 0 || (msgs.length === 1 && msgs[0].isWelcomeMessage);
+        quickQuestionsEl.style.display = isFirstSession ? 'flex' : 'none';
       }
     }
 
@@ -530,14 +530,14 @@ function init(): void {
           config,
         );
         sessionStore.updateSession({ visitorInfo });
-
-        // Send lead info as first message
-        handleSend(`${lead.name} ${lead.email} ${lead.phone} ${lead.zip}`);
       }
 
       setupChatInput();
+      inputBar.setDisabled(false);
+      setBotResponding(false);
       if (welcomeMessage) saveMessage(welcomeMessage, 'bot', 'welcomeMessage');
       loadMessages();
+      connectWebSocket();
     });
 
     // Hide all widget content, show form

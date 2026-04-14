@@ -185,11 +185,12 @@ export function createLeadCaptureForm(
       const extra = step.isPhone && phoneFieldRefs ? phoneFieldRefs.getSelectedCountry() : undefined;
       const err = step.validate(val, extra);
       if (err) {
-        errorEl.textContent = err;
-        errorEl.style.display = 'block';
-        inputEl.classList.add('mcx-field-error');
         if (step.isPhone && phoneFieldRefs) {
           phoneFieldRefs.setError(err);
+        } else {
+          errorEl.textContent = err;
+          errorEl.style.display = 'block';
+          inputEl.classList.add('mcx-field-error');
         }
         // Shake animation
         inputEl.classList.add('mcx-shake');

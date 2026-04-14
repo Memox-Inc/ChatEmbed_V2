@@ -46,9 +46,13 @@
   right: auto;
   left: 20px;
 }
+@keyframes mcx-icon-float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-2px)} }
 .mcx-launcher:hover {
   transform: scale(1.08);
   box-shadow: 0 6px 24px rgba(131, 73, 255, 0.5);
+}
+.mcx-launcher:hover .mcx-launcher-icon {
+  animation: mcx-icon-float 0.8s ease-in-out infinite;
 }
 .mcx-launcher:active {
   transform: scale(0.95);
@@ -511,6 +515,8 @@
   overflow-y: auto;
   transition: border-color 0.2s, box-shadow 0.2s;
 }
+.mcx-textarea::-webkit-scrollbar { width: 0; display: none; }
+.mcx-textarea { scrollbar-width: none; }
 .mcx-textarea:focus {
   border-color: var(--p);
   box-shadow: 0 0 0 3px rgba(131, 73, 255, 0.1);
@@ -722,28 +728,35 @@
   border-color: var(--p);
   box-shadow: 0 0 0 3px rgba(131, 73, 255, 0.1);
 }
-.mcx-country-btn {
+.mcx-code-wrap {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 10px 8px 10px 10px;
-  border: none;
+  gap: 3px;
+  padding: 0 8px 0 10px;
   border-right: 1px solid #e5e7eb;
-  border-radius: 11px 0 0 11px;
-  font-size: 13px;
-  background: transparent;
   cursor: pointer;
-  outline: none;
   flex-shrink: 0;
-  white-space: nowrap;
-  color: var(--t1);
-  font-family: inherit;
+  user-select: none;
 }
-.mcx-country-btn:hover { background: #f3f4f6; }
-.mcx-country-arrow {
-  font-size: 8px;
+.mcx-code-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--t1);
+  white-space: nowrap;
+}
+.mcx-code-arrow {
+  font-size: 10px;
   color: var(--tm);
-  margin-left: 1px;
+}
+.mcx-country-select {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  font-size: 14px;
 }
 .mcx-phone-input {
   flex: 1;
@@ -759,15 +772,15 @@
 }
 .mcx-country-dropdown {
   position: absolute;
-  top: 100%;
+  bottom: 100%;
   left: 0;
   right: 0;
   background: #fff;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.12);
   z-index: 9999;
-  margin-top: 4px;
+  margin-bottom: 4px;
   overflow: hidden;
 }
 .mcx-country-search {

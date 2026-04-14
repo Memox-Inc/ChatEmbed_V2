@@ -20,7 +20,7 @@ export function createLauncher(
       btn.innerHTML = config.customIcon;
     }
   } else {
-    btn.innerHTML = `<svg class="mcx-launcher-icon" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>`;
+    btn.innerHTML = `<svg class="mcx-launcher-icon" width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M3 20V6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M7 16V10l5 4 5-4v6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
   }
 
   // Close icon (hidden by default)
