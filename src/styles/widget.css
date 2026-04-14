@@ -243,7 +243,7 @@
 .mcx-msg-group {
   display: flex;
   gap: 8px;
-  align-items: flex-end;
+  align-items: flex-start;
   margin-bottom: 8px;
   animation: mcx-msg-in 280ms ease-out;
 }
