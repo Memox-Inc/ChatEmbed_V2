@@ -86,7 +86,7 @@
   display: none;
   flex-direction: column;
   width: 400px;
-  height: 620px;
+  height: min(620px, calc(100vh - 100px));
   border-radius: 16px;
   background: var(--bg);
   box-shadow: 0 24px 48px -12px rgba(0, 0, 0, 0.14), 0 0 0 1px rgba(0, 0, 0, 0.05);
@@ -98,10 +98,10 @@
 }
 .mcx-widget--floating {
   position: fixed;
-  bottom: 20px;
+  bottom: 80px;
   right: 20px;
   z-index: 9999;
-  max-height: 650px;
+  max-height: min(620px, calc(100vh - 100px));
 }
 .mcx-widget--floating.mcx-widget--left {
   right: auto;
