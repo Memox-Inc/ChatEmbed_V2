@@ -74,12 +74,16 @@ export function createHeader(
   );
   clearSessionBtn.addEventListener('click', onClearSession);
 
-  const closeDisplay = theme.closeBtnIconStyle?.display ?? 'flex';
   const closeBtn = createHeaderBtn(
     '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
     'Close chat',
   );
-  closeBtn.style.display = closeDisplay || 'flex';
+  if (config.mode === 'inline') {
+    closeBtn.style.display = 'none';
+  } else {
+    const closeDisplay = theme.closeBtnIconStyle?.display ?? 'flex';
+    closeBtn.style.display = closeDisplay || 'flex';
+  }
   closeBtn.addEventListener('click', onClose);
 
   actions.appendChild(refreshBtn);
