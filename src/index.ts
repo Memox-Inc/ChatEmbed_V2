@@ -273,9 +273,12 @@ function init(): void {
       isHandoverActive = true;
       sessionStore.updateSession({ handoverOccurred: true });
 
-      const senderName = typeof data.sender === 'object' ? data.sender?.name : String(data.sender);
+      const senderName = data.assigned_user_name
+        || (typeof data.sender === 'object' ? data.sender?.name : null)
+        || data.sender_name
+        || String(data.sender || 'Sales Representative');
       sessionStore.pushMessage({
-        text: `${senderName} has entered the chat`,
+        text: `${senderName} has joined the conversation`,
         sender: 'system',
         isWelcomeMessage: false,
         isSystemNotification: true,
@@ -567,12 +570,24 @@ function init(): void {
         sessionStore.updateSession({ visitorInfo });
       }
 
+      // Show input but keep disabled until WS connects
       setupChatInput();
-      inputBar.setDisabled(false);
-      setBotResponding(false);
+      inputBar.setDisabled(true);
+      setBotResponding(true);
       if (welcomeMessage) saveMessage(welcomeMessage, 'bot', 'welcomeMessage');
       loadMessages();
       connectWebSocket();
+
+      // Enable input after WS is ready
+      const enableWhenReady = (): void => {
+        if (ws.readyState === WebSocket.OPEN) {
+          inputBar.setDisabled(false);
+          setBotResponding(false);
+        } else {
+          setTimeout(enableWhenReady, 300);
+        }
+      };
+      setTimeout(enableWhenReady, 500);
 
       // Send lead context to bot so it doesn't re-ask for collected info
       if (lead) {
