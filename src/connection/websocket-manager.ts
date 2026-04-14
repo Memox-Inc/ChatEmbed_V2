@@ -14,6 +14,8 @@ export interface WsMessageData {
   is_complete?: boolean;
   created_at?: string;
   sender_name?: string;
+  assigned_user_name?: string;
+  assigned_user_email?: string;
 }
 
 export class WebSocketManager {
@@ -22,6 +24,11 @@ export class WebSocketManager {
   private _connected = false;
   private config: ChatEmbedConfig;
   private onMessage: MessageHandler;
+  private lastVisitorInfo: VisitorInfo | null = null;
+  private lastChatID: string | null = null;
+  private reconnectAttempts = 0;
+  private maxReconnectAttempts = 5;
+  private intentionallyClosed = false;
 
   get connected(): boolean {
     return this._connected;
@@ -38,6 +45,9 @@ export class WebSocketManager {
 
   connect(visitorInfo: VisitorInfo | null, chatID: string): void {
     if (this._connected || this.socket) return;
+    this.lastVisitorInfo = visitorInfo;
+    this.lastChatID = chatID;
+    this.intentionallyClosed = false;
 
     const browserMetadata = collectBrowserMetadata();
     const socketUrl = this.config.socketUrl + '/ws/app/';
@@ -49,6 +59,7 @@ export class WebSocketManager {
 
       this.socket.onopen = () => {
         this._connected = true;
+        this.reconnectAttempts = 0;
         this.startHeartbeat();
       };
 
@@ -62,8 +73,10 @@ export class WebSocketManager {
       };
 
       this.socket.onclose = () => {
-        console.error('WebSocket connection closed unexpectedly...');
         this.cleanup();
+        if (!this.intentionallyClosed) {
+          this.tryReconnect();
+        }
       };
 
       this.socket.onerror = (error: Event) => {
@@ -83,6 +96,7 @@ export class WebSocketManager {
   }
 
   close(): void {
+    this.intentionallyClosed = true;
     if (this.heartbeatInterval) {
       clearInterval(this.heartbeatInterval);
       this.heartbeatInterval = null;
@@ -92,6 +106,18 @@ export class WebSocketManager {
       this.socket = null;
     }
     this._connected = false;
+  }
+
+  private tryReconnect(): void {
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) return;
+    if (!this.lastVisitorInfo || !this.lastChatID) return;
+    this.reconnectAttempts++;
+    const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts - 1), 10000);
+    setTimeout(() => {
+      if (!this._connected && !this.intentionallyClosed) {
+        this.connect(this.lastVisitorInfo, this.lastChatID!);
+      }
+    }, delay);
   }
 
   private cleanup(): void {
