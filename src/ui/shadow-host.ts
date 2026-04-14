@@ -23,9 +23,12 @@ export function createInlineShadowHost(parent: HTMLElement): { host: HTMLElement
   const host = document.createElement('div');
   host.id = 'memox-chat-embed-host';
   host.style.all = 'initial';
-  host.style.display = 'block';
+  host.style.display = 'flex';
+  host.style.flexDirection = 'column';
   host.style.width = '100%';
   host.style.height = '100%';
+  host.style.minHeight = '0';
+  host.style.overflow = 'hidden';
   host.style.fontFamily = 'sans-serif';
 
   const root = host.attachShadow({ mode: 'closed' });

@@ -53,9 +53,23 @@ function init(): void {
   let host: HTMLElement;
 
   if (config.mode === 'inline') {
-    // For inline mode, find parent or use body
+    // For inline mode, find parent container by selector, ID convention, or script tag's parent
     const parentSelector = (userConfig as Record<string, unknown>).parentSelector as string | undefined;
-    const parent = parentSelector ? document.querySelector<HTMLElement>(parentSelector) : document.body;
+    let parent: HTMLElement | null = null;
+    if (parentSelector) {
+      parent = document.querySelector<HTMLElement>(parentSelector);
+    }
+    if (!parent) {
+      parent = document.getElementById('memox-chat-container');
+    }
+    if (!parent) {
+      // Find the script tag that loaded us and use its parent
+      const scripts = document.querySelectorAll('script[src*="chat-embed"]');
+      const lastScript = scripts[scripts.length - 1];
+      if (lastScript?.parentElement) {
+        parent = lastScript.parentElement;
+      }
+    }
     const result = createInlineShadowHost(parent || document.body);
     host = result.host;
     root = result.root;
