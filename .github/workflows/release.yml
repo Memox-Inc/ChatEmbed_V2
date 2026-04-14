@@ -1,0 +1,89 @@
+name: Release Chat Embed
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release (e.g. 3.0.0, 3.0.1)"
+        required: true
+        type: string
+      set_active:
+        description: "Set as active version?"
+        required: true
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Set version in package.json
+        run: npm version ${{ inputs.version }} --no-git-tag-version
+
+      - run: npm run build
+
+      - name: Check bundle size
+        run: |
+          RAW=$(stat -c%s dist/chat-embed.js)
+          GZIP=$(gzip -c dist/chat-embed.js | wc -c)
+          echo "📦 Raw: $(( RAW / 1024 ))KB | Gzip: $(( GZIP / 1024 ))KB"
+          echo "bundle_raw=${RAW}" >> $GITHUB_OUTPUT
+          echo "bundle_gzip=${GZIP}" >> $GITHUB_OUTPUT
+        id: size
+
+      - name: Update active version
+        if: ${{ inputs.set_active }}
+        run: |
+          echo '{"version":"v${{ inputs.version }}","url":"https://cdn.jsdelivr.net/gh/Memox-Inc/ChatEmbed_V2@v${{ inputs.version }}/dist/chat-embed.js","updated":"'$(date -u +%Y-%m-%dT%H:%M:%SZ)'"}' > latest.json
+
+      - name: Commit and tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -f dist/chat-embed.js package.json latest.json
+          git commit -m "release: v${{ inputs.version }}"
+          git tag "v${{ inputs.version }}"
+          git push
+          git push origin "v${{ inputs.version }}"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: "v${{ inputs.version }}"
+          name: "v${{ inputs.version }}"
+          body: |
+            ## Chat Embed v${{ inputs.version }}
+
+            **CDN URL:**
+            ```
+            https://cdn.jsdelivr.net/gh/Memox-Inc/ChatEmbed_V2@v${{ inputs.version }}/dist/chat-embed.js
+            ```
+
+            **Embed snippet:**
+            ```html
+            <script>
+              window.SimpleChatEmbedConfig = {
+                socketUrl: "wss://hub.memox.io",
+                baseUrl: "https://hub.memox.io/api/v1/",
+                token: "YOUR_TOKEN",
+                org_id: "YOUR_ORG_ID",
+                title: "AI Assistant"
+              };
+            </script>
+            <script src="https://cdn.jsdelivr.net/gh/Memox-Inc/ChatEmbed_V2@v${{ inputs.version }}/dist/chat-embed.js" async></script>
+            ```
+
+            **Bundle size:** ${{ steps.size.outputs.bundle_raw }} bytes raw / ${{ steps.size.outputs.bundle_gzip }} bytes gzip
+          files: dist/chat-embed.js
