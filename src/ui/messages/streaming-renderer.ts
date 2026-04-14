@@ -16,6 +16,10 @@ export class StreamingRenderer {
   }
 
   get activeElement(): HTMLDivElement | null {
+    // Check element is still connected to the DOM
+    if (this.activeEl && !this.activeEl.isConnected) {
+      this.activeEl = null;
+    }
     return this.activeEl;
   }
 
@@ -64,7 +68,7 @@ export class StreamingRenderer {
     const c = this.messagesContainer;
     const isNearBottom = c.scrollHeight - c.scrollTop <= c.clientHeight + 150;
     if (isNearBottom) {
-      c.scrollTo({ top: c.scrollHeight, behavior: 'smooth' });
+      c.scrollTop = c.scrollHeight;
     }
   }
 

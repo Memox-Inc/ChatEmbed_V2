@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Playground Preview — Iframe Floating Mode</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, sans-serif; display: flex; height: 100vh; background: #f3f4f6; }
+  .sidebar { width: 200px; background: #fff; border-right: 1px solid #e5e7eb; padding: 20px; flex-shrink: 0; }
+  .sidebar a { display: block; padding: 8px 12px; margin-bottom: 4px; border-radius: 8px; color: #374151; text-decoration: none; font-size: 13px; }
+  .sidebar a.active { background: #ede9fe; color: #7c3aed; font-weight: 600; }
+  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .topbar { padding: 14px 24px; background: #fff; border-bottom: 1px solid #e5e7eb; font-weight: 600; font-size: 16px; }
+  .content { flex: 1; padding: 20px; display: grid; grid-template-columns: 1fr 3fr; gap: 20px; min-height: 0; overflow: hidden; height: 100%; }
+  .left-panel { display: flex; flex-direction: column; gap: 12px; overflow-y: auto; }
+  .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 14px; }
+  .card h3 { font-size: 12px; font-weight: 600; margin-bottom: 6px; }
+  .card p { font-size: 11px; color: #6b7280; }
+  .chat-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden; min-height: 0; height: 100%; }
+  iframe { width: 100%; height: 100%; border: 0; }
+</style>
+</head>
+<body>
+
+<div class="sidebar">
+  <a href="#">Chats</a>
+  <a href="#">Agents</a>
+  <a class="active" href="#">Playground</a>
+  <a href="#">Settings</a>
+</div>
+
+<div class="main">
+  <div class="topbar">Playground</div>
+  <div class="content">
+    <div class="left-panel">
+      <div class="card"><h3>Test Ideas</h3><p>"Hello, how can you help?"</p><p>"Container prices"</p></div>
+      <div class="card"><h3>AI Status</h3><p>Online · &lt;1s</p></div>
+    </div>
+    <div class="chat-card">
+      <iframe id="chatFrame" title="Chat Preview"></iframe>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Build iframe content with floating chat embed
+  const config = {
+    mode: 'floating',
+    socketUrl: 'wss://hub-dev.memox.io',
+    baseUrl: 'https://hub-dev.memox.io/api/v1/',
+    token: '1913a7d6bc123b8eab9e9ffa5fe04adcc94d754e',
+    org_id: '1',
+    title: 'Container One AI',
+    leadCapture: true,
+    welcomeMessage: '👋 Hi! How can I help you today?',
+    quickQuestions: ['📦 Container prices', '🚚 Delivery info', '📞 Talk to sales'],
+    theme: { primary: '#8349FF' }
+  };
+
+  const html = `<!DOCTYPE html>
+<html><head>
+<meta charset="UTF-8">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: -apple-system, sans-serif;
+    background: linear-gradient(135deg, #f8fafc 0%, #f0f0ff 50%, #faf5ff 100%);
+    height: 100vh;
+    overflow: hidden;
+  }
+  .mock { padding: 28px; }
+  .mock .pill { display:inline-block; padding:3px 9px; border-radius:10px; font-size:10px; font-weight:600; background:#ede9fe; color:#7c3aed; margin-bottom:10px; }
+  .mock h1 { font-size:18px; color:#1e293b; font-weight:600; margin-bottom:6px; }
+  .mock p { font-size:12px; color:#94a3b8; line-height:1.5; }
+</style>
+</head><body>
+<div class="mock">
+  <span class="pill">Preview</span>
+  <h1>Customer Website</h1>
+  <p>This shows how the chat widget looks on your customer's site. Click the purple bubble to open.</p>
+</div>
+<script>window.SimpleChatEmbedConfig = ${JSON.stringify(config)};<\/script>
+<script src="http://localhost:8080/chat-embed.js"><\/script>
+</body></html>`;
+
+  const blob = new Blob([html], { type: 'text/html' });
+  document.getElementById('chatFrame').src = URL.createObjectURL(blob);
+</script>
+</body>
+</html>

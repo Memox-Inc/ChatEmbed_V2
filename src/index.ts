@@ -149,16 +149,29 @@ function init(): void {
     }
   }
 
-  function loadMessages(): void {
+  let renderedCount = 0; // Track how many messages are rendered in DOM
+
+  function loadMessages(forceFullRender = false): void {
     const msgs = sessionStore.getMessages();
-    messagesEl.innerHTML = '';
 
     // Check handover
     if (msgs.some((m) => m.isSystemNotification && m.notificationType === 'joined')) {
       isHandoverActive = true;
     }
 
-    for (let i = 0; i < msgs.length; i++) {
+    if (forceFullRender || renderedCount === 0) {
+      // Full re-render — only on first load, reset, or explicit request
+      messagesEl.innerHTML = '';
+      renderedCount = 0;
+    }
+
+    // Remove quick questions temporarily (will re-append at end)
+    if (quickQuestionsEl && quickQuestionsEl.parentElement === messagesEl) {
+      messagesEl.removeChild(quickQuestionsEl);
+    }
+
+    // Only render NEW messages (incremental append)
+    for (let i = renderedCount; i < msgs.length; i++) {
       const msg = msgs[i];
       const isLast = i === msgs.length - 1;
 
@@ -170,6 +183,7 @@ function init(): void {
           theme.handoverNotificationBorder,
         );
         messagesEl.appendChild(notif);
+        renderedCount++;
         continue;
       }
 
@@ -180,6 +194,7 @@ function init(): void {
         welcomeMessageStyle,
       );
       messagesEl.appendChild(container);
+      renderedCount++;
 
       // Track streaming element
       if (msg.isStreaming && isLast && contentWrapper) {
@@ -199,11 +214,10 @@ function init(): void {
       }
     }
 
-    scrollToBottom();
-    setTimeout(() => {
+    requestAnimationFrame(() => {
       scrollToBottom();
       checkScrollPosition();
-    }, 100);
+    });
   }
 
   function setBotResponding(responding: boolean): void {
@@ -279,10 +293,17 @@ function init(): void {
       const msgs = sessionStore.getMessages();
       let lastMessage = msgs[msgs.length - 1] || null;
 
-      // Remove typing indicator
+      // Remove typing indicator from storage AND DOM
       if (lastMessage && lastMessage.text === '' && (lastMessage.sender === 'bot' || lastMessage.sender === 'ai')) {
         msgs.pop();
         sessionStore.setMessages(msgs);
+        // Remove the typing indicator DOM element (last msg-group before quick questions)
+        const groups = messagesEl.querySelectorAll('.mcx-msg-group');
+        if (groups.length > 0) {
+          const lastGroup = groups[groups.length - 1];
+          lastGroup.remove();
+          renderedCount = Math.max(0, renderedCount - 1);
+        }
         lastMessage = msgs[msgs.length - 1] || null;
       }
 
@@ -291,14 +312,14 @@ function init(): void {
       // Deduplicate
       if (streamingRenderer.isDuplicateChunk(content)) return;
 
-      // Completion signal
+      // Completion signal — just mark as done, no re-render needed
       if (data.is_complete === true && content === '') {
         if (lastMessage?.isStreaming) {
           lastMessage.isStreaming = false;
           msgs[msgs.length - 1] = lastMessage;
           sessionStore.setMessages(msgs);
           streamingRenderer.reset();
-          loadMessages();
+          // No loadMessages() — the streamed text is already in the DOM
         }
         setBotResponding(false);
         return;
@@ -313,10 +334,21 @@ function init(): void {
           sessionStore.setMessages(msgs);
 
           if (streamingRenderer.activeElement) {
+            // Active element is connected — just update text
             streamingRenderer.setText(lastMessage.text);
             streamingRenderer.scheduleUpdate();
           } else {
-            loadMessages();
+            // Element lost (detached from DOM) — recover from DOM without full re-render
+            const allBubbles = messagesEl.querySelectorAll('.mcx-bubble--bot');
+            const lastBubble = allBubbles[allBubbles.length - 1];
+            const contentDiv = lastBubble?.querySelector('div') || lastBubble;
+            if (contentDiv) {
+              streamingRenderer.setActiveElement(contentDiv as HTMLDivElement);
+              streamingRenderer.setText(lastMessage.text);
+              streamingRenderer.scheduleUpdate();
+            }
+            // If still can't find it, do nothing — next chunk will retry.
+            // Never call loadMessages() during streaming to avoid flash.
           }
         } else {
           // New streaming message
@@ -356,14 +388,15 @@ function init(): void {
     if (isBotResponding) return;
 
     saveMessage(text, 'user');
-    loadMessages();
 
     // Typing indicator (only when no handover)
     if (!isHandoverActive) {
       saveMessage('', 'bot');
-      loadMessages();
       setBotResponding(true);
     }
+
+    // Single incremental render for both user message + typing indicator
+    loadMessages();
 
     const sendPayload = {
       message: text,
@@ -427,11 +460,12 @@ function init(): void {
     const sessionHandover = session?.handoverOccurred === true;
 
     sessionStore.clearMessages();
+    renderedCount = 0;
     isHandoverActive = wasHandover || sessionHandover;
 
     setupChatInput();
     if (welcomeMessage) saveMessage(welcomeMessage, 'bot', 'welcomeMessage');
-    loadMessages();
+    loadMessages(true);
   }
 
   function handleClearSession(): void {
@@ -483,6 +517,7 @@ function init(): void {
     ws.close();
     inputBar.setDisabled(false);
     messagesEl.innerHTML = '';
+    renderedCount = 0;
 
     if (!leadCapture) {
       window.__simpleChatEmbedLeadCaptured = true;
@@ -494,7 +529,7 @@ function init(): void {
         console.error('Failed to create anonymous visitor:', e);
       }
       if (welcomeMessage) saveMessage(welcomeMessage, 'bot', 'welcomeMessage');
-      loadMessages();
+      loadMessages(true);
       connectWebSocket();
     } else {
       inputBar.container.style.display = 'none';
@@ -538,6 +573,30 @@ function init(): void {
       if (welcomeMessage) saveMessage(welcomeMessage, 'bot', 'welcomeMessage');
       loadMessages();
       connectWebSocket();
+
+      // Send lead context to bot so it doesn't re-ask for collected info
+      if (lead) {
+        const parts: string[] = [];
+        if (lead.name) parts.push(`Name: ${lead.name}`);
+        if (lead.email) parts.push(`Email: ${lead.email}`);
+        if (lead.phone) parts.push(`Phone: ${lead.phone}`);
+        if (lead.zip) parts.push(`Zip: ${lead.zip}`);
+        if (parts.length > 0) {
+          const contextMsg = `[System: The visitor has already provided their details via the registration form. ${parts.join(', ')}. Do not ask for this information again. Greet them by name and ask how you can help.]`;
+          const sendContext = (): void => {
+            if (ws.readyState === WebSocket.OPEN) {
+              ws.send({
+                message: contextMsg,
+                message_type: 'text',
+                room_name: chatID,
+              });
+            } else if (ws.readyState === WebSocket.CONNECTING) {
+              setTimeout(sendContext, 200);
+            }
+          };
+          setTimeout(sendContext, 500);
+        }
+      }
     });
 
     // Hide all widget content, show form
