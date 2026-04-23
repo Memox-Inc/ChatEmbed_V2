@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run build
+
+      - name: Check bundle size
+        run: |
+          RAW_SIZE=$(stat -c%s dist/chat-embed.js)
+          GZIP_SIZE=$(gzip -c dist/chat-embed.js | wc -c)
+          echo "Raw: ${RAW_SIZE} bytes, Gzip: ${GZIP_SIZE} bytes"
+          if [ "$RAW_SIZE" -gt 153600 ]; then
+            echo "::error::Bundle too large: ${RAW_SIZE} bytes raw (limit: 150KB)"
+            exit 1
+          fi
+          if [ "$GZIP_SIZE" -gt 51200 ]; then
+            echo "::error::Bundle too large: ${GZIP_SIZE} bytes gzip (limit: 50KB)"
+            exit 1
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: chat-embed
+          path: dist/chat-embed.js

@@ -1,0 +1,38 @@
+name: Set Active Version
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version tag to set as active (e.g. v3.0.0, v3.0.1)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  set-active:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify tag exists
+        run: |
+          if ! git ls-remote --tags origin | grep -q "refs/tags/${{ inputs.version }}"; then
+            echo "::error::Tag ${{ inputs.version }} does not exist"
+            exit 1
+          fi
+
+      - name: Update latest.json
+        run: |
+          echo '{"version":"${{ inputs.version }}","url":"https://cdn.jsdelivr.net/gh/Memox-Inc/ChatEmbed_V2@${{ inputs.version }}/dist/chat-embed.js","updated":"'$(date -u +%Y-%m-%dT%H:%M:%SZ)'"}' > latest.json
+
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add latest.json
+          git diff --cached --quiet && echo "No changes" && exit 0
+          git commit -m "chore: set active version to ${{ inputs.version }}"
+          git push

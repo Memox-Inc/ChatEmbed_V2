@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chat Embed V3 — Test Page</title>
+  <style>
+    body { font-family: system-ui, sans-serif; padding: 40px; background: #f5f5f5; }
+    h1 { margin-bottom: 16px; }
+    .controls { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 24px; }
+    .controls button {
+      padding: 8px 16px; border-radius: 6px; border: 1px solid #ccc;
+      background: white; cursor: pointer; font-size: 14px;
+    }
+    .controls button:hover { background: #f0f0f0; }
+    .inline-container {
+      width: 400px; height: 600px; border: 2px dashed #ccc; border-radius: 12px;
+      display: none; margin-top: 16px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Chat Embed V3 Test Page</h1>
+  <p>Test the widget in floating and inline modes. No API keys required for UI testing.</p>
+
+  <div class="controls">
+    <button onclick="window.openChat()">Open Chat</button>
+    <button onclick="window.closeChat()">Close Chat</button>
+    <button onclick="window.toggleChat()">Toggle Chat</button>
+    <button onclick="switchToInline()">Switch to Inline Mode</button>
+    <button onclick="switchToFloating()">Switch to Floating Mode</button>
+    <button onclick="toggleLeadCapture()">Toggle Lead Capture</button>
+  </div>
+
+  <div id="inline-host" class="inline-container"></div>
+
+  <script>
+    // Test config — uses localhost URLs (no real backend needed for UI testing)
+    window.MemoxChatConfig = {
+      title: 'Test Bot',
+      apiUrl: 'http://localhost:8000/api/v1/',
+      socketUrl: 'ws://localhost:8000',
+      baseUrl: 'http://localhost:8000/api/v1/chat/',
+      token: 'test-token-123',
+      org_id: '1',
+      welcomeMessage: 'Hi there! I am a test bot. How can I help you today?',
+      leadCapture: true,
+      quickQuestions: ['What do you do?', 'Tell me about pricing', 'Talk to a human'],
+      mode: 'floating',
+      theme: {
+        primary: '#8349FF',
+        sendBtnBg: '#8349FF',
+        sendBtnHover: '#6C2BD9',
+        headerStyle: {
+          backgroundColor: 'linear-gradient(135deg, #8349FF, #6C2BD9)',
+        },
+      },
+    };
+
+    let currentMode = 'floating';
+    let leadCaptureOn = true;
+
+    function switchToInline() {
+      document.getElementById('inline-host').style.display = 'block';
+      alert('Inline mode requires page reload with mode: "inline" config. Refresh the page after changing config.');
+    }
+
+    function switchToFloating() {
+      document.getElementById('inline-host').style.display = 'none';
+      alert('Floating mode is the default. Refresh the page if you changed to inline.');
+    }
+
+    function toggleLeadCapture() {
+      leadCaptureOn = !leadCaptureOn;
+      alert('Lead capture is now: ' + (leadCaptureOn ? 'ON' : 'OFF') + '. Refresh page to apply.');
+      window.MemoxChatConfig.leadCapture = leadCaptureOn;
+    }
+  </script>
+  <script type="module" src="/src/index.ts"></script>
+</body>
+</html>
