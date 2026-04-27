@@ -17,6 +17,103 @@
         initializeChatEmbed();
     }
 
+    // === PostHog analytics module (fire-and-forget) ===
+    var __mmxAnalytics = (function () {
+        var apiKey = null;
+        var host = 'https://us.i.posthog.com';
+        var orgId = null;
+        var agentId = null;
+        var distinctId = null;
+        var utmProps = {};
+
+        function readUtmFromUrl() {
+            try {
+                var params = new URLSearchParams(window.location.search);
+                var keys = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'];
+                var out = {};
+                for (var i = 0; i < keys.length; i++) {
+                    var v = params.get(keys[i]);
+                    if (v) out[keys[i]] = v;
+                }
+                return out;
+            } catch (e) {
+                return {};
+            }
+        }
+
+        function getOrCreateDistinctId() {
+            try {
+                var key = 'mmx_chat_distinct_id';
+                var existing = localStorage.getItem(key);
+                if (existing) return existing;
+                // RFC4122-ish v4
+                var id = 'mmx-' + 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+                    var r = Math.random() * 16 | 0;
+                    return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+                });
+                localStorage.setItem(key, id);
+                return id;
+            } catch (e) {
+                return 'mmx-fallback-' + Date.now();
+            }
+        }
+
+        function init(opts) {
+            opts = opts || {};
+            apiKey = opts.apiKey || null;
+            host = opts.host || 'https://us.i.posthog.com';
+            orgId = opts.orgId || null;
+            agentId = opts.agentId || null;
+            distinctId = getOrCreateDistinctId();
+            utmProps = readUtmFromUrl();
+        }
+
+        function capture(eventName, additionalProps) {
+            if (!apiKey) return; // no-op if not configured
+            try {
+                var props = {
+                    org_id: orgId,
+                    agent_id: agentId,
+                    page_url: window.location.href,
+                    page_path: window.location.pathname,
+                    page_title: document.title,
+                    referrer: document.referrer || null
+                };
+                // merge UTM
+                for (var k in utmProps) {
+                    if (Object.prototype.hasOwnProperty.call(utmProps, k)) props[k] = utmProps[k];
+                }
+                // merge additional
+                if (additionalProps) {
+                    for (var k2 in additionalProps) {
+                        if (Object.prototype.hasOwnProperty.call(additionalProps, k2)) props[k2] = additionalProps[k2];
+                    }
+                }
+                var body = JSON.stringify({
+                    api_key: apiKey,
+                    event: eventName,
+                    distinct_id: distinctId,
+                    properties: props,
+                    timestamp: new Date().toISOString()
+                });
+                // Use fetch with keepalive so it survives page unload; fall back silently
+                if (window.fetch) {
+                    fetch(host.replace(/\/$/, '') + '/capture/', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: body,
+                        keepalive: true,
+                        mode: 'no-cors'
+                    }).catch(function () { /* swallow */ });
+                }
+            } catch (e) {
+                // Silent failure — analytics must never break the widget
+            }
+        }
+
+        return { init: init, capture: capture };
+    })();
+
     function initializeChatEmbed() {
         var defaultConfig = {
             title: 'Chat',
@@ -115,6 +212,13 @@
         var leadCapture = config.leadCapture !== undefined ? config.leadCapture : true; // Default to true if not specified
         var ngrok = config.ngrok ?? false
         var isMobileDevice = config.isMobileDevice ?? false
+
+        __mmxAnalytics.init({
+            apiKey: config.posthogApiKey,
+            host: config.posthogHost,
+            orgId: config.org_id,
+            agentId: config.agent_id
+        });
 
         var currentSocket = null;
         var heartBeatInterval = null;
@@ -2556,6 +2660,10 @@
                 leads.push(leadData);
                 localStorage.setItem('simple-chat-leads', JSON.stringify(leads));
 
+                __mmxAnalytics.capture('chat_lead_captured', {
+                    has_phone: !!(leadData && leadData.phone_number),
+                    has_zip: !!(leadData && leadData.zip_code)
+                });
                 onComplete(leadData);
                 sendMessage(`${nameInput.value} ${emailInput.value} ${normalizePhoneE164(phoneInput.value, selectedCountry.dial)} ${zipInput.value}`);
 
@@ -2808,6 +2916,7 @@
             if (chatOpen) {
                 chatContainer.style.display = 'flex';
                 chatToggle.style.display = 'none';
+                __mmxAnalytics.capture('chat_opened');
 
                 // Non-blocking session validation when widget opens
                 var storedSession = localStorage.getItem('simple-chat-session');
@@ -2845,6 +2954,7 @@
 
         // Add both toggle button and chat container to body
         document.body.appendChild(chatToggle);
+        __mmxAnalytics.capture('chat_widget_loaded');
 
         // Expose chat control functions globally
         window.openChat = function () {
@@ -2852,6 +2962,7 @@
                 chatOpen = true;
                 chatContainer.style.display = 'flex';
                 chatToggle.style.display = 'none';
+                __mmxAnalytics.capture('chat_opened');
                 setTimeout(function () {
                     forceScrollToBottom();
                 }, 150);
