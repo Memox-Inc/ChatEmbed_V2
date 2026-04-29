@@ -15,29 +15,36 @@ function buildHeaders(config: ChatEmbedConfig): Record<string, string> {
   return headers;
 }
 
+export type SessionValidation = 'valid' | 'closed' | 'orphaned';
+
 export async function validateSession(
   sessionChatID: string,
   config: ChatEmbedConfig,
-): Promise<boolean> {
+): Promise<SessionValidation> {
   try {
     const baseUrl = config.baseUrl;
     const token = config.token;
-    if (!baseUrl || !token || !sessionChatID) return true;
+    if (!baseUrl || !token || !sessionChatID) return 'valid';
 
     const response = await fetch(`${baseUrl}sessions/${sessionChatID}/`, {
       method: 'GET',
       headers: buildHeaders(config),
     });
 
-    if (response.status === 404) return false;
-    if (!response.ok) return true; // Fail-open on server errors
+    // 404 = the cached chatID points at a session that no longer exists
+    // server-side (DB reset, auto-cleanup, or cleared admin-side).
+    // Caller should treat this as an orphaned cache and mint a new id
+    // instead of carrying the dead UUID forward and re-404'ing on every
+    // reload.
+    if (response.status === 404) return 'orphaned';
+    if (!response.ok) return 'valid'; // Fail-open on server errors
 
     const data = await response.json();
-    if (data.status === 'close') return false;
-    return true;
+    if (data.status === 'close') return 'closed';
+    return 'valid';
   } catch (error) {
     console.log('Session validation failed, assuming valid:', error);
-    return true;
+    return 'valid';
   }
 }
 

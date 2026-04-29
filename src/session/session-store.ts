@@ -118,6 +118,18 @@ export class SessionStore {
     const session = this.getSession();
     return msgs.length > 0 && session !== null;
   }
+
+  /**
+   * True only if the visitor has actually exchanged messages with the
+   * server in this cached session — i.e. the localStorage state is more
+   * than just the always-present welcome bubble. Use this to decide
+   * whether revalidating the chatID against the backend is worthwhile;
+   * a brand-new session has no server row yet, so a GET would always
+   * 404 and pollute the console.
+   */
+  hasServerSyncedMessages(): boolean {
+    return this.getMessages().some((m) => !m.isWelcomeMessage);
+  }
 }
 
 export const sessionStore = new SessionStore();

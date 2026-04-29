@@ -1,6 +1,6 @@
 {
   "name": "chatembed-v2",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "description": "Memox Chat Embed Widget — TypeScript + Vite rewrite",
   "private": true,
   "type": "module",
