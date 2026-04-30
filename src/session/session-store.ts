@@ -1,28 +1,43 @@
 import type { StoredMessage, VisitorInfo } from '../config/types';
 
-const KEYS = {
-  messages: 'simple-chat-messages',
-  session: 'simple-chat-session',
-  leads: 'simple-chat-leads',
-  userGuid: 'simple-chat-user-guid',
-};
+const DEFAULT_PREFIX = 'simple-chat';
 
 export class SessionStore {
+  private prefix: string = DEFAULT_PREFIX;
+
+  /**
+   * Scope all localStorage keys to a custom prefix so multiple chat
+   * embeds can coexist on the same origin without sharing visitor /
+   * session state. Call this once during init, before any get/set.
+   */
+  setNamespace(prefix: string | undefined | null): void {
+    this.prefix = (prefix && prefix.trim()) || DEFAULT_PREFIX;
+  }
+
+  private get KEYS() {
+    return {
+      messages: `${this.prefix}-messages`,
+      session: `${this.prefix}-session`,
+      leads: `${this.prefix}-leads`,
+      userGuid: `${this.prefix}-user-guid`,
+    };
+  }
+
   // --- Messages ---
   getMessages(): StoredMessage[] {
     try {
-      return JSON.parse(localStorage.getItem(KEYS.messages) || '[]');
+      return JSON.parse(localStorage.getItem(this.KEYS.messages) || '[]');
     } catch {
       return [];
     }
   }
 
   setMessages(msgs: StoredMessage[]): void {
-    localStorage.setItem(KEYS.messages, JSON.stringify(msgs));
+    localStorage.setItem(this.KEYS.messages, JSON.stringify(msgs));
   }
 
   clearMessages(): void {
-    localStorage.removeItem(KEYS.messages);
+    localStorage.removeItem(this.KEYS.messages);
   }
 
   pushMessage(msg: StoredMessage): void {
@@ -54,7 +69,7 @@ export class SessionStore {
   // --- Session ---
   getSession(): { chatID?: string; visitorInfo?: VisitorInfo; timestamp?: string; handoverOccurred?: boolean } | null {
     try {
-      const raw = localStorage.getItem(KEYS.session);
+      const raw = localStorage.getItem(this.KEYS.session);
       return raw ? JSON.parse(raw) : null;
     } catch {
       return null;
@@ -62,7 +77,7 @@ export class SessionStore {
   }
 
   setSession(data: Record<string, unknown>): void {
-    localStorage.setItem(KEYS.session, JSON.stringify(data));
+    localStorage.setItem(this.KEYS.session, JSON.stringify(data));
   }
 
   updateSession(patch: Record<string, unknown>): void {
@@ -71,13 +86,13 @@ export class SessionStore {
   }
 
   clearSession(): void {
-    localStorage.removeItem(KEYS.session);
+    localStorage.removeItem(this.KEYS.session);
   }
 
   // --- Leads ---
   getLeads(): unknown[] {
     try {
-      return JSON.parse(localStorage.getItem(KEYS.leads) || '[]');
+      return JSON.parse(localStorage.getItem(this.KEYS.leads) || '[]');
     } catch {
       return [];
     }
@@ -86,16 +101,16 @@ export class SessionStore {
   pushLead(lead: Record<string, unknown>): void {
     const leads = this.getLeads();
     leads.push(lead);
-    localStorage.setItem(KEYS.leads, JSON.stringify(leads));
+    localStorage.setItem(this.KEYS.leads, JSON.stringify(leads));
   }
 
   clearLeads(): void {
-    localStorage.removeItem(KEYS.leads);
+    localStorage.removeItem(this.KEYS.leads);
   }
 
   // --- User GUID ---
   clearUserGuid(): void {
-    localStorage.removeItem(KEYS.userGuid);
+    localStorage.removeItem(this.KEYS.userGuid);
   }
 
   // --- Full reset ---

@@ -166,6 +166,15 @@ export interface ChatEmbedConfig {
   ngrok?: boolean;
   isMobileDevice?: boolean;
   mode?: 'floating' | 'inline';
+  /**
+   * localStorage prefix. Defaults to ``simple-chat``. Set this to a
+   * unique string per embed instance when more than one chat widget
+   * may run on the same origin (e.g. ``simple-chat-website`` for the
+   * marketing site widget vs ``simple-chat-demo-outbound-sales`` for
+   * a per-persona demo embed). Without it, the two instances share
+   * messages/session/visitor across the whole origin.
+   */
+  storageNamespace?: string;
 }
 
 export interface StoredMessage {

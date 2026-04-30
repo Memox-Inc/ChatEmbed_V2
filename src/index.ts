@@ -35,6 +35,10 @@ declare global {
 function init(): void {
   const userConfig = window.MemoxChatConfig || window.SimpleChatEmbedConfig || {};
   const config = mergeConfig(defaultConfig, userConfig);
+  // Scope localStorage to this embed instance — must run before any
+  // sessionStore reads/writes so multiple widgets on the same origin
+  // (marketing site widget + per-persona demo embed) don't share state.
+  sessionStore.setNamespace(config.storageNamespace);
   const theme = config.theme || {};
   const welcomeMessage = config.welcomeMessage || null;
   const welcomeMessageStyle = config.welcomeMessageStyle as WelcomeMessageStyle | undefined;
