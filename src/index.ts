@@ -35,6 +35,10 @@ declare global {
 function init(): void {
   const userConfig = window.MemoxChatConfig || window.SimpleChatEmbedConfig || {};
   const config = mergeConfig(defaultConfig, userConfig);
+  // Scope localStorage to this embed instance — must run before any
+  // sessionStore reads/writes so multiple widgets on the same origin
+  // (marketing site widget + per-persona demo embed) don't share state.
+  sessionStore.setNamespace(config.storageNamespace);
   const theme = config.theme || {};
   const welcomeMessage = config.welcomeMessage || null;
   const welcomeMessageStyle = config.welcomeMessageStyle as WelcomeMessageStyle | undefined;
@@ -125,6 +129,28 @@ function init(): void {
   if (config.mode !== 'inline') {
     launcher = createLauncher(config, handleToggle);
     root.appendChild(launcher);
+  }
+
+  // Close-on-outside-click (floating mode only). Inline mode stays
+  // mounted inside the page layout — clicking elsewhere on the demo
+  // page should not collapse the chat.
+  //
+  // The widget + launcher live inside a closed shadow root, so any
+  // click inside the chat panel is *retargeted* to the shadow host
+  // element on its way up to ``document``. ``widget.contains(target)``
+  // returns false in that case (the host is the shadow boundary, not
+  // the panel) and the chat closed on every input click. Test against
+  // ``host`` instead — that's the actual element ``event.target``
+  // resolves to for any click inside the shadow tree.
+  if (config.mode !== 'inline' && config.closeOnOutsideClick !== false) {
+    document.addEventListener('mousedown', (event) => {
+      if (!chatOpen) return;
+      const target = event.target as Node | null;
+      if (!target) return;
+      // Click landed on (or inside) the shadow host → it's our chat.
+      if (host.contains(target) || target === host) return;
+      handleClose();
+    });
   }
 
   // --- Core functions ---
@@ -233,10 +259,26 @@ function init(): void {
       chatID = session.chatID;
       visitorInfo = session.visitorInfo;
 
-      const isValid = await validateSession(chatID, config);
-      if (!isValid) {
-        showSessionClosedNotification('This chat session has been closed.');
-        return;
+      // Only validate sessions that have actually been used (i.e. the
+      // visitor has exchanged messages — not just the auto-pushed
+      // welcome bubble). A fresh chatID was just minted and the server
+      // creates its row on the first WS message, so a GET would always
+      // 404 and spam the console.
+      if (sessionStore.hasServerSyncedMessages()) {
+        const result = await validateSession(chatID, config);
+        if (result === 'closed') {
+          showSessionClosedNotification('This chat session has been closed.');
+          return;
+        }
+        if (result === 'orphaned') {
+          // Cached chatID points at a session the server doesn't have
+          // (DB reset, cleanup, etc.). Drop the stale state and let the
+          // ``if (!chatID)`` block below mint a fresh id — otherwise the
+          // dead UUID re-validates on every reload and 404s the console.
+          sessionStore.clearAll();
+          chatID = null;
+          visitorInfo = null;
+        }
       }
     }
 
@@ -498,11 +540,17 @@ function init(): void {
       widget.classList.remove('mcx-widget--closing');
       if (launcher) launcher.style.display = 'none';
 
-      // Validate session on open
+      // Validate session on open — skip for fresh sessions whose only
+      // message is the auto-pushed welcome (server hasn't created the
+      // row yet, GET would 404 and add console noise).
       const session = sessionStore.getSession();
-      if (session?.chatID) {
-        validateSession(session.chatID, config).then((isValid) => {
-          if (!isValid) showSessionClosedNotification('This chat session has been closed.');
+      if (session?.chatID && sessionStore.hasServerSyncedMessages()) {
+        validateSession(session.chatID, config).then((result) => {
+          if (result === 'closed') {
+            showSessionClosedNotification('This chat session has been closed.');
+          } else if (result === 'orphaned') {
+            sessionStore.clearAll();
+          }
         });
       }
 
