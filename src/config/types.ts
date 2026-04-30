@@ -175,6 +175,13 @@ export interface ChatEmbedConfig {
    * messages/session/visitor across the whole origin.
    */
   storageNamespace?: string;
+  /**
+   * In ``floating`` mode, close the chat panel when the visitor clicks
+   * outside of it (and outside the launcher button). Defaults to true.
+   * Has no effect in ``inline`` mode — the demo page mounts the panel
+   * inside the page layout and shouldn't react to outside clicks.
+   */
+  closeOnOutsideClick?: boolean;
 }
 
 export interface StoredMessage {

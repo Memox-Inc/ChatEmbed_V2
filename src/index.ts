@@ -131,6 +131,28 @@ function init(): void {
     root.appendChild(launcher);
   }
 
+  // Close-on-outside-click (floating mode only). Inline mode stays
+  // mounted inside the page layout — clicking elsewhere on the demo
+  // page should not collapse the chat.
+  //
+  // The widget + launcher live inside a closed shadow root, so any
+  // click inside the chat panel is *retargeted* to the shadow host
+  // element on its way up to ``document``. ``widget.contains(target)``
+  // returns false in that case (the host is the shadow boundary, not
+  // the panel) and the chat closed on every input click. Test against
+  // ``host`` instead — that's the actual element ``event.target``
+  // resolves to for any click inside the shadow tree.
+  if (config.mode !== 'inline' && config.closeOnOutsideClick !== false) {
+    document.addEventListener('mousedown', (event) => {
+      if (!chatOpen) return;
+      const target = event.target as Node | null;
+      if (!target) return;
+      // Click landed on (or inside) the shadow host → it's our chat.
+      if (host.contains(target) || target === host) return;
+      handleClose();
+    });
+  }
+
   // --- Core functions ---
 
   function saveMessage(text: string, sender: StoredMessage['sender'], type = ''): void {
