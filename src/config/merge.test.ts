@@ -41,6 +41,8 @@ describe('deepMerge — prototype-pollution defence', () => {
 
     // constructor should not be overwritten with a plain object
     expect(result['injected']).toBeUndefined();
+    // The 'constructor' key must not have been written as an own property on result.
+    expect(result.constructor).toBe(Object);
     expect(Object.getPrototypeOf(result)).toBe(Object.prototype);
   });
 
@@ -50,6 +52,8 @@ describe('deepMerge — prototype-pollution defence', () => {
     const result = deepMerge({} as Record<string, unknown>, malicious);
 
     expect(result['xss']).toBeUndefined();
+    // For consistency with the __proto__ tests: the prototype chain must be intact.
+    expect(Object.getPrototypeOf(result)).toBe(Object.prototype);
   });
 
   it('blocks deeply-nested __proto__ injection (result prototype must not be hijacked)', () => {
