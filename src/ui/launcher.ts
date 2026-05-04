@@ -11,11 +11,12 @@ const CLOSE_SVG = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" s
 
 // Allow only http(s) and data: URLs for launcher images. Server uploads
 // always produce https URLs; data: lets us inline tiny placeholders for
-// previews. Anything else (javascript:, file:, …) is rejected and the
-// launcher falls through to the bubble icon.
+// previews. For data: URLs, only allow safe raster formats (png, jpeg, gif, webp).
+// Reject data:image/svg+xml to prevent embedded JavaScript execution.
+// Anything else (javascript:, file:, …) is rejected and the launcher falls through to the bubble icon.
 function isSafeImageUrl(url: string | null | undefined): url is string {
   if (!url) return false;
-  return /^https?:\/\//.test(url) || /^data:image\//.test(url);
+  return /^https?:\/\//.test(url) || /^data:image\/(png|jpeg|gif|webp);/.test(url);
 }
 
 function appendBubbleIcon(parent: HTMLElement): void {
@@ -81,14 +82,15 @@ export function createLauncher(
   // V1 embeds that haven't been migrated yet. New embeds should use
   // launcher.icon_type + launcher.custom_icon_url / photo_url.
   //
-  // Security: only accept URLs that pass isSafeImageUrl (http(s) or data:image/)
-  // AND are either a data:image/ URL or end with a known image extension.
+  // Security: only accept URLs that pass isSafeImageUrl (http(s) or data:image/*)
+  // AND are either a safe data:image/ URL or end with a known image extension.
+  // Reject data:image/svg+xml to prevent embedded JavaScript execution.
   // Any other value (raw HTML, javascript: schemes, plain text) is rejected
   // and falls through to renderIcon so the launcher is never left empty.
   const isValidCustomIcon =
     config.customIcon &&
     isSafeImageUrl(config.customIcon) &&
-    (/^data:image\//.test(config.customIcon) || /\.(png|jpg|jpeg|gif|svg|webp)$/i.test(config.customIcon));
+    (/^data:image\/(png|jpeg|gif|webp);/.test(config.customIcon) || /\.(png|jpg|jpeg|gif|webp)$/i.test(config.customIcon));
 
   if (isValidCustomIcon) {
     const img = document.createElement('img');

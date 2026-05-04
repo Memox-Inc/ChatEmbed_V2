@@ -24,7 +24,9 @@ const MAX_CHIPS = 3;
 
 function isSafeImageUrl(url: string | null | undefined): url is string {
   if (!url) return false;
-  return /^https?:\/\//.test(url) || /^data:image\//.test(url);
+  // Only allow http(s) URLs and safe raster data: formats (png, jpeg, gif, webp).
+  // Reject data:image/svg+xml to prevent embedded JavaScript execution.
+  return /^https?:\/\//.test(url) || /^data:image\/(png|jpeg|gif|webp);/.test(url);
 }
 
 function initialsOf(name: string): string {

@@ -177,4 +177,34 @@ describe('mountPersonaCard', () => {
     cleanup();
     expect(document.querySelector('.mcx-persona-card')).toBeNull();
   });
+
+  it('rejects data:image/svg+xml photo URL and falls back to initials', () => {
+    const cfg = makeConfig({
+      launcher: {
+        ...makeConfig().launcher,
+        photo_url: 'data:image/svg+xml;base64,PHN2Zy...',
+      },
+    });
+    mountPersonaCard(cfg, document.body, {});
+    // Must NOT render the photo image
+    expect(document.querySelector('img.mcx-persona-photo')).toBeNull();
+    // Must render initials instead
+    expect(document.querySelector('.mcx-persona-initials')).toBeTruthy();
+    expect(document.querySelector('.mcx-persona-initials')?.textContent).toBe('S');
+  });
+
+  it('accepts data:image/png photo URL', () => {
+    const cfg = makeConfig({
+      launcher: {
+        ...makeConfig().launcher,
+        photo_url: 'data:image/png;base64,iVBORw0K',
+      },
+    });
+    mountPersonaCard(cfg, document.body, {});
+    const img = document.querySelector('img.mcx-persona-photo') as HTMLImageElement | null;
+    expect(img).toBeTruthy();
+    expect(img?.src).toBe('data:image/png;base64,iVBORw0K');
+    // Must NOT render initials when photo is valid
+    expect(document.querySelector('.mcx-persona-initials')).toBeNull();
+  });
 });

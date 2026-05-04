@@ -211,5 +211,59 @@ describe('createLauncher', () => {
       expect(el.querySelector('svg.mcx-launcher-icon')).toBeTruthy();
       expect(el.querySelector('img.mcx-launcher-img')).toBeNull();
     });
+
+    it('rejects data:image/svg+xml on photo_url', () => {
+      const config: ChatEmbedConfig = {
+        launcher: {
+          form_factor: 'round',
+          icon_type: 'photo',
+          photo_url: 'data:image/svg+xml;base64,PHN2Zy...', // SVG with onload risk
+        },
+      };
+      const el = createLauncher(config, vi.fn());
+      // Must fall back to bubble — svg+xml is not allowed
+      expect(el.querySelector('img.mcx-launcher-photo-img')).toBeNull();
+      expect(el.classList.contains('mcx-launcher--photo')).toBe(false);
+      expect(el.querySelector('svg.mcx-launcher-icon')).toBeTruthy();
+    });
+
+    it('rejects data:image/svg+xml on custom_icon_url', () => {
+      const config: ChatEmbedConfig = {
+        launcher: {
+          form_factor: 'round',
+          icon_type: 'custom',
+          custom_icon_url: 'data:image/svg+xml;base64,PHN2Zy...',
+        },
+      };
+      const el = createLauncher(config, vi.fn());
+      // Must fall back to bubble — svg+xml is not allowed
+      expect(el.querySelector('img.mcx-launcher-custom-img')).toBeNull();
+      expect(el.querySelector('svg.mcx-launcher-icon')).toBeTruthy();
+    });
+
+    it('rejects data:image/svg+xml on customIcon (legacy)', () => {
+      const config: ChatEmbedConfig = {
+        customIcon: 'data:image/svg+xml;base64,PHN2Zy...',
+      };
+      const el = createLauncher(config, vi.fn());
+      // Must render the bubble SVG fallback
+      expect(el.querySelector('svg.mcx-launcher-icon')).toBeTruthy();
+      expect(el.querySelector('img.mcx-launcher-img')).toBeNull();
+    });
+
+    it('accepts data:image/png on photo_url', () => {
+      const config: ChatEmbedConfig = {
+        launcher: {
+          form_factor: 'round',
+          icon_type: 'photo',
+          photo_url: 'data:image/png;base64,iVBORw0K',
+        },
+      };
+      const el = createLauncher(config, vi.fn());
+      const img = el.querySelector('img.mcx-launcher-photo-img') as HTMLImageElement | null;
+      expect(img).toBeTruthy();
+      expect(img?.src).toBe('data:image/png;base64,iVBORw0K');
+      expect(el.classList.contains('mcx-launcher--photo')).toBe(true);
+    });
   });
 });
