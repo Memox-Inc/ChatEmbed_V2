@@ -1,8 +1,9 @@
 // Teaser bubble attractor — small "Need help?" nudge that floats next
-// to the launcher after a configurable delay. Suppressed when:
-//   - the pill launcher is active (the pill already carries text)
-//   - the persona attractor is enabled (a richer version of the nudge)
-//   - teaser.text is missing/empty
+// to the launcher after a configurable delay.
+//
+// Suppression (pill, persona precedence) is the orchestrator's
+// responsibility (src/index.ts). This module only guards against its
+// own missing/empty config (teaser.enabled=false, teaser.text="").
 //
 // Returns a ``cleanup()`` so the host can cancel a pending timer or
 // remove the rendered teaser without leaking listeners between
@@ -22,8 +23,6 @@ export function mountTeaser(config: ChatEmbedConfig, host: HTMLElement): TeaserC
   // store the result without a null check.
   const noop: TeaserCleanup = () => {};
   if (!teaser || !teaser.enabled || !teaser.text) return noop;
-  if (launcher.form_factor === 'pill') return noop;
-  if (launcher.attractors?.persona?.enabled) return noop;
 
   const delayMs = (teaser.show_after_seconds ?? DEFAULT_DELAY_SECONDS) * 1000;
 

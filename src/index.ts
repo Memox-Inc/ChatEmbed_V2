@@ -158,11 +158,54 @@ async function init(): Promise<void> {
     applyPulse(launcher, config);
     clearBadge = mountBadge(launcher, config);
     root.appendChild(launcher);
-    // Attractor: teaser bubble. Mounts inside the same shadow root so
-    // styles stay scoped to the widget. The mount module decides whether
-    // to render based on launcher.attractors.teaser config; suppression
-    // rules (pill, persona) live there.
-    mountTeaser(config, root as unknown as HTMLElement);
+
+    // ── Attractor precedence ──────────────────────────────────────────
+    // Only ONE primary attractor (teaser OR persona card) may render at
+    // a time. The rules below are evaluated top-to-bottom; the first
+    // match wins and the others are skipped.
+    //
+    //   1. persona enabled + has name + has message → mount persona only
+    //   2. pill form factor                         → mount neither
+    //      (the pill already carries label text; a second attractor
+    //       would be redundant. Persona is NOT suppressed by pill —
+    //       persona is richer than the pill's inline text and takes
+    //       priority in rule 1 above.)
+    //   3. teaser enabled + has text               → mount teaser only
+    //   4. otherwise                               → mount neither
+    //
+    // Adding a future attractor? Insert a new rule here in the right
+    // priority order — do NOT add suppression checks inside the
+    // individual attractor modules.
+    // ─────────────────────────────────────────────────────────────────
+    const launcherCfg = config.launcher || {};
+    const personaCfg = launcherCfg.attractors?.persona;
+    const teaserCfg = launcherCfg.attractors?.teaser;
+
+    type PrimaryAttractor = 'persona' | 'teaser' | null;
+    function pickPrimaryAttractor(): PrimaryAttractor {
+      if (personaCfg?.enabled && personaCfg.name && personaCfg.message) return 'persona';
+      if (launcherCfg.form_factor === 'pill') return null;
+      if (teaserCfg?.enabled && teaserCfg.text) return 'teaser';
+      return null;
+    }
+
+    const primary = pickPrimaryAttractor();
+    if (primary === 'persona') {
+      mountPersonaCard(config, root as unknown as HTMLElement, {
+        onOpen: () => {
+          if (!chatOpen) handleToggle();
+        },
+        onChipClick: (label) => {
+          // Defer until the open animation has settled so the input is
+          // visible and focusable.
+          setTimeout(() => inputBar.setValue(label), 220);
+        },
+      });
+    } else if (primary === 'teaser') {
+      mountTeaser(config, root as unknown as HTMLElement);
+    }
+    // primary === null → mount neither
+
     // Smart auto-open: opens the chat once per session when both time
     // and scroll thresholds are met. The handle exposes
     // notifyManualOpen() so handleToggle can suppress a pending auto-fire
@@ -170,20 +213,6 @@ async function init(): Promise<void> {
     autoOpenHandle = mountSmartAutoOpen(config, () => {
       nextOpenTrigger = 'auto_open';
       handleToggle();
-    });
-    // Persona card: rich attractor (photo + name + message + optional
-    // chips). Mounts inside the shadow root so styles stay scoped.
-    // Chip clicks both open the chat and pre-fill the input field with
-    // the chip's label so the visitor can edit before sending.
-    mountPersonaCard(config, root as unknown as HTMLElement, {
-      onOpen: () => {
-        if (!chatOpen) handleToggle();
-      },
-      onChipClick: (label) => {
-        // Defer until the open animation has settled so the input is
-        // visible and focusable.
-        setTimeout(() => inputBar.setValue(label), 220);
-      },
     });
   }
 

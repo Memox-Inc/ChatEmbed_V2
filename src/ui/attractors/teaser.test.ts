@@ -1,7 +1,8 @@
 /**
  * Teaser bubble attractor — small "Need help?" nudge that appears next
- * to the launcher after a delay. Tests cover the timing, suppression
- * rules (pill form, persona attractor), dismiss button, and cleanup.
+ * to the launcher after a delay. Tests cover the timing, dismiss button,
+ * and cleanup. Suppression rules (pill form, persona attractor) are
+ * tested in the orchestrator (index.ts) — see HARD-8.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ChatEmbedConfig } from '../../config/types';
@@ -103,34 +104,6 @@ describe('mountTeaser', () => {
   it('does not render when text is missing', () => {
     const cfg = baseConfig({
       attractors: { teaser: { enabled: true, text: '', show_after_seconds: 1 } },
-    });
-    mountTeaser(cfg, document.body);
-    vi.advanceTimersByTime(5000);
-    expect(document.querySelector('.mcx-teaser')).toBeNull();
-  });
-
-  it('suppresses teaser when pill form factor is active', () => {
-    const cfg: ChatEmbedConfig = {
-      launcher: {
-        form_factor: 'pill',
-        pill_text: 'Chat',
-        icon_type: 'bubble',
-        attractors: {
-          teaser: { enabled: true, text: 'Need help?', show_after_seconds: 1, dismissible: true },
-        },
-      },
-    };
-    mountTeaser(cfg, document.body);
-    vi.advanceTimersByTime(5000);
-    expect(document.querySelector('.mcx-teaser')).toBeNull();
-  });
-
-  it('suppresses teaser when persona attractor is enabled', () => {
-    const cfg = baseConfig({
-      attractors: {
-        teaser: { enabled: true, text: 'Need help?', show_after_seconds: 1, dismissible: true },
-        persona: { enabled: true, name: 'Sarah', message: 'Hi there', show_chips: true },
-      },
     });
     mountTeaser(cfg, document.body);
     vi.advanceTimersByTime(5000);
