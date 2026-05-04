@@ -124,4 +124,12 @@ describe('fetchInitConfig', () => {
 
     vi.useRealTimers();
   });
+
+  it('handles malformed JSON in 200 response (CDN error page)', async () => {
+    // Simulate CDN/proxy returning HTTP 200 with HTML error page instead of JSON
+    fetchMock.mockResolvedValue(new Response('<html>503</html>', { status: 200 }));
+    const result = await fetchInitConfig('emb_test123', 'https://api.memox.io');
+    expect(result).toEqual({});
+    expect(console.warn).toHaveBeenCalled();
+  });
 });

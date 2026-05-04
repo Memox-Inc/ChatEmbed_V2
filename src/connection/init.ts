@@ -53,7 +53,12 @@ export async function fetchInitConfig(
     });
 
     if (!resp.ok) throw new Error(`init failed: ${resp.status}`);
-    const data: InitResponse = await resp.json();
+    let data: InitResponse;
+    try {
+      data = await resp.json();
+    } catch (parseError) {
+      throw new Error(`init response was not valid JSON: ${parseError}`);
+    }
     return data.config || {};
   } catch (e) {
     // eslint-disable-next-line no-console
