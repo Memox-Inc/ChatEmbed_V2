@@ -165,6 +165,10 @@ export interface ChatEmbedConfig {
   position?: 'left' | 'right';
   ngrok?: boolean;
   isMobileDevice?: boolean;
+  /** PostHog project API key. When unset, no analytics events fire. */
+  posthogApiKey?: string;
+  /** PostHog host (defaults to https://us.i.posthog.com). */
+  posthogHost?: string;
   mode?: 'floating' | 'inline';
   /**
    * localStorage prefix. Defaults to ``simple-chat``. Set this to a

@@ -19,6 +19,7 @@ import { createQuickQuestions } from './ui/input/quick-questions';
 import { createLeadCaptureForm, type LeadData } from './ui/forms/lead-capture-form';
 import { createLauncher } from './ui/launcher';
 import { normalizePhoneE164 } from './ui/forms/validation';
+import { initAnalytics, capture } from './analytics/posthog';
 
 declare global {
   interface Window {
@@ -39,6 +40,16 @@ function init(): void {
   // sessionStore reads/writes so multiple widgets on the same origin
   // (marketing site widget + per-persona demo embed) don't share state.
   sessionStore.setNamespace(config.storageNamespace);
+  // Wire PostHog analytics (no-op when ``posthogApiKey`` is unset).
+  // Fired here, before any UI work, so ``chat_widget_loaded`` lands as
+  // soon as the embed bootstraps.
+  initAnalytics({
+    apiKey: config.posthogApiKey,
+    host: config.posthogHost,
+    orgId: config.org_id,
+    agentId: config.agent_id,
+  });
+  capture('chat_widget_loaded');
   const theme = config.theme || {};
   const welcomeMessage = config.welcomeMessage || null;
   const welcomeMessageStyle = config.welcomeMessageStyle as WelcomeMessageStyle | undefined;
@@ -538,6 +549,7 @@ function init(): void {
       handleClose();
     } else {
       chatOpen = true;
+      capture('chat_opened');
       widget.style.display = 'flex';
       widget.classList.add('mcx-widget--open');
       widget.classList.remove('mcx-widget--closing');
@@ -610,6 +622,11 @@ function init(): void {
       if (lead) {
         window.SimpleChatEmbedLead = lead;
         sessionStore.pushLead(lead as unknown as Record<string, unknown>);
+
+        capture('chat_lead_captured', {
+          has_phone: !!lead.phone,
+          has_zip: !!lead.zip,
+        });
 
         visitorInfo = await createVisitor(
           sanitizeInput(lead.name),
