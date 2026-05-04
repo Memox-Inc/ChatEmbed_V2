@@ -265,5 +265,13 @@ describe('createLauncher', () => {
       expect(img?.src).toBe('data:image/png;base64,iVBORw0K');
       expect(el.classList.contains('mcx-launcher--photo')).toBe(true);
     });
+
+    it('accepts https customIcon URL with .svg extension (browser sandboxes SVG-in-img)', () => {
+      const config: ChatEmbedConfig = { customIcon: 'https://example.com/logo.svg' };
+      const el = createLauncher(config, vi.fn());
+      const img = el.querySelector('img.mcx-launcher-img');
+      expect(img).toBeTruthy();
+      expect((img as HTMLImageElement).src).toBe('https://example.com/logo.svg');
+    });
   });
 });

@@ -90,7 +90,7 @@ export function createLauncher(
   const isValidCustomIcon =
     config.customIcon &&
     isSafeImageUrl(config.customIcon) &&
-    (/^data:image\/(png|jpeg|gif|webp);/.test(config.customIcon) || /\.(png|jpg|jpeg|gif|webp)$/i.test(config.customIcon));
+    (/^data:image\/(png|jpeg|gif|webp);/.test(config.customIcon) || /\.(png|jpg|jpeg|gif|webp|svg)$/i.test(config.customIcon));
 
   if (isValidCustomIcon) {
     const img = document.createElement('img');
