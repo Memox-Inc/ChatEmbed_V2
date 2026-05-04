@@ -39,6 +39,9 @@ declare global {
     openChat?: () => void;
     closeChat?: () => void;
     toggleChat?: () => void;
+    MemoxChatWidget?: {
+      destroy: () => void;
+    };
   }
 }
 
@@ -152,14 +155,17 @@ async function init(): Promise<void> {
   let launcher: HTMLButtonElement | null = null;
   let clearBadge: AttractorHandle = { cleanup: () => {} };
   let autoOpenHandle: SmartAutoOpenHandle | null = null;
+  // Collect all mounted attractor handles so destroy() can clean them up.
+  const mountedAttractors: AttractorHandle[] = [];
   // Carries the pending open trigger from the smart-auto-open callback into
   // handleToggle(). consume() reads + clears atomically so stale values can't
   // leak into subsequent manual opens (HARD-6).
   const triggerStore = createOpenTriggerStore();
   if (config.mode !== 'inline') {
     launcher = createLauncher(config, handleToggle);
-    applyPulse(launcher, config);
+    mountedAttractors.push(applyPulse(launcher, config));
     clearBadge = mountBadge(launcher, config);
+    mountedAttractors.push(clearBadge);
     root.appendChild(launcher);
 
     // ── Attractor precedence ──────────────────────────────────────────
@@ -171,18 +177,20 @@ async function init(): Promise<void> {
     // ─────────────────────────────────────────────────────────────────
     const primary = pickPrimaryAttractor(config.launcher);
     if (primary === 'persona') {
-      mountPersonaCard(config, root as unknown as HTMLElement, {
-        onOpen: () => {
-          if (!chatOpen) handleToggle();
-        },
-        onChipClick: (label) => {
-          // Defer until the open animation has settled so the input is
-          // visible and focusable.
-          setTimeout(() => inputBar.setValue(label), 220);
-        },
-      });
+      mountedAttractors.push(
+        mountPersonaCard(config, root as unknown as HTMLElement, {
+          onOpen: () => {
+            if (!chatOpen) handleToggle();
+          },
+          onChipClick: (label) => {
+            // Defer until the open animation has settled so the input is
+            // visible and focusable.
+            setTimeout(() => inputBar.setValue(label), 220);
+          },
+        }),
+      );
     } else if (primary === 'teaser') {
-      mountTeaser(config, root as unknown as HTMLElement);
+      mountedAttractors.push(mountTeaser(config, root as unknown as HTMLElement));
     }
     // primary === null → mount neither
 
@@ -194,6 +202,7 @@ async function init(): Promise<void> {
       triggerStore.set('auto_open');
       handleToggle();
     });
+    mountedAttractors.push(autoOpenHandle);
   }
 
   // Close-on-outside-click (floating mode only). Inline mode stays
@@ -207,16 +216,35 @@ async function init(): Promise<void> {
   // the panel) and the chat closed on every input click. Test against
   // ``host`` instead — that's the actual element ``event.target``
   // resolves to for any click inside the shadow tree.
+  // Capture the listener as a named const so destroy() can remove it.
+  const onDocumentMouseDown = (event: MouseEvent): void => {
+    if (!chatOpen) return;
+    const target = event.target as Node | null;
+    if (!target) return;
+    // Click landed on (or inside) the shadow host → it's our chat.
+    if (host.contains(target) || target === host) return;
+    handleClose();
+  };
   if (config.mode !== 'inline' && config.closeOnOutsideClick !== false) {
-    document.addEventListener('mousedown', (event) => {
-      if (!chatOpen) return;
-      const target = event.target as Node | null;
-      if (!target) return;
-      // Click landed on (or inside) the shadow host → it's our chat.
-      if (host.contains(target) || target === host) return;
-      handleClose();
-    });
+    document.addEventListener('mousedown', onDocumentMouseDown);
   }
+
+  // Public destroy() — removes the mousedown listener, cleans up every
+  // mounted attractor handle, and detaches the shadow host from the DOM.
+  // Safe to call multiple times.
+  const destroy = (): void => {
+    document.removeEventListener('mousedown', onDocumentMouseDown);
+    for (const handle of mountedAttractors) {
+      try {
+        handle.cleanup();
+      } catch (e) {
+        console.warn('MemoxChatWidget: attractor cleanup failed', e);
+      }
+    }
+    mountedAttractors.length = 0;
+    host.remove();
+  };
+  window.MemoxChatWidget = { destroy };
 
   // --- Core functions ---
 
