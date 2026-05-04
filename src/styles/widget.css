@@ -46,6 +46,27 @@
   right: auto;
   left: 20px;
 }
+/* ─── Pill form factor ─────────────────────────────────────────────
+   Sits in the same bottom-right corner as the round launcher but
+   stretches to fit the pill_text label. The label is hidden when the
+   panel is open so the launcher collapses back to the close-icon. */
+.mcx-launcher--pill {
+  width: auto;
+  min-height: 56px;
+  border-radius: 28px;
+  padding: 0 22px 0 18px;
+  gap: 10px;
+}
+.mcx-launcher-pill-text {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: #fff;
+  white-space: nowrap;
+}
+.mcx-launcher--pill.mcx-launcher--open .mcx-launcher-pill-text {
+  display: none;
+}
 @keyframes mcx-icon-float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-2px)} }
 .mcx-launcher:hover {
   transform: scale(1.08);
