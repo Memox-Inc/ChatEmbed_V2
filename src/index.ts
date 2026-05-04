@@ -625,30 +625,25 @@ function init(): void {
       setupChatInput();
       inputBar.setDisabled(true);
       setBotResponding(true);
-      // Render the configured welcome message client-side IMMEDIATELY so
-      // the visitor never sees a blank panel or a typing-indicator pause
-      // after submitting the lead form. We personalise it with the
-      // visitor's first name when available — either by substituting a
-      // ``{name}`` placeholder if the configured welcomeMessage contains
-      // one, or by prepending a "Hi {firstName}! " line otherwise. The
-      // bot is intentionally left silent (no context message sent) so
-      // the visitor sees exactly one greeting, within a frame.
-      if (welcomeMessage) {
-        const firstName = lead?.name ? sanitizeInput(lead.name).split(/\s+/)[0] : '';
-        let personalisedWelcome = welcomeMessage;
-        if (firstName) {
-          personalisedWelcome = personalisedWelcome.includes('{name}')
-            ? personalisedWelcome.replace(/\{name\}/g, firstName)
-            : `Hi ${firstName}! ${personalisedWelcome}`;
-        }
-        saveMessage(personalisedWelcome, 'bot', 'welcomeMessage');
-      }
       loadMessages();
       connectWebSocket();
 
-      // Enable input after WS is ready
+      // Server-driven greeting: as soon as the WS opens, send a
+      // ``request_greeting`` control event with the configured welcome
+      // text. The backend persists a real bot ChatMessage and broadcasts
+      // it back through the standard text_message pipeline, so the
+      // greeting renders like any other agent reply (visible in admin,
+      // operator dashboard, history). No client-side ``saveMessage`` —
+      // that would create a phantom bubble that the server never sees.
       const enableWhenReady = (): void => {
         if (ws.readyState === WebSocket.OPEN) {
+          if (welcomeMessage) {
+            ws.send({
+              message_type: 'request_greeting',
+              greeting_text: welcomeMessage,
+              room_name: chatID,
+            });
+          }
           inputBar.setDisabled(false);
           setBotResponding(false);
         } else {
@@ -656,15 +651,6 @@ function init(): void {
         }
       };
       setTimeout(enableWhenReady, 500);
-
-      // Lead details (name/email/phone/zip) are already attached to the
-      // visitor record via ``createVisitor`` above, and the backend agent
-      // reads them from visitor context when composing its system prompt.
-      // We deliberately do NOT push a system-style "context" chat message
-      // here — it makes the LLM treat the channel as having a pending
-      // turn and reply with an acknowledgement ("Understood..."), which
-      // stacks on top of the welcome greeting. Staying quiet until the
-      // visitor types their first real question is the correct flow.
     });
 
     // Hide all widget content, show form
