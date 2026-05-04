@@ -23,9 +23,8 @@ Follow these 11 steps to add a new attractor to the launcher system.
 
 5. **Attractor Renderer** — Create `src/ui/attractors/<name>.ts`
    - Export a function returning `AttractorHandle` from `./types.ts`
-   - Handle: `{ mount(): HTMLElement, destroy(): void, isVisible(): boolean }`
-   - `mount()` creates the DOM tree; `destroy()` cleans up listeners/timers
-   - `isVisible()` returns true if the attractor is currently rendered
+   - Handle: `{ cleanup(): void }`
+   - `cleanup()` removes listeners, clears timers, and detaches DOM elements
 
 6. **Unit Tests** — Create `src/ui/attractors/<name>.test.ts`
    - Minimum 3 tests: mount (renders), cleanup (no memory leaks), disabled-when-false
@@ -50,7 +49,7 @@ Follow these 11 steps to add a new attractor to the launcher system.
     - Show a mockup of how the attractor looks on the launcher
     - Used by the product team to verify design
 
-11. **DX Verification** — Run the checklist in `docs/specs/embed-app/dx-verification-checklist.md`
+11. **DX Verification** — Run the checklist in `<workspace-root>/docs/specs/embed-app/dx-verification-checklist.md`
     - Update `DEFAULT_LAUNCHER` in all 3 repos (memox-hub, ChatEmbed_V2, mmx-unified-chat)
     - Verify `npm test` passes (no regressions)
     - Verify `npm run build` succeeds (bundle includes your code)
