@@ -8,6 +8,12 @@
 const DEFAULT_HOST = 'https://us.i.posthog.com';
 const DISTINCT_ID_KEY = 'mmx_chat_distinct_id';
 const UTM_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'] as const;
+// Baseline variant string. When the server doesn't return an
+// attractor_variant (older embed without launcher config, OSS deploy
+// without a Memox backend), we still want every event tagged so funnel
+// queries can split the baseline against experiment variants. Mirrors
+// the variant tagger in memox-hub/embed_app/launcher_config.py.
+const DEFAULT_ATTRACTOR_VARIANT = 'round+bubble';
 
 export interface PostHogInitOptions {
   apiKey: string | null | undefined;
@@ -37,7 +43,7 @@ const state: State = {
   agentId: null,
   distinctId: null,
   utmProps: {},
-  attractorVariant: null,
+  attractorVariant: DEFAULT_ATTRACTOR_VARIANT,
 };
 
 function readUtmFromUrl(): Record<string, string> {
@@ -75,7 +81,9 @@ export function init(opts: PostHogInitOptions): void {
   state.host = opts.host || DEFAULT_HOST;
   state.orgId = opts.orgId ?? null;
   state.agentId = opts.agentId ?? null;
-  state.attractorVariant = opts.attractorVariant ?? null;
+  // Falsy (null/undefined/empty) → fall back to baseline so events are
+  // never untagged.
+  state.attractorVariant = opts.attractorVariant || DEFAULT_ATTRACTOR_VARIANT;
   state.distinctId = getOrCreateDistinctId();
   state.utmProps = readUtmFromUrl();
 }
@@ -92,7 +100,7 @@ export function capture(eventName: string, additionalProps?: Record<string, unkn
       page_title: document.title,
       referrer: document.referrer || null,
     };
-    if (state.attractorVariant) props.attractor_variant = state.attractorVariant;
+    props.attractor_variant = state.attractorVariant;
     Object.assign(props, state.utmProps);
     if (additionalProps) Object.assign(props, additionalProps);
 
@@ -133,5 +141,5 @@ export function __resetForTesting(): void {
   state.agentId = null;
   state.distinctId = null;
   state.utmProps = {};
-  state.attractorVariant = null;
+  state.attractorVariant = DEFAULT_ATTRACTOR_VARIANT;
 }

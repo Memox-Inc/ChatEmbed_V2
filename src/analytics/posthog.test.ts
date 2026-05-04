@@ -117,11 +117,35 @@ describe('PostHog analytics', () => {
   });
 
   it('tags events with attractor_variant when configured', () => {
-    init({ apiKey: 'phc_test', attractorVariant: 'teaser' });
+    init({ apiKey: 'phc_test', attractorVariant: 'pill+bubble+pulse' });
     capture('chat_opened');
 
     const props = (lastFetchBody(fetchMock).properties as Record<string, unknown>);
-    expect(props.attractor_variant).toBe('teaser');
+    expect(props.attractor_variant).toBe('pill+bubble+pulse');
+  });
+
+  it('defaults attractor_variant to round+bubble when not configured', () => {
+    init({ apiKey: 'phc_test' });
+    capture('chat_widget_loaded');
+
+    const props = (lastFetchBody(fetchMock).properties as Record<string, unknown>);
+    expect(props.attractor_variant).toBe('round+bubble');
+  });
+
+  it('falls back to round+bubble when attractor_variant is empty/null', () => {
+    init({ apiKey: 'phc_test', attractorVariant: null });
+    capture('chat_widget_loaded');
+    expect(
+      (lastFetchBody(fetchMock).properties as Record<string, unknown>).attractor_variant,
+    ).toBe('round+bubble');
+
+    fetchMock.mockClear();
+    __resetForTesting();
+    init({ apiKey: 'phc_test', attractorVariant: '' });
+    capture('chat_widget_loaded');
+    expect(
+      (lastFetchBody(fetchMock).properties as Record<string, unknown>).attractor_variant,
+    ).toBe('round+bubble');
   });
 
   it('swallows fetch errors silently (analytics never breaks the widget)', () => {
