@@ -2,6 +2,8 @@
 // button when the embed has launcher.attractors.pulse.enabled = true.
 // All visual state lives in widget.css under .mcx-launcher--pulse — this
 // module just owns the policy decision.
+//
+// Intentionally minimal — extracted for attractor module consistency. Future: color/speed config.
 
 import type { ChatEmbedConfig } from '../../config/types';
 import type { AttractorHandle } from './types';
