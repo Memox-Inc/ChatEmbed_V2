@@ -1,11 +1,64 @@
-import type { ChatEmbedConfig } from '../config/types';
+import type { ChatEmbedConfig, LauncherConfig } from '../config/types';
 
-// Inline chat-bubble glyph used for both round and pill form factors.
-// Kept identical to the V1 launcher so the visual identity doesn't shift
-// when an embed flips between attractor variants.
+// Inline chat-bubble glyph used as the default icon and as the small
+// indicator badge on the photo variant.
 const CHAT_BUBBLE_SVG = `<svg class="mcx-launcher-icon" width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M3 20V6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M7 16V10l5 4 5-4v6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 
+// Smaller bubble for the photo-mode indicator badge in the lower-right.
+const CHAT_BUBBLE_BADGE_SVG = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M3 20V6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M7 16V10l5 4 5-4v6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+
 const CLOSE_SVG = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+
+// Allow only http(s) and data: URLs for launcher images. Server uploads
+// always produce https URLs; data: lets us inline tiny placeholders for
+// previews. Anything else (javascript:, file:, …) is rejected and the
+// launcher falls through to the bubble icon.
+function isSafeImageUrl(url: string | null | undefined): url is string {
+  if (!url) return false;
+  return /^https?:\/\//.test(url) || /^data:image\//.test(url);
+}
+
+function appendBubbleIcon(parent: HTMLElement): void {
+  parent.insertAdjacentHTML('beforeend', CHAT_BUBBLE_SVG);
+}
+
+function appendPhotoIcon(parent: HTMLElement, photoUrl: string): void {
+  const img = document.createElement('img');
+  img.src = photoUrl;
+  img.alt = '';
+  img.className = 'mcx-launcher-photo-img';
+  parent.appendChild(img);
+
+  const indicator = document.createElement('span');
+  indicator.className = 'mcx-launcher-photo-indicator';
+  indicator.insertAdjacentHTML('beforeend', CHAT_BUBBLE_BADGE_SVG);
+  parent.appendChild(indicator);
+}
+
+function appendCustomLogo(parent: HTMLElement, logoUrl: string): void {
+  const img = document.createElement('img');
+  img.src = logoUrl;
+  img.alt = '';
+  img.className = 'mcx-launcher-custom-img';
+  parent.appendChild(img);
+}
+
+function renderIcon(parent: HTMLElement, launcher: LauncherConfig): { isPhoto: boolean } {
+  const iconType = launcher.icon_type || 'bubble';
+
+  if (iconType === 'photo' && isSafeImageUrl(launcher.photo_url)) {
+    appendPhotoIcon(parent, launcher.photo_url);
+    return { isPhoto: true };
+  }
+
+  if (iconType === 'custom' && isSafeImageUrl(launcher.custom_icon_url)) {
+    appendCustomLogo(parent, launcher.custom_icon_url);
+    return { isPhoto: false };
+  }
+
+  appendBubbleIcon(parent);
+  return { isPhoto: false };
+}
 
 export function createLauncher(
   config: ChatEmbedConfig,
@@ -23,9 +76,10 @@ export function createLauncher(
     btn.classList.add('mcx-launcher--left');
   }
 
-  // Icon. customIcon is supplied by the embed owner (trusted source —
-  // it's set in the agent settings dashboard, not by visitors). Falls
-  // back to the constant chat-bubble SVG.
+  // Legacy customIcon (set via top-level config.customIcon) takes
+  // precedence over launcher.icon_type for backwards compatibility with
+  // V1 embeds that haven't been migrated yet. New embeds should use
+  // launcher.icon_type + launcher.custom_icon_url / photo_url.
   if (config.customIcon) {
     if (/^https?:\/\//.test(config.customIcon) || /\.(png|jpg|jpeg|gif|svg|webp)$/i.test(config.customIcon)) {
       const img = document.createElement('img');
@@ -37,13 +91,13 @@ export function createLauncher(
       btn.insertAdjacentHTML('beforeend', config.customIcon);
     }
   } else {
-    btn.insertAdjacentHTML('beforeend', CHAT_BUBBLE_SVG);
+    const { isPhoto } = renderIcon(btn, launcherCfg);
+    if (isPhoto) btn.classList.add('mcx-launcher--photo');
   }
 
   // Pill text — appended after the icon so the layout reads icon → label.
   // textContent (not innerHTML) defends against HTML injection from a
-  // hostile or stale launcher config; the rest of the widget assumes
-  // anything coming off the wire is untrusted.
+  // hostile or stale launcher config.
   if (isPill) {
     const textSpan = document.createElement('span');
     textSpan.className = 'mcx-launcher-pill-text';

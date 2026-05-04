@@ -80,4 +80,84 @@ describe('createLauncher', () => {
     el.click();
     expect(onClick).toHaveBeenCalledTimes(1);
   });
+
+  describe('icon variants', () => {
+    it('renders photo variant with image and indicator badge', () => {
+      const config: ChatEmbedConfig = {
+        launcher: {
+          form_factor: 'round',
+          icon_type: 'photo',
+          photo_url: 'https://example.com/sarah.jpg',
+        },
+      };
+      const el = createLauncher(config, vi.fn());
+      expect(el.classList.contains('mcx-launcher--photo')).toBe(true);
+      const img = el.querySelector('img.mcx-launcher-photo-img');
+      expect(img).toBeTruthy();
+      expect((img as HTMLImageElement).src).toBe('https://example.com/sarah.jpg');
+      expect(el.querySelector('.mcx-launcher-photo-indicator')).toBeTruthy();
+    });
+
+    it('falls back to bubble when icon_type=photo but photo_url is missing', () => {
+      const config: ChatEmbedConfig = {
+        launcher: { form_factor: 'round', icon_type: 'photo', photo_url: null },
+      };
+      const el = createLauncher(config, vi.fn());
+      expect(el.classList.contains('mcx-launcher--photo')).toBe(false);
+      expect(el.querySelector('svg.mcx-launcher-icon')).toBeTruthy();
+    });
+
+    it('renders custom logo variant from custom_icon_url', () => {
+      const config: ChatEmbedConfig = {
+        launcher: {
+          form_factor: 'round',
+          icon_type: 'custom',
+          custom_icon_url: 'https://example.com/logo.png',
+        },
+      };
+      const el = createLauncher(config, vi.fn());
+      const img = el.querySelector('img.mcx-launcher-custom-img');
+      expect(img).toBeTruthy();
+      expect((img as HTMLImageElement).src).toBe('https://example.com/logo.png');
+    });
+
+    it('falls back to bubble when icon_type=custom but custom_icon_url is missing', () => {
+      const config: ChatEmbedConfig = {
+        launcher: { form_factor: 'round', icon_type: 'custom', custom_icon_url: null },
+      };
+      const el = createLauncher(config, vi.fn());
+      expect(el.querySelector('img.mcx-launcher-custom-img')).toBeNull();
+      expect(el.querySelector('svg.mcx-launcher-icon')).toBeTruthy();
+    });
+
+    it('rejects javascript: scheme on photo_url', () => {
+      const config: ChatEmbedConfig = {
+        launcher: {
+          form_factor: 'round',
+          icon_type: 'photo',
+          photo_url: 'javascript:alert(1)',
+        },
+      };
+      const el = createLauncher(config, vi.fn());
+      // Falls back to bubble — javascript: URLs are not http(s) or data:
+      expect(el.querySelector('img.mcx-launcher-photo-img')).toBeNull();
+      expect(el.querySelector('svg.mcx-launcher-icon')).toBeTruthy();
+    });
+
+    it('combines photo icon with pill form factor', () => {
+      const config: ChatEmbedConfig = {
+        launcher: {
+          form_factor: 'pill',
+          icon_type: 'photo',
+          photo_url: 'https://example.com/sarah.jpg',
+          pill_text: 'Talk to Sarah',
+        },
+      };
+      const el = createLauncher(config, vi.fn());
+      expect(el.classList.contains('mcx-launcher--pill')).toBe(true);
+      expect(el.classList.contains('mcx-launcher--photo')).toBe(true);
+      expect(el.querySelector('img.mcx-launcher-photo-img')).toBeTruthy();
+      expect(el.querySelector('.mcx-launcher-pill-text')?.textContent).toBe('Talk to Sarah');
+    });
+  });
 });

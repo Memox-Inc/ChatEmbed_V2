@@ -67,6 +67,58 @@
 .mcx-launcher--pill.mcx-launcher--open .mcx-launcher-pill-text {
   display: none;
 }
+/* ─── Photo icon variant ──────────────────────────────────────────
+   Replaces the gradient background with a circular cropped photo of
+   a salesperson or persona avatar, plus a small chat-bubble indicator
+   badge in the lower-right corner so visitors still recognise the
+   element as a launcher. */
+.mcx-launcher--photo {
+  background: transparent;
+  border: 3px solid #fff;
+  overflow: visible;
+  padding: 0;
+}
+.mcx-launcher--photo.mcx-launcher--pill {
+  border-radius: 28px;
+  padding: 0 18px 0 8px;
+}
+.mcx-launcher-photo-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.mcx-launcher--photo.mcx-launcher--pill .mcx-launcher-photo-img {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+}
+.mcx-launcher-photo-indicator {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #fff;
+  color: #fff;
+  background: linear-gradient(135deg, var(--p), var(--ph));
+}
+.mcx-launcher-photo-indicator svg {
+  width: 11px;
+  height: 11px;
+}
+/* ─── Custom logo variant ─────────────────────────────────────────
+   Owner-uploaded logo. Smaller than the photo to leave breathing
+   room inside the round (or pill) launcher. */
+.mcx-launcher-custom-img {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+}
 @keyframes mcx-icon-float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-2px)} }
 .mcx-launcher:hover {
   transform: scale(1.08);
