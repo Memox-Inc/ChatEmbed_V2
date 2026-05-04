@@ -1,3 +1,6 @@
+> **V3 ACTIVE DEVELOPMENT (this branch: feature/chatbot-attractor-system)**
+> The V1 `chat-embed.js` at repo root is frozen. All new development is in `src/` (TypeScript/Vite).
+
 # Chat Embed Widget
 
 A lightweight, customizable chat widget that supports bot interactions, sales rep handovers, and dynamic theming.
@@ -28,6 +31,42 @@ window.SimpleChatEmbedConfig = {
 };
 </script>
 ```
+
+## V3 Development
+
+### Commands
+
+- **`npm test`** — Run unit and integration tests via vitest. Watch mode: `npm test -- --watch`
+- **`npm run dev`** — Start Vite dev server on port 8080 with HMR enabled
+- **`npm run build`** — Bundle with Vite and minify with terser for production
+
+### Configuration
+
+`window.MemoxChatConfig.embedId` is the entry point for widget configuration. When set, the widget fetches launcher + attractor config from the backend `/api/v1/embed/init/` endpoint at bootstrap and merges it with the local config. See [LauncherConfig](#launcher-configuration) below for full attractor system details.
+
+### Attractor System
+
+The attractor system defines how the launcher button draws attention to itself. Five attractor types are available:
+
+- **teaser** — Inline text prompt next to the launcher (e.g., "Got questions?")
+- **persona** — Card with agent name + personalized greeting above the launcher
+- **pulse** — Pulsing ring animation around the launcher button
+- **badge** — Unread message counter badge on the launcher icon
+- **smart_auto_open** — Auto-open the chat after N seconds or on scroll past M%
+
+Each attractor renders as an attention-grab on the launcher. Variants are tagged via the `attractor_variant` PostHog property (e.g., `"round+bubble+pulse"`) so you can track funnel metrics by attractor type. See `src/analytics/posthog.ts` for the taxonomy and derivation rules.
+
+### Icon Variants
+
+The launcher icon supports three styles:
+
+- **bubble** — Default circular icon with Memox logo
+- **custom** — Custom SVG or image URL (set via `launcher.custom_icon_url`)
+- **photo** — Round photo (set via `launcher.photo_url`), commonly used for persona-based attractors
+
+### Adding a New Attractor
+
+See `src/ui/attractors/CONTRIBUTING.md` for a complete 11-step checklist covering backend (Pydantic model, variant tagger), TypeScript (types, defaults, mount), testing, and admin UI.
 
 ## Configuration Options
 

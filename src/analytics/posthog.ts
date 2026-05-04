@@ -1,3 +1,26 @@
+/**
+ * attractor_variant taxonomy
+ * --------------------------
+ * Format: {form_factor}+{icon_type}[+tag...]
+ *   - tags are sorted alphabetically. Deterministic ordering matters
+ *     for PostHog filters and dashboards.
+ *
+ * Example values:
+ *   - "round+bubble"                          (bare default)
+ *   - "round+bubble+pulse"                    (one attractor enabled)
+ *   - "round+bubble+pulse+teaser"             (two attractors, alpha-sorted)
+ *   - "round+photo+badge"                     (photo icon + badge)
+ *   - "pill+custom+persona+smart_auto_open"   (pill form factor, persona + auto-open)
+ *
+ * Possible tokens:
+ *   - form_factor: round | pill
+ *   - icon_type:   bubble | custom | photo
+ *   - tags:        teaser | persona | pulse | badge | smart_auto_open
+ *
+ * Source of truth for tag derivation: memox_hub/embed_app/variant_tagger.py
+ * (backend computes the variant and sends it via /api/v1/embed/init/).
+ */
+
 // PostHog analytics — TypeScript port of the V1 __mmxAnalytics IIFE.
 //
 // Module-level singleton: init() is called once during widget bootstrap,
