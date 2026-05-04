@@ -95,6 +95,29 @@ function init(): void {
     document.body.appendChild(host);
   }
 
+  // --- Theme variable overrides ---
+  // The base stylesheet uses CSS custom properties ``--p`` (primary)
+  // and ``--ph`` (primary hover) for the launcher gradient, header
+  // gradient, send button, focus rings, etc. Without this injection
+  // those defaults to Memox purple and any ``theme.primary`` config
+  // is ignored on those surfaces. Also wires ``theme.headerBg`` and
+  // ``theme.sendBtnHover`` which are declared in the type but never
+  // consumed by the base CSS otherwise.
+  if (theme.primary || theme.sendBtnHover || theme.headerBg) {
+    const overrideStyle = document.createElement('style');
+    const primary = theme.primary;
+    const hover = theme.sendBtnHover || theme.primary;
+    const headerBg = theme.headerBg;
+    const headerText = theme.headerText;
+    const lines: string[] = [];
+    if (primary) lines.push(`--p: ${primary};`);
+    if (hover) lines.push(`--ph: ${hover};`);
+    overrideStyle.textContent = `:host { ${lines.join(' ')} }
+${headerBg ? `.mcx-header { background: ${headerBg} !important; }` : ''}
+${headerText ? `.mcx-header, .mcx-header * { color: ${headerText} !important; }` : ''}`;
+    root.appendChild(overrideStyle);
+  }
+
   // --- Create UI ---
   const widget = createWidgetContainer(config);
   const { messagesEl, scrollToBottom, forceScrollToBottom, checkScrollPosition, scrollBtn } = createMessageList();
