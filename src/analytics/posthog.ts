@@ -2,20 +2,21 @@
  * attractor_variant taxonomy
  * --------------------------
  * Format: {form_factor}+{icon_type}[+tag...]
- *   - tags are sorted alphabetically. Deterministic ordering matters
+ *   - tags are ordered by _ATTRACTOR_TAGS precedence in variant_tagger.py:
+ *     autoopen, badge, persona, pulse, teaser. Deterministic ordering matters
  *     for PostHog filters and dashboards.
  *
  * Example values:
  *   - "round+bubble"                          (bare default)
  *   - "round+bubble+pulse"                    (one attractor enabled)
- *   - "round+bubble+pulse+teaser"             (two attractors, alpha-sorted)
+ *   - "round+bubble+badge+pulse"              (two attractors in precedence order)
  *   - "round+photo+badge"                     (photo icon + badge)
- *   - "pill+custom+persona+smart_auto_open"   (pill form factor, persona + auto-open)
+ *   - "pill+custom+autoopen+persona"          (pill form factor, autoopen + persona in precedence order)
  *
  * Possible tokens:
  *   - form_factor: round | pill
  *   - icon_type:   bubble | custom | photo
- *   - tags:        teaser | persona | pulse | badge | smart_auto_open
+ *   - tags:        autoopen | badge | persona | pulse | teaser
  *
  * Source of truth for tag derivation: memox_hub/embed_app/variant_tagger.py
  * (backend computes the variant and sends it via /api/v1/embed/init/).
