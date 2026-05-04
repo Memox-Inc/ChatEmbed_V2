@@ -5,8 +5,9 @@
 // has been configured, so the widget works fine for self-hosted / OSS
 // users who haven't wired up PostHog.
 
+import { getOrCreateDistinctId } from '../utils/distinct-id';
+
 const DEFAULT_HOST = 'https://us.i.posthog.com';
-const DISTINCT_ID_KEY = 'mmx_chat_distinct_id';
 const UTM_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'] as const;
 // Baseline variant string. When the server doesn't return an
 // attractor_variant (older embed without launcher config, OSS deploy
@@ -57,22 +58,6 @@ function readUtmFromUrl(): Record<string, string> {
     return out;
   } catch {
     return {};
-  }
-}
-
-function getOrCreateDistinctId(): string {
-  try {
-    const existing = localStorage.getItem(DISTINCT_ID_KEY);
-    if (existing) return existing;
-    const id = `mmx-${'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-      const r = (Math.random() * 16) | 0;
-      const v = c === 'x' ? r : (r & 0x3) | 0x8;
-      return v.toString(16);
-    })}`;
-    localStorage.setItem(DISTINCT_ID_KEY, id);
-    return id;
-  } catch {
-    return `mmx-fallback-${Date.now()}`;
   }
 }
 

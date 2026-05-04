@@ -9,27 +9,11 @@
 // widget renders with the round/bubble defaults instead of the
 // per-embed attractor variant.
 
-const DISTINCT_ID_KEY = 'mmx_chat_distinct_id';
+import { getOrCreateDistinctId } from '../utils/distinct-id';
 
 export interface InitResponse {
   embed_id: string;
   config: Record<string, any>;
-}
-
-function getOrCreateDistinctId(): string {
-  try {
-    const existing = localStorage.getItem(DISTINCT_ID_KEY);
-    if (existing) return existing;
-    const id = `mmx-${'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-      const r = (Math.random() * 16) | 0;
-      const v = c === 'x' ? r : (r & 0x3) | 0x8;
-      return v.toString(16);
-    })}`;
-    localStorage.setItem(DISTINCT_ID_KEY, id);
-    return id;
-  } catch {
-    return `mmx-fallback-${Date.now()}`;
-  }
 }
 
 export async function fetchInitConfig(
