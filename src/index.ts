@@ -20,6 +20,7 @@ import { createLeadCaptureForm, type LeadData } from './ui/forms/lead-capture-fo
 import { createLauncher } from './ui/launcher';
 import { normalizePhoneE164 } from './ui/forms/validation';
 import * as analytics from './analytics/posthog';
+import { fetchInitConfig } from './connection/init';
 
 declare global {
   interface Window {
@@ -33,9 +34,16 @@ declare global {
   }
 }
 
-function init(): void {
+async function init(): Promise<void> {
   const userConfig = window.MemoxChatConfig || window.SimpleChatEmbedConfig || {};
-  const config = mergeConfig(defaultConfig, userConfig);
+  // Fetch server-side launcher + attractor config before merging. The
+  // server is the source of truth for ``launcher`` and ``attractor_variant``;
+  // local config provides everything else. Falls through to {} on failure
+  // so the widget always boots with at least the local defaults.
+  const localConfig = mergeConfig(defaultConfig, userConfig);
+  const apiBase = localConfig.apiBase || localConfig.apiUrl || 'https://api.memox.io';
+  const serverConfig = await fetchInitConfig(localConfig.embedId ?? null, apiBase);
+  const config = mergeConfig(localConfig, serverConfig as Partial<ChatEmbedConfig>);
   // Scope localStorage to this embed instance — must run before any
   // sessionStore reads/writes so multiple widgets on the same origin
   // (marketing site widget + per-persona demo embed) don't share state.
@@ -45,6 +53,7 @@ function init(): void {
     host: config.posthogHost,
     orgId: config.org_id ?? null,
     agentId: config.agent_id ?? null,
+    attractorVariant: (serverConfig as Record<string, unknown>).attractor_variant as string | null | undefined,
   });
   const theme = config.theme || {};
   const welcomeMessage = config.welcomeMessage || null;
@@ -763,9 +772,18 @@ function init(): void {
   };
 }
 
-// Auto-initialize when DOM is ready
+// Auto-initialize when DOM is ready. ``init`` is async (it fetches
+// /embed/init before mounting) — swallow rejections so an unexpected
+// throw can't take down the host page's JS.
+function bootstrap(): void {
+  init().catch((e) => {
+    // eslint-disable-next-line no-console
+    console.error('[Memox] widget init failed', e);
+  });
+}
+
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', init);
+  document.addEventListener('DOMContentLoaded', bootstrap);
 } else {
-  init();
+  bootstrap();
 }

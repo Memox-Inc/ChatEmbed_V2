@@ -236,6 +236,19 @@ export interface ChatEmbedConfig {
    */
   closeOnOutsideClick?: boolean;
   /**
+   * Per-embed identifier ("emb_..."). When set, the widget fetches its
+   * launcher + attractor config from ``/api/v1/embed/init/`` at startup
+   * and merges it on top of any locally-supplied config. When unset
+   * (e.g. self-hosted/OSS deployments without a Memox backend), the
+   * widget skips the fetch and uses the local config as-is.
+   */
+  embedId?: string | null;
+  /**
+   * Backend base URL for the embed init fetch. Defaults to
+   * ``apiUrl`` derived value if unset. Hostname only — no trailing slash.
+   */
+  apiBase?: string;
+  /**
    * PostHog project API key. When unset, all analytics calls are no-ops
    * — self-hosted/OSS deployments don't need PostHog.
    */
