@@ -4,6 +4,8 @@ export interface InputBarRefs {
   sendBtn: HTMLButtonElement;
   setDisabled: (disabled: boolean) => void;
   setBotResponding: (responding: boolean) => void;
+  /** Programmatically populate the input (e.g. from a persona-card chip). */
+  setValue: (text: string) => void;
 }
 
 export function createInputBar(onSend: (text: string) => void): InputBarRefs {
@@ -75,5 +77,15 @@ export function createInputBar(onSend: (text: string) => void): InputBarRefs {
     }
   }
 
-  return { container, textarea, sendBtn, setDisabled, setBotResponding };
+  function setValue(text: string): void {
+    textarea.value = text;
+    textarea.style.height = 'auto';
+    textarea.style.height = Math.min(textarea.scrollHeight, 96) + 'px';
+    sendBtn.disabled = text.trim().length === 0;
+    textarea.focus();
+    // Place caret at end so the visitor can keep typing.
+    textarea.setSelectionRange(text.length, text.length);
+  }
+
+  return { container, textarea, sendBtn, setDisabled, setBotResponding, setValue };
 }

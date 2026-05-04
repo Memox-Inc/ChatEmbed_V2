@@ -22,6 +22,7 @@ import { mountTeaser } from './ui/attractors/teaser';
 import { applyPulse } from './ui/attractors/pulse';
 import { mountBadge, type ClearBadge } from './ui/attractors/badge';
 import { mountSmartAutoOpen, type SmartAutoOpenHandle } from './ui/attractors/smart-auto-open';
+import { mountPersonaCard } from './ui/attractors/persona-card';
 import { normalizePhoneE164 } from './ui/forms/validation';
 import * as analytics from './analytics/posthog';
 import { fetchInitConfig } from './connection/init';
@@ -169,6 +170,20 @@ async function init(): Promise<void> {
     autoOpenHandle = mountSmartAutoOpen(config, () => {
       nextOpenTrigger = 'auto_open';
       handleToggle();
+    });
+    // Persona card: rich attractor (photo + name + message + optional
+    // chips). Mounts inside the shadow root so styles stay scoped.
+    // Chip clicks both open the chat and pre-fill the input field with
+    // the chip's label so the visitor can edit before sending.
+    mountPersonaCard(config, root as unknown as HTMLElement, {
+      onOpen: () => {
+        if (!chatOpen) handleToggle();
+      },
+      onChipClick: (label) => {
+        // Defer until the open animation has settled so the input is
+        // visible and focusable.
+        setTimeout(() => inputBar.setValue(label), 220);
+      },
     });
   }
 
