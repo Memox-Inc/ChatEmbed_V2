@@ -114,6 +114,7 @@ describe('PostHog analytics', () => {
     const props = (lastFetchBody(fetchMock).properties as Record<string, unknown>);
     expect(props.has_phone).toBe(true);
     expect(props.has_zip).toBe(false);
+    expect(props.attractor_variant).toBe('round+bubble');
   });
 
   it('tags events with attractor_variant when configured', () => {
