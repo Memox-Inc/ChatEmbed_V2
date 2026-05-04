@@ -155,4 +155,26 @@ describe('PostHog analytics', () => {
     init({ apiKey: 'phc_test' });
     expect(() => capture('chat_widget_loaded')).not.toThrow();
   });
+
+  it('chat_opened with auto_open trigger includes trigger property in properties', () => {
+    // Mirrors the smart-auto-open.ts path: triggerStore.set('auto_open')
+    // then handleToggle() calls capture('chat_opened', { trigger: 'auto_open' })
+    init({ apiKey: 'phc_test' });
+    capture('chat_opened', { trigger: 'auto_open' });
+
+    const props = (lastFetchBody(fetchMock).properties as Record<string, unknown>);
+    expect(props.trigger).toBe('auto_open');
+  });
+
+  it('chat_opened on manual click has no trigger property in properties', () => {
+    // Mirrors the launcher button click path: triggerStore.consume() returns
+    // undefined (nothing set), so handleToggle() calls capture('chat_opened', undefined)
+    init({ apiKey: 'phc_test' });
+    capture('chat_opened');
+
+    const body = lastFetchBody(fetchMock);
+    expect(body.event).toBe('chat_opened');
+    const props = (body.properties as Record<string, unknown>);
+    expect(props.trigger).toBeUndefined();
+  });
 });
