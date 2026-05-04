@@ -78,4 +78,50 @@ describe('fetchInitConfig', () => {
     await fetchInitConfig('emb', 'https://api.memox.io/');
     expect(fetchMock.mock.calls[0][0]).toBe('https://api.memox.io/api/v1/embed/init/');
   });
+
+  it('aborts and returns {} when fetch hangs past INIT_TIMEOUT_MS', async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal('fetch', vi.fn((_url: string, opts: RequestInit) =>
+      new Promise<Response>((_resolve, reject) => {
+        if (opts?.signal) {
+          opts.signal.addEventListener('abort', () => {
+            const err = new Error('aborted');
+            err.name = 'AbortError';
+            reject(err);
+          });
+        }
+        // never resolves on its own
+      }),
+    ));
+
+    const promise = fetchInitConfig('test-embed-id', 'https://api.example.com');
+    await vi.advanceTimersByTimeAsync(2000);
+    const result = await promise;
+    expect(result).toEqual({});
+
+    vi.useRealTimers();
+  });
+
+  it('clears the timeout timer on successful fetch (no leaked timer)', async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal('fetch', vi.fn((_url: string, _opts: RequestInit) =>
+      Promise.resolve(
+        new Response(JSON.stringify({ embed_id: 'emb', config: { foo: 'bar' } }), { status: 200 }),
+      ),
+    ));
+
+    const result = await fetchInitConfig('emb', 'https://api.example.com');
+    expect(result).toEqual({ foo: 'bar' });
+
+    // Advance well past INIT_TIMEOUT_MS. If clearTimeout was not called in
+    // the finally block, the abort callback would fire here and we'd see a
+    // console.warn call (abort on an already-resolved fetch). The spy on
+    // console.warn is set up in beforeEach — if it was called it means the
+    // timer leaked and fired.
+    await vi.advanceTimersByTimeAsync(3000);
+    // console.warn should NOT have been called (no abort on a successful fetch)
+    expect(console.warn).not.toHaveBeenCalled();
+
+    vi.useRealTimers();
+  });
 });
