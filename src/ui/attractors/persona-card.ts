@@ -13,6 +13,7 @@
 
 import type { ChatEmbedConfig } from '../../config/types';
 import type { AttractorHandle } from './types';
+import { isSafeImageUrl } from '../../utils/url';
 
 export interface PersonaHandlers {
   onOpen?: () => void;
@@ -22,13 +23,6 @@ export interface PersonaHandlers {
 export type PersonaCleanup = () => void;
 
 const MAX_CHIPS = 3;
-
-function isSafeImageUrl(url: string | null | undefined): url is string {
-  if (!url) return false;
-  // Only allow http(s) URLs and safe raster data: formats (png, jpeg, gif, webp).
-  // Reject data:image/svg+xml to prevent embedded JavaScript execution.
-  return /^https?:\/\//.test(url) || /^data:image\/(png|jpeg|gif|webp);/.test(url);
-}
 
 function initialsOf(name: string): string {
   return name

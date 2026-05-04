@@ -1,4 +1,5 @@
 import type { ChatEmbedConfig, LauncherConfig } from '../config/types';
+import { isSafeImageUrl } from '../utils/url';
 
 // Inline chat-bubble glyph used as the default icon and as the small
 // indicator badge on the photo variant.
@@ -8,16 +9,6 @@ const CHAT_BUBBLE_SVG = `<svg class="mcx-launcher-icon" width="26" height="26" v
 const CHAT_BUBBLE_BADGE_SVG = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M3 20V6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M7 16V10l5 4 5-4v6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 
 const CLOSE_SVG = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
-
-// Allow only http(s) and data: URLs for launcher images. Server uploads
-// always produce https URLs; data: lets us inline tiny placeholders for
-// previews. For data: URLs, only allow safe raster formats (png, jpeg, gif, webp).
-// Reject data:image/svg+xml to prevent embedded JavaScript execution.
-// Anything else (javascript:, file:, …) is rejected and the launcher falls through to the bubble icon.
-function isSafeImageUrl(url: string | null | undefined): url is string {
-  if (!url) return false;
-  return /^https?:\/\//.test(url) || /^data:image\/(png|jpeg|gif|webp);/.test(url);
-}
 
 function appendBubbleIcon(parent: HTMLElement): void {
   parent.insertAdjacentHTML('beforeend', CHAT_BUBBLE_SVG);
