@@ -1137,6 +1137,14 @@
   }
 }
 
+/* ═══════ Init error ═══════ */
+.mcx-init-error {
+  padding: 10px 14px;
+  color: var(--err, #DC2626);
+  font-size: 13px;
+  text-align: center;
+}
+
 /* ═══════ prefers-reduced-motion ═══════ */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

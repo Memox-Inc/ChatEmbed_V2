@@ -746,6 +746,20 @@ async function init(): Promise<void> {
           setTimeout(enableWhenReady, 300);
         } else {
           console.warn('MemoxChatWidget: init timed out after 6s');
+          // Show a user-visible inline error so the panel doesn't appear
+          // silently frozen with the input bar disabled.
+          const errorEl = document.createElement('div');
+          errorEl.className = 'mcx-init-error';
+          errorEl.textContent = 'Unable to connect. Please refresh the page.';
+          // Insert before the input bar so the user sees it in context.
+          if (inputBar.container.parentElement) {
+            inputBar.container.parentElement.insertBefore(errorEl, inputBar.container);
+          } else {
+            widget.appendChild(errorEl);
+          }
+          // Capture observable failure in PostHog so silent frozen panels
+          // are surfaced in dashboards.
+          analytics.capture('widget_init_timeout', { reason: 'enableWhenReady_max_retries' });
         }
       };
       setTimeout(enableWhenReady, 500);
