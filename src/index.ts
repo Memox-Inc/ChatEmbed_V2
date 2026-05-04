@@ -577,6 +577,7 @@ async function init(): Promise<void> {
   function handleClose(): void {
     if (config.mode === 'inline') return;
     chatOpen = false;
+    if (launcher) launcher.classList.remove('mcx-launcher--open');
     widget.classList.remove('mcx-widget--open');
     widget.classList.add('mcx-widget--closing');
     setTimeout(() => {
@@ -604,6 +605,7 @@ async function init(): Promise<void> {
       widget.style.display = 'flex';
       widget.classList.add('mcx-widget--open');
       widget.classList.remove('mcx-widget--closing');
+      if (launcher) launcher.classList.add('mcx-launcher--open');
       if (launcher) launcher.style.display = 'none';
 
       // Validate session on open — skip for fresh sessions whose only
