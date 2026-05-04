@@ -86,4 +86,18 @@ export const defaultConfig: ChatEmbedConfig = {
   ngrok: false,
   isMobileDevice: false,
   mode: 'floating',
+  launcher: {
+    form_factor: 'round',
+    pill_text: null,
+    icon_type: 'bubble',
+    custom_icon_url: null,
+    photo_url: null,
+    attractors: {
+      teaser: { enabled: false, text: '', show_after_seconds: 5, dismissible: true },
+      persona: { enabled: false, name: '', message: '', show_chips: false },
+      pulse: { enabled: false },
+      badge: { enabled: false },
+      smart_auto_open: { enabled: false, time_seconds: 30, scroll_percent: 50 },
+    },
+  },
 };

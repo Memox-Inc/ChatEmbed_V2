@@ -143,6 +143,59 @@ export interface LeadFormHelperText {
   borderRadius?: string;
 }
 
+// Launcher attractor system — mirrors the Pydantic LauncherConfig in
+// memox-hub/memox_hub/embed_app/launcher_config.py. Field names match
+// the wire format (snake_case) so a config fetched from /embed/init can
+// be merged into the widget config without a normalisation step.
+
+export interface TeaserAttractor {
+  enabled?: boolean;
+  text?: string;
+  show_after_seconds?: number;
+  dismissible?: boolean;
+}
+
+export interface PersonaAttractor {
+  enabled?: boolean;
+  name?: string;
+  message?: string;
+  show_chips?: boolean;
+}
+
+export interface PulseAttractor {
+  enabled?: boolean;
+}
+
+export interface BadgeAttractor {
+  enabled?: boolean;
+}
+
+export interface SmartAutoOpenAttractor {
+  enabled?: boolean;
+  time_seconds?: number;
+  scroll_percent?: number;
+}
+
+export interface Attractors {
+  teaser?: TeaserAttractor;
+  persona?: PersonaAttractor;
+  pulse?: PulseAttractor;
+  badge?: BadgeAttractor;
+  smart_auto_open?: SmartAutoOpenAttractor;
+}
+
+export type LauncherFormFactor = 'round' | 'pill';
+export type LauncherIconType = 'bubble' | 'custom' | 'photo';
+
+export interface LauncherConfig {
+  form_factor?: LauncherFormFactor;
+  pill_text?: string | null;
+  icon_type?: LauncherIconType;
+  custom_icon_url?: string | null;
+  photo_url?: string | null;
+  attractors?: Attractors;
+}
+
 export interface ChatEmbedConfig {
   title?: string;
   customIcon?: string | null;
@@ -182,6 +235,21 @@ export interface ChatEmbedConfig {
    * inside the page layout and shouldn't react to outside clicks.
    */
   closeOnOutsideClick?: boolean;
+  /**
+   * PostHog project API key. When unset, all analytics calls are no-ops
+   * — self-hosted/OSS deployments don't need PostHog.
+   */
+  posthogApiKey?: string | null;
+  /**
+   * PostHog host (defaults to https://us.i.posthog.com).
+   */
+  posthogHost?: string;
+  /**
+   * Launcher form-factor + attractor system. Snake_case matches the
+   * /embed/init wire format so server-fetched values can be merged in
+   * without translation. See ``LauncherConfig`` for fields.
+   */
+  launcher?: LauncherConfig;
 }
 
 export interface StoredMessage {
