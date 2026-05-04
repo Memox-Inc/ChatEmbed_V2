@@ -80,16 +80,22 @@ export function createLauncher(
   // precedence over launcher.icon_type for backwards compatibility with
   // V1 embeds that haven't been migrated yet. New embeds should use
   // launcher.icon_type + launcher.custom_icon_url / photo_url.
-  if (config.customIcon) {
-    if (/^https?:\/\//.test(config.customIcon) || /\.(png|jpg|jpeg|gif|svg|webp)$/i.test(config.customIcon)) {
-      const img = document.createElement('img');
-      img.src = config.customIcon;
-      img.alt = 'Chat';
-      img.className = 'mcx-launcher-img';
-      btn.appendChild(img);
-    } else {
-      btn.insertAdjacentHTML('beforeend', config.customIcon);
-    }
+  //
+  // Security: only accept URLs that pass isSafeImageUrl (http(s) or data:image/)
+  // AND are either a data:image/ URL or end with a known image extension.
+  // Any other value (raw HTML, javascript: schemes, plain text) is rejected
+  // and falls through to renderIcon so the launcher is never left empty.
+  const isValidCustomIcon =
+    config.customIcon &&
+    isSafeImageUrl(config.customIcon) &&
+    (/^data:image\//.test(config.customIcon) || /\.(png|jpg|jpeg|gif|svg|webp)$/i.test(config.customIcon));
+
+  if (isValidCustomIcon) {
+    const img = document.createElement('img');
+    img.src = config.customIcon as string;
+    img.alt = 'Chat';
+    img.className = 'mcx-launcher-img';
+    btn.appendChild(img);
   } else {
     const { isPhoto } = renderIcon(btn, launcherCfg);
     if (isPhoto) btn.classList.add('mcx-launcher--photo');

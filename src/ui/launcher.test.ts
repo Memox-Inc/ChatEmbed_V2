@@ -160,4 +160,56 @@ describe('createLauncher', () => {
       expect(el.querySelector('.mcx-launcher-pill-text')?.textContent).toBe('Talk to Sarah');
     });
   });
+
+  describe('legacy config.customIcon security gate', () => {
+    it('rejects raw HTML string in customIcon and falls through to bubble icon', () => {
+      const config: ChatEmbedConfig = {
+        customIcon: '<img src=x onerror=alert(1)>',
+      };
+      const el = createLauncher(config, vi.fn());
+      // Must render the bubble SVG fallback
+      expect(el.querySelector('svg.mcx-launcher-icon')).toBeTruthy();
+      // Must NOT have rendered the injected img element
+      const injected = el.querySelector('img[src="x"]');
+      expect(injected).toBeNull();
+    });
+
+    it('accepts https customIcon URL with image extension', () => {
+      const config: ChatEmbedConfig = {
+        customIcon: 'https://example.com/logo.png',
+      };
+      const el = createLauncher(config, vi.fn());
+      const img = el.querySelector('img.mcx-launcher-img') as HTMLImageElement | null;
+      expect(img).toBeTruthy();
+      expect(img?.src).toBe('https://example.com/logo.png');
+    });
+
+    it('accepts data:image/png customIcon', () => {
+      const config: ChatEmbedConfig = {
+        customIcon: 'data:image/png;base64,iVBORw0K',
+      };
+      const el = createLauncher(config, vi.fn());
+      const img = el.querySelector('img.mcx-launcher-img') as HTMLImageElement | null;
+      expect(img).toBeTruthy();
+      expect(img?.src).toBe('data:image/png;base64,iVBORw0K');
+    });
+
+    it('rejects javascript: scheme in customIcon and falls through to bubble', () => {
+      const config: ChatEmbedConfig = {
+        customIcon: 'javascript:alert(1)',
+      };
+      const el = createLauncher(config, vi.fn());
+      expect(el.querySelector('svg.mcx-launcher-icon')).toBeTruthy();
+      expect(el.querySelector('img.mcx-launcher-img')).toBeNull();
+    });
+
+    it('rejects http URL without image extension and falls through to bubble', () => {
+      const config: ChatEmbedConfig = {
+        customIcon: 'https://example.com/page',
+      };
+      const el = createLauncher(config, vi.fn());
+      expect(el.querySelector('svg.mcx-launcher-icon')).toBeTruthy();
+      expect(el.querySelector('img.mcx-launcher-img')).toBeNull();
+    });
+  });
 });
