@@ -588,6 +588,8 @@ async function init(): Promise<void> {
   }
 
   function handleToggle(): void {
+    const trigger = nextOpenTrigger;
+    nextOpenTrigger = undefined;
     if (chatOpen) {
       handleClose();
     } else {
@@ -595,8 +597,6 @@ async function init(): Promise<void> {
       // Consume the unread-message badge on first open. Subsequent
       // open/close cycles don't restore it — the visit is engaged.
       clearBadge();
-      const trigger = nextOpenTrigger;
-      nextOpenTrigger = undefined;
       // Suppress any pending auto-open if the visitor clicked the
       // launcher manually — the auto-open shouldn't double-fire seconds
       // later when the time threshold finally elapses.
