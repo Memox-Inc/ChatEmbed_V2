@@ -119,6 +119,55 @@
   height: 32px;
   object-fit: contain;
 }
+
+/* ═══════ Teaser attractor ═══════
+   Floats above and to the left of the round launcher with a chat-tail
+   that points down towards it. Stays out of the pill launcher's lane
+   (pill already has text) — suppression is enforced in mountTeaser. */
+.mcx-teaser {
+  position: fixed;
+  bottom: 92px;
+  right: 20px;
+  background: #fff;
+  color: var(--t1);
+  padding: 11px 30px 11px 16px;
+  border-radius: 14px 14px 4px 14px;
+  font: 500 13px/1.4 'Inter', system-ui, -apple-system, sans-serif;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.10), 0 1px 2px rgba(0, 0, 0, 0.04);
+  border: 1px solid #f0f0f0;
+  max-width: 220px;
+  z-index: 9997;
+  animation: mcx-teaser-rise 220ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.mcx-teaser-text {
+  display: block;
+}
+.mcx-teaser-close {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  width: 18px;
+  height: 18px;
+  background: #e8e8e8;
+  color: #555;
+  border: none;
+  border-radius: 50%;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+.mcx-teaser-close:hover {
+  background: #d8d8d8;
+  color: #222;
+}
+@keyframes mcx-teaser-rise {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
 @keyframes mcx-icon-float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-2px)} }
 .mcx-launcher:hover {
   transform: scale(1.08);
