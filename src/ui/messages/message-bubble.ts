@@ -1,6 +1,7 @@
 import type { ChatEmbedConfig, StoredMessage, WelcomeMessageStyle } from '../../config/types';
 import { markdownToHtml } from './markdown-renderer';
 import { escapeHtml } from '../../utils/dom';
+import { isSafeImageUrl } from '../../utils/url';
 
 export interface BubbleRefs {
   container: HTMLDivElement;
@@ -33,7 +34,7 @@ function createAvatar(sender: string, config: ChatEmbedConfig): HTMLDivElement {
     av.style.border = theme.botAvatarBorder || 'none';
     av.style.borderRadius = '8px';
 
-    if (bIcon.botAvatarUrl) {
+    if (isSafeImageUrl(bIcon.botAvatarUrl)) {
       av.innerHTML = `<img src="${bIcon.botAvatarUrl}" alt="Bot" style="width:${bIcon.svgWidth || '14px'};height:${bIcon.svgHeight || '14px'};object-fit:${bIcon.objectFit || 'contain'};">`;
     } else {
       const color = theme.botAvatarSvgColor || theme.primary || '#6366f1';
