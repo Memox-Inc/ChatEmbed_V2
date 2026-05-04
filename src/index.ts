@@ -509,7 +509,10 @@ function init(): void {
     isHandoverActive = wasHandover || sessionHandover;
 
     setupChatInput();
-    if (welcomeMessage) saveMessage(welcomeMessage, 'bot', 'welcomeMessage');
+    // Welcome message only renders when leadCapture is off — when the form
+    // is on, the lead-capture flow takes the place of the greeting and
+    // pushing both produces a confusing double-greeting after refresh.
+    if (welcomeMessage && !leadCapture) saveMessage(welcomeMessage, 'bot', 'welcomeMessage');
     loadMessages(true);
   }
 
@@ -622,13 +625,25 @@ function init(): void {
       setupChatInput();
       inputBar.setDisabled(true);
       setBotResponding(true);
-      if (welcomeMessage) saveMessage(welcomeMessage, 'bot', 'welcomeMessage');
       loadMessages();
       connectWebSocket();
 
-      // Enable input after WS is ready
+      // Server-driven greeting: as soon as the WS opens, send a
+      // ``request_greeting`` control event with the configured welcome
+      // text. The backend persists a real bot ChatMessage and broadcasts
+      // it back through the standard text_message pipeline, so the
+      // greeting renders like any other agent reply (visible in admin,
+      // operator dashboard, history). No client-side ``saveMessage`` —
+      // that would create a phantom bubble that the server never sees.
       const enableWhenReady = (): void => {
         if (ws.readyState === WebSocket.OPEN) {
+          if (welcomeMessage) {
+            ws.send({
+              message_type: 'request_greeting',
+              greeting_text: welcomeMessage,
+              room_name: chatID,
+            });
+          }
           inputBar.setDisabled(false);
           setBotResponding(false);
         } else {
@@ -636,30 +651,6 @@ function init(): void {
         }
       };
       setTimeout(enableWhenReady, 500);
-
-      // Send lead context to bot so it doesn't re-ask for collected info
-      if (lead) {
-        const parts: string[] = [];
-        if (lead.name) parts.push(`Name: ${lead.name}`);
-        if (lead.email) parts.push(`Email: ${lead.email}`);
-        if (lead.phone) parts.push(`Phone: ${lead.phone}`);
-        if (lead.zip) parts.push(`Zip: ${lead.zip}`);
-        if (parts.length > 0) {
-          const contextMsg = `[System: The visitor has already provided their details via the registration form. ${parts.join(', ')}. Do not ask for this information again. Greet them by name and ask how you can help.]`;
-          const sendContext = (): void => {
-            if (ws.readyState === WebSocket.OPEN) {
-              ws.send({
-                message: contextMsg,
-                message_type: 'text',
-                room_name: chatID,
-              });
-            } else if (ws.readyState === WebSocket.CONNECTING) {
-              setTimeout(sendContext, 200);
-            }
-          };
-          setTimeout(sendContext, 500);
-        }
-      }
     });
 
     // Hide all widget content, show form
