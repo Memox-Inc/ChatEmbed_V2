@@ -707,12 +707,17 @@ async function init(): Promise<void> {
       connectWebSocket();
 
       // Enable input after WS is ready
+      const MAX_INIT_RETRIES = 20; // ~6s at 300ms intervals
+      let retryCount = 0;
       const enableWhenReady = (): void => {
         if (ws.readyState === WebSocket.OPEN) {
           inputBar.setDisabled(false);
           setBotResponding(false);
-        } else {
+        } else if (retryCount < MAX_INIT_RETRIES) {
+          retryCount++;
           setTimeout(enableWhenReady, 300);
+        } else {
+          console.warn('MemoxChatWidget: init timed out after 6s');
         }
       };
       setTimeout(enableWhenReady, 500);
