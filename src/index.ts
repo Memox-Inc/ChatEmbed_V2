@@ -23,6 +23,8 @@ import { applyPulse } from './ui/attractors/pulse';
 import { mountBadge, type ClearBadge } from './ui/attractors/badge';
 import { mountSmartAutoOpen, type SmartAutoOpenHandle } from './ui/attractors/smart-auto-open';
 import { mountPersonaCard } from './ui/attractors/persona-card';
+import { pickPrimaryAttractor } from './ui/attractors/pick-primary';
+import { createOpenTriggerStore } from './ui/open-trigger';
 import { normalizePhoneE164 } from './ui/forms/validation';
 import * as analytics from './analytics/posthog';
 import { fetchInitConfig } from './connection/init';
@@ -149,10 +151,10 @@ async function init(): Promise<void> {
   let launcher: HTMLButtonElement | null = null;
   let clearBadge: ClearBadge = () => {};
   let autoOpenHandle: SmartAutoOpenHandle | null = null;
-  // When set, the next handleToggle() open captures chat_opened with
-  // this trigger property. Cleared after read so manual opens stay
-  // tagged as the default 'manual'.
-  let nextOpenTrigger: 'auto_open' | undefined;
+  // Carries the pending open trigger from the smart-auto-open callback into
+  // handleToggle(). consume() reads + clears atomically so stale values can't
+  // leak into subsequent manual opens (HARD-6).
+  const triggerStore = createOpenTriggerStore();
   if (config.mode !== 'inline') {
     launcher = createLauncher(config, handleToggle);
     applyPulse(launcher, config);
@@ -161,35 +163,12 @@ async function init(): Promise<void> {
 
     // ── Attractor precedence ──────────────────────────────────────────
     // Only ONE primary attractor (teaser OR persona card) may render at
-    // a time. The rules below are evaluated top-to-bottom; the first
-    // match wins and the others are skipped.
+    // a time. Rules are encoded in pickPrimaryAttractor() (pick-primary.ts)
+    // and tested independently — see HARD-8.
     //
-    //   1. persona enabled + has name + has message → mount persona only
-    //   2. pill form factor                         → mount neither
-    //      (the pill already carries label text; a second attractor
-    //       would be redundant. Persona is NOT suppressed by pill —
-    //       persona is richer than the pill's inline text and takes
-    //       priority in rule 1 above.)
-    //   3. teaser enabled + has text               → mount teaser only
-    //   4. otherwise                               → mount neither
-    //
-    // Adding a future attractor? Insert a new rule here in the right
-    // priority order — do NOT add suppression checks inside the
-    // individual attractor modules.
+    // Adding a future attractor? Edit pickPrimaryAttractor(), not here.
     // ─────────────────────────────────────────────────────────────────
-    const launcherCfg = config.launcher || {};
-    const personaCfg = launcherCfg.attractors?.persona;
-    const teaserCfg = launcherCfg.attractors?.teaser;
-
-    type PrimaryAttractor = 'persona' | 'teaser' | null;
-    function pickPrimaryAttractor(): PrimaryAttractor {
-      if (personaCfg?.enabled && personaCfg.name && personaCfg.message) return 'persona';
-      if (launcherCfg.form_factor === 'pill') return null;
-      if (teaserCfg?.enabled && teaserCfg.text) return 'teaser';
-      return null;
-    }
-
-    const primary = pickPrimaryAttractor();
+    const primary = pickPrimaryAttractor(config.launcher);
     if (primary === 'persona') {
       mountPersonaCard(config, root as unknown as HTMLElement, {
         onOpen: () => {
@@ -211,7 +190,7 @@ async function init(): Promise<void> {
     // notifyManualOpen() so handleToggle can suppress a pending auto-fire
     // when the visitor clicks the launcher first.
     autoOpenHandle = mountSmartAutoOpen(config, () => {
-      nextOpenTrigger = 'auto_open';
+      triggerStore.set('auto_open');
       handleToggle();
     });
   }
@@ -617,8 +596,7 @@ async function init(): Promise<void> {
   }
 
   function handleToggle(): void {
-    const trigger = nextOpenTrigger;
-    nextOpenTrigger = undefined;
+    const trigger = triggerStore.consume();
     if (chatOpen) {
       handleClose();
     } else {
