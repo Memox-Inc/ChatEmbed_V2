@@ -20,6 +20,7 @@ import { createLeadCaptureForm, type LeadData } from './ui/forms/lead-capture-fo
 import { createLauncher } from './ui/launcher';
 import { mountTeaser } from './ui/attractors/teaser';
 import { applyPulse } from './ui/attractors/pulse';
+import { mountBadge, type ClearBadge } from './ui/attractors/badge';
 import { normalizePhoneE164 } from './ui/forms/validation';
 import * as analytics from './analytics/posthog';
 import { fetchInitConfig } from './connection/init';
@@ -144,9 +145,11 @@ async function init(): Promise<void> {
 
   // Launcher (floating mode only)
   let launcher: HTMLButtonElement | null = null;
+  let clearBadge: ClearBadge = () => {};
   if (config.mode !== 'inline') {
     launcher = createLauncher(config, handleToggle);
     applyPulse(launcher, config);
+    clearBadge = mountBadge(launcher, config);
     root.appendChild(launcher);
     // Attractor: teaser bubble. Mounts inside the same shadow root so
     // styles stay scoped to the widget. The mount module decides whether
@@ -559,6 +562,9 @@ async function init(): Promise<void> {
       handleClose();
     } else {
       chatOpen = true;
+      // Consume the unread-message badge on first open. Subsequent
+      // open/close cycles don't restore it — the visit is engaged.
+      clearBadge();
       analytics.capture('chat_opened');
       widget.style.display = 'flex';
       widget.classList.add('mcx-widget--open');
