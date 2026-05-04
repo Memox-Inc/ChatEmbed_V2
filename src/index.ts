@@ -19,6 +19,7 @@ import { createQuickQuestions } from './ui/input/quick-questions';
 import { createLeadCaptureForm, type LeadData } from './ui/forms/lead-capture-form';
 import { createLauncher } from './ui/launcher';
 import { mountTeaser } from './ui/attractors/teaser';
+import { applyPulse } from './ui/attractors/pulse';
 import { normalizePhoneE164 } from './ui/forms/validation';
 import * as analytics from './analytics/posthog';
 import { fetchInitConfig } from './connection/init';
@@ -145,6 +146,7 @@ async function init(): Promise<void> {
   let launcher: HTMLButtonElement | null = null;
   if (config.mode !== 'inline') {
     launcher = createLauncher(config, handleToggle);
+    applyPulse(launcher, config);
     root.appendChild(launcher);
     // Attractor: teaser bubble. Mounts inside the same shadow root so
     // styles stay scoped to the widget. The mount module decides whether

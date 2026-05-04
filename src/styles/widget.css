@@ -203,6 +203,26 @@
   100% { box-shadow: 0 0 0 0 rgba(131, 73, 255, 0); }
 }
 
+/* ─── Persistent pulse attractor ──────────────────────────────────
+   The default .mcx-launcher animation pulses 3 times then stops. With
+   the pulse attractor enabled, the launcher keeps a slower, softer
+   ring loop running indefinitely so it stays visible to inattentive
+   visitors. Stronger ring opacity + stacks the box-shadow so the
+   ambient drop-shadow on the launcher button is preserved. */
+@keyframes mcx-pulse-loop {
+  0%   { box-shadow: 0 4px 16px rgba(131, 73, 255, 0.4), 0 0 0 0 rgba(131, 73, 255, 0.45); }
+  70%  { box-shadow: 0 4px 16px rgba(131, 73, 255, 0.4), 0 0 0 18px rgba(131, 73, 255, 0); }
+  100% { box-shadow: 0 4px 16px rgba(131, 73, 255, 0.4), 0 0 0 0 rgba(131, 73, 255, 0); }
+}
+.mcx-launcher--pulse {
+  animation: mcx-pulse-loop 2s ease-out infinite;
+}
+/* When the panel is open, stop pulsing — the launcher is hidden anyway,
+   but this prevents the offscreen animation from costing CPU. */
+.mcx-launcher--pulse.mcx-launcher--open {
+  animation: none;
+}
+
 /* ═══════ Widget Container ═══════ */
 .mcx-widget {
   display: none;
