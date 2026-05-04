@@ -12,6 +12,7 @@
 //     widget's DOM directly.
 
 import type { ChatEmbedConfig } from '../../config/types';
+import type { AttractorHandle } from './types';
 
 export interface PersonaHandlers {
   onOpen?: () => void;
@@ -43,10 +44,9 @@ export function mountPersonaCard(
   config: ChatEmbedConfig,
   host: HTMLElement,
   handlers: PersonaHandlers,
-): PersonaCleanup {
+): AttractorHandle {
   const persona = config.launcher?.attractors?.persona;
-  const noop: PersonaCleanup = () => {};
-  if (!persona || !persona.enabled || !persona.name || !persona.message) return noop;
+  if (!persona || !persona.enabled || !persona.name || !persona.message) return { cleanup: () => {} };
 
   const photoUrl = config.launcher?.photo_url;
   const card = document.createElement('div');
@@ -112,7 +112,9 @@ export function mountPersonaCard(
 
   host.appendChild(card);
 
-  return () => {
-    if (card.parentElement) card.parentElement.removeChild(card);
+  return {
+    cleanup: () => {
+      if (card.parentElement) card.parentElement.removeChild(card);
+    },
   };
 }

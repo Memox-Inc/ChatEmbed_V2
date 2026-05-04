@@ -20,7 +20,8 @@ import { createLeadCaptureForm, type LeadData } from './ui/forms/lead-capture-fo
 import { createLauncher } from './ui/launcher';
 import { mountTeaser } from './ui/attractors/teaser';
 import { applyPulse } from './ui/attractors/pulse';
-import { mountBadge, type ClearBadge } from './ui/attractors/badge';
+import { mountBadge } from './ui/attractors/badge';
+import type { AttractorHandle } from './ui/attractors/types';
 import { mountSmartAutoOpen, type SmartAutoOpenHandle } from './ui/attractors/smart-auto-open';
 import { mountPersonaCard } from './ui/attractors/persona-card';
 import { pickPrimaryAttractor } from './ui/attractors/pick-primary';
@@ -149,7 +150,7 @@ async function init(): Promise<void> {
 
   // Launcher (floating mode only)
   let launcher: HTMLButtonElement | null = null;
-  let clearBadge: ClearBadge = () => {};
+  let clearBadge: AttractorHandle = { cleanup: () => {} };
   let autoOpenHandle: SmartAutoOpenHandle | null = null;
   // Carries the pending open trigger from the smart-auto-open callback into
   // handleToggle(). consume() reads + clears atomically so stale values can't
@@ -603,7 +604,7 @@ async function init(): Promise<void> {
       chatOpen = true;
       // Consume the unread-message badge on first open. Subsequent
       // open/close cycles don't restore it — the visit is engaged.
-      clearBadge();
+      clearBadge.cleanup();
       // Suppress any pending auto-open if the visitor clicked the
       // launcher manually — the auto-open shouldn't double-fire seconds
       // later when the time threshold finally elapses.

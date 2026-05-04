@@ -111,17 +111,17 @@ describe('mountTeaser', () => {
   });
 
   it('cleanup() cancels a pending timer before render', () => {
-    const cleanup = mountTeaser(baseConfig(), document.body);
-    cleanup();
+    const handle = mountTeaser(baseConfig(), document.body);
+    handle.cleanup();
     vi.advanceTimersByTime(5000);
     expect(document.querySelector('.mcx-teaser')).toBeNull();
   });
 
   it('cleanup() removes a teaser already rendered', () => {
-    const cleanup = mountTeaser(baseConfig(), document.body);
+    const handle = mountTeaser(baseConfig(), document.body);
     vi.advanceTimersByTime(1500);
     expect(document.querySelector('.mcx-teaser')).toBeTruthy();
-    cleanup();
+    handle.cleanup();
     expect(document.querySelector('.mcx-teaser')).toBeNull();
   });
 

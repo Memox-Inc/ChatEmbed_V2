@@ -59,9 +59,9 @@ describe('mountBadge', () => {
       launcher: { form_factor: 'round', icon_type: 'bubble', attractors: { badge: { enabled: true } } },
     };
     const launcher = createLauncher(cfg, vi.fn());
-    const clear = mountBadge(launcher, cfg);
+    const handle = mountBadge(launcher, cfg);
     expect(launcher.querySelector('.mcx-badge')).toBeTruthy();
-    clear();
+    handle.cleanup();
     expect(launcher.querySelector('.mcx-badge')).toBeNull();
   });
 
@@ -70,15 +70,15 @@ describe('mountBadge', () => {
       launcher: { form_factor: 'round', icon_type: 'bubble', attractors: { badge: { enabled: true } } },
     };
     const launcher = createLauncher(cfg, vi.fn());
-    const clear = mountBadge(launcher, cfg);
-    clear();
-    expect(() => clear()).not.toThrow();
+    const handle = mountBadge(launcher, cfg);
+    handle.cleanup();
+    expect(() => handle.cleanup()).not.toThrow();
   });
 
   it('returns a no-op when disabled (clear is safe to call)', () => {
     const cfg: ChatEmbedConfig = { launcher: { form_factor: 'round', icon_type: 'bubble' } };
     const launcher = createLauncher(cfg, vi.fn());
-    const clear = mountBadge(launcher, cfg);
-    expect(() => clear()).not.toThrow();
+    const handle = mountBadge(launcher, cfg);
+    expect(() => handle.cleanup()).not.toThrow();
   });
 });

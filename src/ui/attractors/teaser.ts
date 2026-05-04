@@ -10,19 +10,19 @@
 // re-mounts (e.g. an embed config swap during E2E tests).
 
 import type { ChatEmbedConfig } from '../../config/types';
+import type { AttractorHandle } from './types';
 
 export type TeaserCleanup = () => void;
 
 const DEFAULT_DELAY_SECONDS = 5;
 
-export function mountTeaser(config: ChatEmbedConfig, host: HTMLElement): TeaserCleanup {
+export function mountTeaser(config: ChatEmbedConfig, host: HTMLElement): AttractorHandle {
   const launcher = config.launcher || {};
   const teaser = launcher.attractors?.teaser;
 
   // Suppression rules — return a no-op cleanup so callers can always
   // store the result without a null check.
-  const noop: TeaserCleanup = () => {};
-  if (!teaser || !teaser.enabled || !teaser.text) return noop;
+  if (!teaser || !teaser.enabled || !teaser.text) return { cleanup: () => {} };
 
   const delayMs = (teaser.show_after_seconds ?? DEFAULT_DELAY_SECONDS) * 1000;
 
@@ -35,15 +35,17 @@ export function mountTeaser(config: ChatEmbedConfig, host: HTMLElement): TeaserC
     host.appendChild(element);
   }, delayMs);
 
-  return () => {
-    if (timerId !== null) {
-      clearTimeout(timerId);
-      timerId = null;
-    }
-    if (element && element.parentElement) {
-      element.parentElement.removeChild(element);
-    }
-    element = null;
+  return {
+    cleanup: () => {
+      if (timerId !== null) {
+        clearTimeout(timerId);
+        timerId = null;
+      }
+      if (element && element.parentElement) {
+        element.parentElement.removeChild(element);
+      }
+      element = null;
+    },
   };
 }
 

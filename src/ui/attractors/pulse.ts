@@ -4,9 +4,15 @@
 // module just owns the policy decision.
 
 import type { ChatEmbedConfig } from '../../config/types';
+import type { AttractorHandle } from './types';
 
-export function applyPulse(launcher: HTMLElement, config: ChatEmbedConfig): void {
+export function applyPulse(launcher: HTMLElement, config: ChatEmbedConfig): AttractorHandle {
   if (config.launcher?.attractors?.pulse?.enabled) {
     launcher.classList.add('mcx-launcher--pulse');
   }
+  return {
+    cleanup: () => {
+      launcher.classList.remove('mcx-launcher--pulse');
+    },
+  };
 }

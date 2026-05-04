@@ -172,9 +172,9 @@ describe('mountPersonaCard', () => {
   });
 
   it('cleanup() removes the card', () => {
-    const cleanup = mountPersonaCard(makeConfig(), document.body, {});
+    const handle = mountPersonaCard(makeConfig(), document.body, {});
     expect(document.querySelector('.mcx-persona-card')).toBeTruthy();
-    cleanup();
+    handle.cleanup();
     expect(document.querySelector('.mcx-persona-card')).toBeNull();
   });
 

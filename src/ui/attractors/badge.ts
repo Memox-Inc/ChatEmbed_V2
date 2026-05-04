@@ -10,12 +10,13 @@
 // needed.
 
 import type { ChatEmbedConfig } from '../../config/types';
+import type { AttractorHandle } from './types';
 
 export type ClearBadge = () => void;
 
-export function mountBadge(launcher: HTMLElement, config: ChatEmbedConfig): ClearBadge {
+export function mountBadge(launcher: HTMLElement, config: ChatEmbedConfig): AttractorHandle {
   const enabled = config.launcher?.attractors?.badge?.enabled === true;
-  if (!enabled) return () => {};
+  if (!enabled) return { cleanup: () => {} };
 
   const isPill = config.launcher?.form_factor === 'pill';
   const badge = document.createElement('span');
@@ -24,9 +25,11 @@ export function mountBadge(launcher: HTMLElement, config: ChatEmbedConfig): Clea
   badge.textContent = '1';
   launcher.appendChild(badge);
 
-  return () => {
-    if (badge.parentElement) {
-      badge.parentElement.removeChild(badge);
-    }
+  return {
+    cleanup: () => {
+      if (badge.parentElement) {
+        badge.parentElement.removeChild(badge);
+      }
+    },
   };
 }

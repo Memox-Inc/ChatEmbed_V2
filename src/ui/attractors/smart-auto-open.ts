@@ -14,14 +14,14 @@
 // — that's invariant #3.
 
 import type { ChatEmbedConfig } from '../../config/types';
+import type { AttractorHandle } from './types';
 
 const STORAGE_KEY = 'mcx_auto_opened';
 const DEFAULT_TIME_SECONDS = 30;
 const DEFAULT_SCROLL_PERCENT = 50;
 
-export interface SmartAutoOpenHandle {
+export interface SmartAutoOpenHandle extends AttractorHandle {
   notifyManualOpen: () => void;
-  cleanup: () => void;
 }
 
 export function mountSmartAutoOpen(
