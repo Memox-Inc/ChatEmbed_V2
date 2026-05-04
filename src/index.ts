@@ -509,7 +509,10 @@ function init(): void {
     isHandoverActive = wasHandover || sessionHandover;
 
     setupChatInput();
-    if (welcomeMessage) saveMessage(welcomeMessage, 'bot', 'welcomeMessage');
+    // Welcome message only renders when leadCapture is off — when the form
+    // is on, the lead-capture flow takes the place of the greeting and
+    // pushing both produces a confusing double-greeting after refresh.
+    if (welcomeMessage && !leadCapture) saveMessage(welcomeMessage, 'bot', 'welcomeMessage');
     loadMessages(true);
   }
 
@@ -622,7 +625,24 @@ function init(): void {
       setupChatInput();
       inputBar.setDisabled(true);
       setBotResponding(true);
-      if (welcomeMessage) saveMessage(welcomeMessage, 'bot', 'welcomeMessage');
+      // Render the configured welcome message client-side IMMEDIATELY so
+      // the visitor never sees a blank panel or a typing-indicator pause
+      // after submitting the lead form. We personalise it with the
+      // visitor's first name when available — either by substituting a
+      // ``{name}`` placeholder if the configured welcomeMessage contains
+      // one, or by prepending a "Hi {firstName}! " line otherwise. The
+      // bot is intentionally left silent (no context message sent) so
+      // the visitor sees exactly one greeting, within a frame.
+      if (welcomeMessage) {
+        const firstName = lead?.name ? sanitizeInput(lead.name).split(/\s+/)[0] : '';
+        let personalisedWelcome = welcomeMessage;
+        if (firstName) {
+          personalisedWelcome = personalisedWelcome.includes('{name}')
+            ? personalisedWelcome.replace(/\{name\}/g, firstName)
+            : `Hi ${firstName}! ${personalisedWelcome}`;
+        }
+        saveMessage(personalisedWelcome, 'bot', 'welcomeMessage');
+      }
       loadMessages();
       connectWebSocket();
 
@@ -637,29 +657,14 @@ function init(): void {
       };
       setTimeout(enableWhenReady, 500);
 
-      // Send lead context to bot so it doesn't re-ask for collected info
-      if (lead) {
-        const parts: string[] = [];
-        if (lead.name) parts.push(`Name: ${lead.name}`);
-        if (lead.email) parts.push(`Email: ${lead.email}`);
-        if (lead.phone) parts.push(`Phone: ${lead.phone}`);
-        if (lead.zip) parts.push(`Zip: ${lead.zip}`);
-        if (parts.length > 0) {
-          const contextMsg = `[System: The visitor has already provided their details via the registration form. ${parts.join(', ')}. Do not ask for this information again. Greet them by name and ask how you can help.]`;
-          const sendContext = (): void => {
-            if (ws.readyState === WebSocket.OPEN) {
-              ws.send({
-                message: contextMsg,
-                message_type: 'text',
-                room_name: chatID,
-              });
-            } else if (ws.readyState === WebSocket.CONNECTING) {
-              setTimeout(sendContext, 200);
-            }
-          };
-          setTimeout(sendContext, 500);
-        }
-      }
+      // Lead details (name/email/phone/zip) are already attached to the
+      // visitor record via ``createVisitor`` above, and the backend agent
+      // reads them from visitor context when composing its system prompt.
+      // We deliberately do NOT push a system-style "context" chat message
+      // here — it makes the LLM treat the channel as having a pending
+      // turn and reply with an acknowledgement ("Understood..."), which
+      // stacks on top of the welcome greeting. Staying quiet until the
+      // visitor types their first real question is the correct flow.
     });
 
     // Hide all widget content, show form
