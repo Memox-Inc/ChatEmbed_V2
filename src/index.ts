@@ -21,6 +21,7 @@ import { createLauncher } from './ui/launcher';
 import { mountTeaser } from './ui/attractors/teaser';
 import { applyPulse } from './ui/attractors/pulse';
 import { mountBadge, type ClearBadge } from './ui/attractors/badge';
+import { mountSmartAutoOpen, type SmartAutoOpenHandle } from './ui/attractors/smart-auto-open';
 import { normalizePhoneE164 } from './ui/forms/validation';
 import * as analytics from './analytics/posthog';
 import { fetchInitConfig } from './connection/init';
@@ -146,6 +147,11 @@ async function init(): Promise<void> {
   // Launcher (floating mode only)
   let launcher: HTMLButtonElement | null = null;
   let clearBadge: ClearBadge = () => {};
+  let autoOpenHandle: SmartAutoOpenHandle | null = null;
+  // When set, the next handleToggle() open captures chat_opened with
+  // this trigger property. Cleared after read so manual opens stay
+  // tagged as the default 'manual'.
+  let nextOpenTrigger: 'auto_open' | undefined;
   if (config.mode !== 'inline') {
     launcher = createLauncher(config, handleToggle);
     applyPulse(launcher, config);
@@ -156,6 +162,14 @@ async function init(): Promise<void> {
     // to render based on launcher.attractors.teaser config; suppression
     // rules (pill, persona) live there.
     mountTeaser(config, root as unknown as HTMLElement);
+    // Smart auto-open: opens the chat once per session when both time
+    // and scroll thresholds are met. The handle exposes
+    // notifyManualOpen() so handleToggle can suppress a pending auto-fire
+    // when the visitor clicks the launcher first.
+    autoOpenHandle = mountSmartAutoOpen(config, () => {
+      nextOpenTrigger = 'auto_open';
+      handleToggle();
+    });
   }
 
   // Close-on-outside-click (floating mode only). Inline mode stays
@@ -565,7 +579,13 @@ async function init(): Promise<void> {
       // Consume the unread-message badge on first open. Subsequent
       // open/close cycles don't restore it — the visit is engaged.
       clearBadge();
-      analytics.capture('chat_opened');
+      const trigger = nextOpenTrigger;
+      nextOpenTrigger = undefined;
+      // Suppress any pending auto-open if the visitor clicked the
+      // launcher manually — the auto-open shouldn't double-fire seconds
+      // later when the time threshold finally elapses.
+      if (trigger !== 'auto_open') autoOpenHandle?.notifyManualOpen();
+      analytics.capture('chat_opened', trigger ? { trigger } : undefined);
       widget.style.display = 'flex';
       widget.classList.add('mcx-widget--open');
       widget.classList.remove('mcx-widget--closing');
