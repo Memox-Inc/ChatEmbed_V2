@@ -15,6 +15,9 @@ build/
 .env.test.local
 .env.production.local
 
+# Dev-time generated config (written by memox-hub seed_test_org)
+test/dev-config.json
+
 # IDE and editor files
 .vscode/
 .idea/

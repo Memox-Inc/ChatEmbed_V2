@@ -35,8 +35,8 @@
   <div id="inline-host" class="inline-container"></div>
 
   <script>
-    // Test config — uses localhost URLs (no real backend needed for UI testing)
-    window.MemoxChatConfig = {
+    // Default test config — uses localhost URLs (no real backend needed for UI testing)
+    const defaultConfig = {
       title: 'Test Bot',
       apiUrl: 'http://localhost:8000/api/v1/',
       socketUrl: 'ws://localhost:8000',
@@ -57,6 +57,28 @@
       },
     };
 
+    // Try to load dev-config.json (written by memox-hub seed_test_org)
+    (async () => {
+      let devConfig = {};
+      try {
+        const resp = await fetch('./dev-config.json');
+        if (resp.ok) {
+          devConfig = await resp.json();
+        }
+      } catch (e) {
+        // swallow — fall back to defaults if dev-config.json is not present
+      }
+
+      // Merge: dev config overrides defaults
+      window.MemoxChatConfig = { ...defaultConfig, ...devConfig };
+
+      // Inject chat-embed.js script after config is set
+      const s = document.createElement('script');
+      s.type = 'module';
+      s.src = '/src/index.ts';
+      document.body.appendChild(s);
+    })();
+
     let currentMode = 'floating';
     let leadCaptureOn = true;
 
@@ -76,6 +98,5 @@
       window.MemoxChatConfig.leadCapture = leadCaptureOn;
     }
   </script>
-  <script type="module" src="/src/index.ts"></script>
 </body>
 </html>
