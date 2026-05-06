@@ -1,4 +1,4 @@
-
+// This File is deprecated and using in older versions of the chat embed
 (function () {
     // Load marked.js library
     if (typeof marked === 'undefined') {

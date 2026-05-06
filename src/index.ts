@@ -59,6 +59,11 @@ async function init(): Promise<void> {
   // sessionStore reads/writes so multiple widgets on the same origin
   // (marketing site widget + per-persona demo embed) don't share state.
   sessionStore.setNamespace(config.storageNamespace);
+  // Wire PostHog analytics (no-op when ``posthogApiKey`` is unset).
+  // attractor_variant is read from the server's init response so every event
+  // can be split by launcher variant in PostHog funnels.
+  // ``chat_widget_loaded`` is captured at the end of init() instead of here
+  // to ensure the event reflects a successfully bootstrapped widget.
   analytics.init({
     apiKey: config.posthogApiKey,
     host: config.posthogHost,
@@ -109,6 +114,29 @@ async function init(): Promise<void> {
     host = result.host;
     root = result.root;
     document.body.appendChild(host);
+  }
+
+  // --- Theme variable overrides ---
+  // The base stylesheet uses CSS custom properties ``--p`` (primary)
+  // and ``--ph`` (primary hover) for the launcher gradient, header
+  // gradient, send button, focus rings, etc. Without this injection
+  // those defaults to Memox purple and any ``theme.primary`` config
+  // is ignored on those surfaces. Also wires ``theme.headerBg`` and
+  // ``theme.sendBtnHover`` which are declared in the type but never
+  // consumed by the base CSS otherwise.
+  if (theme.primary || theme.sendBtnHover || theme.headerBg) {
+    const overrideStyle = document.createElement('style');
+    const primary = theme.primary;
+    const hover = theme.sendBtnHover || theme.primary;
+    const headerBg = theme.headerBg;
+    const headerText = theme.headerText;
+    const lines: string[] = [];
+    if (primary) lines.push(`--p: ${primary};`);
+    if (hover) lines.push(`--ph: ${hover};`);
+    overrideStyle.textContent = `:host { ${lines.join(' ')} }
+${headerBg ? `.mcx-header { background: ${headerBg} !important; }` : ''}
+${headerText ? `.mcx-header, .mcx-header * { color: ${headerText} !important; }` : ''}`;
+    root.appendChild(overrideStyle);
   }
 
   // --- Create UI ---
@@ -602,7 +630,10 @@ async function init(): Promise<void> {
     isHandoverActive = wasHandover || sessionHandover;
 
     setupChatInput();
-    if (welcomeMessage) saveMessage(welcomeMessage, 'bot', 'welcomeMessage');
+    // Welcome message only renders when leadCapture is off — when the form
+    // is on, the lead-capture flow takes the place of the greeting and
+    // pushing both produces a confusing double-greeting after refresh.
+    if (welcomeMessage && !leadCapture) saveMessage(welcomeMessage, 'bot', 'welcomeMessage');
     loadMessages(true);
   }
 
@@ -730,15 +761,29 @@ async function init(): Promise<void> {
       setupChatInput();
       inputBar.setDisabled(true);
       setBotResponding(true);
-      if (welcomeMessage) saveMessage(welcomeMessage, 'bot', 'welcomeMessage');
       loadMessages();
       connectWebSocket();
 
-      // Enable input after WS is ready
+      // Enable input after WS opens. Bounded by MAX_INIT_RETRIES so a
+      // dead socket can't spin forever — surface a user-visible error
+      // instead. Once open, fire a ``request_greeting`` control event
+      // (server-driven greeting): the backend persists a real bot
+      // ChatMessage and broadcasts it through the standard text_message
+      // pipeline, so the greeting renders like any other agent reply
+      // (visible in admin, operator dashboard, history). No client-side
+      // ``saveMessage`` — that would create a phantom bubble that the
+      // server never sees.
       const MAX_INIT_RETRIES = 20; // ~6s at 300ms intervals
       let retryCount = 0;
       const enableWhenReady = (): void => {
         if (ws.readyState === WebSocket.OPEN) {
+          if (welcomeMessage) {
+            ws.send({
+              message_type: 'request_greeting',
+              greeting_text: welcomeMessage,
+              room_name: chatID,
+            });
+          }
           inputBar.setDisabled(false);
           setBotResponding(false);
         } else if (retryCount < MAX_INIT_RETRIES) {
@@ -763,30 +808,6 @@ async function init(): Promise<void> {
         }
       };
       setTimeout(enableWhenReady, 500);
-
-      // Send lead context to bot so it doesn't re-ask for collected info
-      if (lead) {
-        const parts: string[] = [];
-        if (lead.name) parts.push(`Name: ${lead.name}`);
-        if (lead.email) parts.push(`Email: ${lead.email}`);
-        if (lead.phone) parts.push(`Phone: ${lead.phone}`);
-        if (lead.zip) parts.push(`Zip: ${lead.zip}`);
-        if (parts.length > 0) {
-          const contextMsg = `[System: The visitor has already provided their details via the registration form. ${parts.join(', ')}. Do not ask for this information again. Greet them by name and ask how you can help.]`;
-          const sendContext = (): void => {
-            if (ws.readyState === WebSocket.OPEN) {
-              ws.send({
-                message: contextMsg,
-                message_type: 'text',
-                room_name: chatID,
-              });
-            } else if (ws.readyState === WebSocket.CONNECTING) {
-              setTimeout(sendContext, 200);
-            }
-          };
-          setTimeout(sendContext, 500);
-        }
-      }
     });
 
     // Hide all widget content, show form
