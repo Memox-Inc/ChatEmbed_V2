@@ -29,6 +29,8 @@ import { createOpenTriggerStore } from './ui/open-trigger';
 import { normalizePhoneE164 } from './ui/forms/validation';
 import * as analytics from './analytics/posthog';
 import { fetchInitConfig } from './connection/init';
+import { applyTheme } from './ui/theme-vars';
+import { startEmbedConfigListener } from './connection/embed-config-listener';
 
 declare global {
   interface Window {
@@ -117,27 +119,25 @@ async function init(): Promise<void> {
   }
 
   // --- Theme variable overrides ---
-  // The base stylesheet uses CSS custom properties ``--p`` (primary)
-  // and ``--ph`` (primary hover) for the launcher gradient, header
-  // gradient, send button, focus rings, etc. Without this injection
-  // those defaults to Memox purple and any ``theme.primary`` config
-  // is ignored on those surfaces. Also wires ``theme.headerBg`` and
-  // ``theme.sendBtnHover`` which are declared in the type but never
-  // consumed by the base CSS otherwise.
-  if (theme.primary || theme.sendBtnHover || theme.headerBg) {
-    const overrideStyle = document.createElement('style');
-    const primary = theme.primary;
-    const hover = theme.sendBtnHover || theme.primary;
-    const headerBg = theme.headerBg;
-    const headerText = theme.headerText;
-    const lines: string[] = [];
-    if (primary) lines.push(`--p: ${primary};`);
-    if (hover) lines.push(`--ph: ${hover};`);
-    overrideStyle.textContent = `:host { ${lines.join(' ')} }
-${headerBg ? `.mcx-header { background: ${headerBg} !important; }` : ''}
-${headerText ? `.mcx-header, .mcx-header * { color: ${headerText} !important; }` : ''}`;
-    root.appendChild(overrideStyle);
-  }
+  // The base stylesheet hardcodes ``--p`` / ``--ph`` on ``:host`` for
+  // the launcher gradient, header gradient, send button, focus rings,
+  // etc. ``theme.primary`` only lands on those surfaces if we inject
+  // overrides. ``applyTheme`` is also reused by the live-update WS
+  // listener below — single source of truth.
+  applyTheme(root, theme);
+
+  // --- Live config propagation ---
+  // When ``embedId`` is set, the widget opens a read-only WS to
+  // ``/ws/embed/<embed_id>/`` and re-applies CSS theme + welcome on
+  // every operator save. No-op when ``embedId`` is unset (e.g.
+  // self-hosted/OSS deployments).
+  startEmbedConfigListener(config, root, (next) => {
+    if (next?.welcome_message) {
+      // Updates the welcome bubble next time the chat is opened. We
+      // deliberately don't mutate an active transcript mid-conversation.
+      (config as ChatEmbedConfig).welcomeMessage = next.welcome_message;
+    }
+  });
 
   // --- Create UI ---
   const widget = createWidgetContainer(config);
