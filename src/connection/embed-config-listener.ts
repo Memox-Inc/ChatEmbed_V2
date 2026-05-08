@@ -69,17 +69,22 @@ export function startEmbedConfigListener(
 
     socket.onopen = () => {
       backoff = RECONNECT_BACKOFF_START_MS;
+      // eslint-disable-next-line no-console
+      console.log('[Memox] embed-config WS open', url);
     };
 
     socket.onmessage = (event) => {
+      // eslint-disable-next-line no-console
+      console.log('[Memox] embed-config WS frame', event.data);
       try {
         const data = JSON.parse(typeof event.data === 'string' ? event.data : '{}') as EmbedConfigUpdatePayload;
         if (data && data.type === 'embed_config_updated' && data.config) {
           applyTheme(root, data.config.theme as Theme | undefined);
           if (onApply) onApply(data.config);
         }
-      } catch {
-        // Ignore malformed frames — analytics-only channel, can't break the widget.
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.warn('[Memox] embed-config WS parse failed', err);
       }
     };
 

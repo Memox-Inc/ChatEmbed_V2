@@ -53,13 +53,24 @@ export async function fetchInitConfig(
     });
 
     if (!resp.ok) throw new Error(`init failed: ${resp.status}`);
-    let data: InitResponse;
+    let data: any;
     try {
       data = await resp.json();
     } catch (parseError) {
       throw new Error(`init response was not valid JSON: ${parseError}`);
     }
-    return data.config || {};
+    // Promote the top-level runtime fields onto the merged config so
+    // the customer's HTML snippet only needs ``embedId`` — backend
+    // URL, auth token, org_id, and agent_id all flow from the init
+    // response. The branding payload (``data.config``) is run through
+    // ``normalizeServerConfig`` exactly as before.
+    const runtime: Record<string, any> = {};
+    if (typeof data.token === 'string' && data.token) runtime.token = data.token;
+    if (typeof data.base_url === 'string' && data.base_url) runtime.baseUrl = data.base_url;
+    if (typeof data.socket_url === 'string' && data.socket_url) runtime.socketUrl = data.socket_url;
+    if (data.org_id !== undefined && data.org_id !== null) runtime.org_id = String(data.org_id);
+    if (data.agent_id !== undefined && data.agent_id !== null) runtime.agent_id = String(data.agent_id);
+    return { ...runtime, ...normalizeServerConfig(data.config || {}) };
   } catch (e) {
     // eslint-disable-next-line no-console
     console.warn('[Memox] init fetch failed, falling back to local config', e);
@@ -67,4 +78,53 @@ export async function fetchInitConfig(
   } finally {
     clearTimeout(timeoutId);
   }
+}
+
+
+/**
+ * Convert ``snake_case`` to ``camelCase``.
+ */
+function snakeToCamelKey(key: string): string {
+  return key.replace(/_([a-z0-9])/g, (_m, c: string) => c.toUpperCase());
+}
+
+/**
+ * Bridge the server's snake_case wire format onto the widget's
+ * camelCase config keys so the boot AND live-update paths pick up
+ * dashboard-saved settings without field-by-field mappings.
+ *
+ * Strategy:
+ *   • Top-level keys are aliased to their camelCase equivalents
+ *     (``welcome_message`` → ``welcomeMessage``, etc.). Both shapes
+ *     are kept on the output so legacy code that still reads the
+ *     snake_case key keeps working.
+ *   • Nested objects are NOT recursively camelized — components like
+ *     ``applyTheme`` already accept both shapes via tolerant key
+ *     readers, and ``launcher`` / ``attractors`` are passed straight
+ *     through to existing snake_case-aware mounters. Recursive
+ *     conversion was rewriting the ``theme`` block and breaking
+ *     ``applyTheme`` reads.
+ *
+ * Special-cased: ``lead_capture`` arrives as ``{enabled, mandatory}``
+ * but the widget's ``leadCapture`` is a boolean. Extract ``enabled``
+ * to ``leadCapture`` and keep the full object on ``leadCaptureConfig``
+ * for callers that need ``mandatory``.
+ */
+export function normalizeServerConfig(serverConfig: Record<string, any>): Record<string, any> {
+  const out: Record<string, any> = { ...serverConfig };
+
+  for (const [k, v] of Object.entries(serverConfig)) {
+    if (k.includes('_')) {
+      const camel = snakeToCamelKey(k);
+      // Don't clobber an existing camelCase value supplied by another
+      // path (e.g. local config merged in earlier).
+      if (!(camel in out)) out[camel] = v;
+    }
+  }
+
+  if (serverConfig.lead_capture && typeof serverConfig.lead_capture === 'object') {
+    out.leadCaptureConfig = serverConfig.lead_capture;
+    out.leadCapture = !!serverConfig.lead_capture.enabled;
+  }
+  return out;
 }

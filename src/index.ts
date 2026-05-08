@@ -28,7 +28,7 @@ import { pickPrimaryAttractor } from './ui/attractors/pick-primary';
 import { createOpenTriggerStore } from './ui/open-trigger';
 import { normalizePhoneE164 } from './ui/forms/validation';
 import * as analytics from './analytics/posthog';
-import { fetchInitConfig } from './connection/init';
+import { fetchInitConfig, normalizeServerConfig } from './connection/init';
 import { applyTheme } from './ui/theme-vars';
 import { startEmbedConfigListener } from './connection/embed-config-listener';
 
@@ -132,11 +132,15 @@ async function init(): Promise<void> {
   // every operator save. No-op when ``embedId`` is unset (e.g.
   // self-hosted/OSS deployments).
   startEmbedConfigListener(config, root, (next) => {
-    if (next?.welcome_message) {
-      // Updates the welcome bubble next time the chat is opened. We
-      // deliberately don't mutate an active transcript mid-conversation.
-      (config as ChatEmbedConfig).welcomeMessage = next.welcome_message;
-    }
+    if (!next) return;
+    // Run every server payload through the same normalizer the boot
+    // path uses, then mutate the in-memory config so a future panel
+    // open (or a future read) picks up every changed field — welcome
+    // message, lead capture, quick questions, theme keys, anything
+    // the server adds tomorrow. We deliberately don't remount the
+    // panel mid-conversation; live updates apply on next open.
+    const normalized = normalizeServerConfig(next as unknown as Record<string, any>);
+    Object.assign(config, normalized);
   });
 
   // --- Create UI ---

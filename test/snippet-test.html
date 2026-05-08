@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Embed Snippet — paste-and-test page</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8fafc; color: #1e293b; padding: 80px 24px; }
+  .hero { max-width: 720px; margin: 0 auto; }
+  h1 { font-size: 26px; font-weight: 700; margin-bottom: 8px; }
+  p { color: #64748b; line-height: 1.6; margin-bottom: 12px; }
+  .card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px; margin-top: 18px; font-size: 14px; }
+  code { background: #f1f5f9; padding: 1px 6px; border-radius: 4px; font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="hero">
+  <h1>Embed Snippet — minimal config</h1>
+  <p>The host page only knows the <code>embedId</code>. Everything else (URLs, token, org/agent IDs) is fetched at runtime from <code>/api/v1/embed/init/</code>.</p>
+  <div class="card">
+    <p><strong>Try it:</strong> open <code>http://localhost:3000/agents/1</code> → Embed tab → copy snippet → replace the block at the bottom of this file → reload.</p>
+  </div>
+</div>
+
+<!-- The whole snippet is now just these two tags. -->
+<script>
+  window.MemoxChatConfig = { embedId: "emb_dddf82efa9c4" };
+</script>
+<script src="http://localhost:8080/dist/chat-embed.js" async></script>
+</body>
+</html>
