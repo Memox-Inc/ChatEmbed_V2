@@ -54,7 +54,11 @@ async function init(): Promise<void> {
   // local config provides everything else. Falls through to {} on failure
   // so the widget always boots with at least the local defaults.
   const localConfig = mergeConfig(defaultConfig, userConfig);
-  const apiBase = localConfig.apiBase || localConfig.apiUrl || 'https://api.memox.io';
+  // Production hub hostname. ``api.memox.io`` does not resolve — confirmed
+  // against ``repos/memox-hub/deploy/k8s/README.md`` (Prod: hub.memox.io,
+  // Dev: hub-dev.memox.io). Without this default a customer pasting only
+  // ``embedId`` would silently fail DNS on every init request.
+  const apiBase = localConfig.apiBase || localConfig.apiUrl || 'https://hub.memox.io';
   const serverConfig = await fetchInitConfig(localConfig.embedId ?? null, apiBase);
   const config = mergeConfig(localConfig, serverConfig as Partial<ChatEmbedConfig>);
   // Scope localStorage to this embed instance — must run before any
