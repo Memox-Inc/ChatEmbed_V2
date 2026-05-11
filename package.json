@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "terser chat-embed.js --compress --mangle -o chat-embed-min.js",
+    "build": "vite build",
+    "build:v1-legacy": "terser chat-embed.js --compress --mangle -o chat-embed-min.js",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest"
