@@ -220,6 +220,14 @@ export interface ChatEmbedConfig {
   isMobileDevice?: boolean;
   mode?: 'floating' | 'inline';
   /**
+   * CSS selector for the element to mount the widget inside when
+   * ``mode === 'inline'``. The widget appends its shadow host to the
+   * matched element. Falls back to ``#memox-chat-container``, then to
+   * the parent of the loading ``<script>`` tag, then to ``document.body``
+   * if none of those resolve.
+   */
+  parentSelector?: string;
+  /**
    * localStorage prefix. Defaults to ``simple-chat``. Set this to a
    * unique string per embed instance when more than one chat widget
    * may run on the same origin (e.g. ``simple-chat-website`` for the

@@ -92,10 +92,9 @@ async function init(): Promise<void> {
 
   if (config.mode === 'inline') {
     // For inline mode, find parent container by selector, ID convention, or script tag's parent
-    const parentSelector = (userConfig as Record<string, unknown>).parentSelector as string | undefined;
     let parent: HTMLElement | null = null;
-    if (parentSelector) {
-      parent = document.querySelector<HTMLElement>(parentSelector);
+    if (config.parentSelector) {
+      parent = document.querySelector<HTMLElement>(config.parentSelector);
     }
     if (!parent) {
       parent = document.getElementById('memox-chat-container');
