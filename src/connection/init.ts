@@ -126,5 +126,33 @@ export function normalizeServerConfig(serverConfig: Record<string, any>): Record
     out.leadCaptureConfig = serverConfig.lead_capture;
     out.leadCapture = !!serverConfig.lead_capture.enabled;
   }
+
+  // Dashboard persists theme tokens in snake_case (``user_bubble``,
+  // ``bot_avatar_svg_color``, etc.) into the JSON column, but every
+  // widget UI component reads them in camelCase (``theme.userBubble``).
+  // ``applyTheme`` accepts both via its tolerant ``pick()``, but the
+  // inline reads in message-bubble / index.ts don't. Camelize the
+  // ``theme`` block while preserving the snake_case keys so applyTheme's
+  // existing branch logic (``hasServerKeys``) keeps working — both
+  // shapes live side-by-side on the same object.
+  if (serverConfig.theme && typeof serverConfig.theme === 'object' && !Array.isArray(serverConfig.theme)) {
+    out.theme = camelizeTopLevel(serverConfig.theme as Record<string, any>);
+  }
+  return out;
+}
+
+/**
+ * Add camelCase aliases for snake_case keys on a single-level object
+ * without mutating the original. Used to bridge the dashboard's
+ * snake_case ``theme_overrides`` JSON to the widget's camelCase reads.
+ */
+function camelizeTopLevel(obj: Record<string, any>): Record<string, any> {
+  const out: Record<string, any> = { ...obj };
+  for (const [k, v] of Object.entries(obj)) {
+    if (k.includes('_')) {
+      const camel = snakeToCamelKey(k);
+      if (!(camel in out)) out[camel] = v;
+    }
+  }
   return out;
 }
