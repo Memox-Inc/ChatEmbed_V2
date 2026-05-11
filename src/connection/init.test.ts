@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fetchInitConfig } from './init';
+import { fetchInitConfig, normalizeServerConfig } from './init';
 
 describe('fetchInitConfig', () => {
   let fetchMock: ReturnType<typeof vi.fn>;
@@ -131,5 +131,37 @@ describe('fetchInitConfig', () => {
     const result = await fetchInitConfig('emb_test123', 'https://api.memox.io');
     expect(result).toEqual({});
     expect(console.warn).toHaveBeenCalled();
+  });
+});
+
+describe('normalizeServerConfig — theme snake→camel bridge', () => {
+  it('aliases snake_case theme tokens to camelCase so widget UI reads pick them up', () => {
+    const out = normalizeServerConfig({
+      theme: {
+        user_bubble: '#ee3028',
+        bot_avatar_svg_color: '#8349ff',
+        handover_notification_bg: '#f6e3e3',
+        // Already-camel keys must NOT be clobbered.
+        primary: '#aaa',
+      },
+    });
+    expect(out.theme.userBubble).toBe('#ee3028');
+    expect(out.theme.botAvatarSvgColor).toBe('#8349ff');
+    expect(out.theme.handoverNotificationBg).toBe('#f6e3e3');
+    // Both shapes co-exist so applyTheme's snake_case branch still works.
+    expect(out.theme.user_bubble).toBe('#ee3028');
+    expect(out.theme.primary).toBe('#aaa');
+  });
+
+  it('leaves non-theme block untouched when theme is missing', () => {
+    const out = normalizeServerConfig({ welcome_message: 'hi' });
+    expect(out.theme).toBeUndefined();
+    expect(out.welcomeMessage).toBe('hi');
+  });
+
+  it('does not blow up on an array-typed theme (defensive)', () => {
+    const out = normalizeServerConfig({ theme: ['oops'] as unknown as Record<string, unknown> });
+    // Array passes through untouched — guards against future bad payloads.
+    expect(Array.isArray(out.theme)).toBe(true);
   });
 });
