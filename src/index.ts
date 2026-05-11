@@ -18,8 +18,19 @@ import { createInputBar } from './ui/input/input-bar';
 import { createQuickQuestions } from './ui/input/quick-questions';
 import { createLeadCaptureForm, type LeadData } from './ui/forms/lead-capture-form';
 import { createLauncher } from './ui/launcher';
+import { mountTeaser } from './ui/attractors/teaser';
+import { applyPulse } from './ui/attractors/pulse';
+import { mountBadge } from './ui/attractors/badge';
+import type { AttractorHandle } from './ui/attractors/types';
+import { mountSmartAutoOpen, type SmartAutoOpenHandle } from './ui/attractors/smart-auto-open';
+import { mountPersonaCard } from './ui/attractors/persona-card';
+import { pickPrimaryAttractor } from './ui/attractors/pick-primary';
+import { createOpenTriggerStore } from './ui/open-trigger';
 import { normalizePhoneE164 } from './ui/forms/validation';
-import { initAnalytics, capture } from './analytics/posthog';
+import * as analytics from './analytics/posthog';
+import { fetchInitConfig, normalizeServerConfig } from './connection/init';
+import { applyTheme } from './ui/theme-vars';
+import { startEmbedConfigListener } from './connection/embed-config-listener';
 
 declare global {
   interface Window {
@@ -30,26 +41,38 @@ declare global {
     openChat?: () => void;
     closeChat?: () => void;
     toggleChat?: () => void;
+    MemoxChatWidget?: {
+      destroy: () => void;
+    };
   }
 }
 
-function init(): void {
+async function init(): Promise<void> {
   const userConfig = window.MemoxChatConfig || window.SimpleChatEmbedConfig || {};
-  const config = mergeConfig(defaultConfig, userConfig);
+  // Fetch server-side launcher + attractor config before merging. The
+  // server is the source of truth for ``launcher`` and ``attractor_variant``;
+  // local config provides everything else. Falls through to {} on failure
+  // so the widget always boots with at least the local defaults.
+  const localConfig = mergeConfig(defaultConfig, userConfig);
+  const apiBase = localConfig.apiBase || localConfig.apiUrl || 'https://api.memox.io';
+  const serverConfig = await fetchInitConfig(localConfig.embedId ?? null, apiBase);
+  const config = mergeConfig(localConfig, serverConfig as Partial<ChatEmbedConfig>);
   // Scope localStorage to this embed instance — must run before any
   // sessionStore reads/writes so multiple widgets on the same origin
   // (marketing site widget + per-persona demo embed) don't share state.
   sessionStore.setNamespace(config.storageNamespace);
   // Wire PostHog analytics (no-op when ``posthogApiKey`` is unset).
-  // Fired here, before any UI work, so ``chat_widget_loaded`` lands as
-  // soon as the embed bootstraps.
-  initAnalytics({
+  // attractor_variant is read from the server's init response so every event
+  // can be split by launcher variant in PostHog funnels.
+  // ``chat_widget_loaded`` is captured at the end of init() instead of here
+  // to ensure the event reflects a successfully bootstrapped widget.
+  analytics.init({
     apiKey: config.posthogApiKey,
     host: config.posthogHost,
-    orgId: config.org_id,
-    agentId: config.agent_id,
+    orgId: config.org_id ?? null,
+    agentId: config.agent_id ?? null,
+    attractorVariant: (serverConfig as Record<string, unknown>).attractor_variant as string | null | undefined,
   });
-  capture('chat_widget_loaded');
   const theme = config.theme || {};
   const welcomeMessage = config.welcomeMessage || null;
   const welcomeMessageStyle = config.welcomeMessageStyle as WelcomeMessageStyle | undefined;
@@ -69,10 +92,9 @@ function init(): void {
 
   if (config.mode === 'inline') {
     // For inline mode, find parent container by selector, ID convention, or script tag's parent
-    const parentSelector = (userConfig as Record<string, unknown>).parentSelector as string | undefined;
     let parent: HTMLElement | null = null;
-    if (parentSelector) {
-      parent = document.querySelector<HTMLElement>(parentSelector);
+    if (config.parentSelector) {
+      parent = document.querySelector<HTMLElement>(config.parentSelector);
     }
     if (!parent) {
       parent = document.getElementById('memox-chat-container');
@@ -96,27 +118,29 @@ function init(): void {
   }
 
   // --- Theme variable overrides ---
-  // The base stylesheet uses CSS custom properties ``--p`` (primary)
-  // and ``--ph`` (primary hover) for the launcher gradient, header
-  // gradient, send button, focus rings, etc. Without this injection
-  // those defaults to Memox purple and any ``theme.primary`` config
-  // is ignored on those surfaces. Also wires ``theme.headerBg`` and
-  // ``theme.sendBtnHover`` which are declared in the type but never
-  // consumed by the base CSS otherwise.
-  if (theme.primary || theme.sendBtnHover || theme.headerBg) {
-    const overrideStyle = document.createElement('style');
-    const primary = theme.primary;
-    const hover = theme.sendBtnHover || theme.primary;
-    const headerBg = theme.headerBg;
-    const headerText = theme.headerText;
-    const lines: string[] = [];
-    if (primary) lines.push(`--p: ${primary};`);
-    if (hover) lines.push(`--ph: ${hover};`);
-    overrideStyle.textContent = `:host { ${lines.join(' ')} }
-${headerBg ? `.mcx-header { background: ${headerBg} !important; }` : ''}
-${headerText ? `.mcx-header, .mcx-header * { color: ${headerText} !important; }` : ''}`;
-    root.appendChild(overrideStyle);
-  }
+  // The base stylesheet hardcodes ``--p`` / ``--ph`` on ``:host`` for
+  // the launcher gradient, header gradient, send button, focus rings,
+  // etc. ``theme.primary`` only lands on those surfaces if we inject
+  // overrides. ``applyTheme`` is also reused by the live-update WS
+  // listener below — single source of truth.
+  applyTheme(root, theme);
+
+  // --- Live config propagation ---
+  // When ``embedId`` is set, the widget opens a read-only WS to
+  // ``/ws/embed/<embed_id>/`` and re-applies CSS theme + welcome on
+  // every operator save. No-op when ``embedId`` is unset (e.g.
+  // self-hosted/OSS deployments).
+  startEmbedConfigListener(config, root, (next) => {
+    if (!next) return;
+    // Run every server payload through the same normalizer the boot
+    // path uses, then mutate the in-memory config so a future panel
+    // open (or a future read) picks up every changed field — welcome
+    // message, lead capture, quick questions, theme keys, anything
+    // the server adds tomorrow. We deliberately don't remount the
+    // panel mid-conversation; live updates apply on next open.
+    const normalized = normalizeServerConfig(next as unknown as Record<string, any>);
+    Object.assign(config, normalized);
+  });
 
   // --- Create UI ---
   const widget = createWidgetContainer(config);
@@ -160,9 +184,56 @@ ${headerText ? `.mcx-header, .mcx-header * { color: ${headerText} !important; }`
 
   // Launcher (floating mode only)
   let launcher: HTMLButtonElement | null = null;
+  let clearBadge: AttractorHandle = { cleanup: () => {} };
+  let autoOpenHandle: SmartAutoOpenHandle | null = null;
+  // Collect all mounted attractor handles so destroy() can clean them up.
+  const mountedAttractors: AttractorHandle[] = [];
+  // Carries the pending open trigger from the smart-auto-open callback into
+  // handleToggle(). consume() reads + clears atomically so stale values can't
+  // leak into subsequent manual opens (HARD-6).
+  const triggerStore = createOpenTriggerStore();
   if (config.mode !== 'inline') {
     launcher = createLauncher(config, handleToggle);
+    mountedAttractors.push(applyPulse(launcher, config));
+    clearBadge = mountBadge(launcher, config);
+    mountedAttractors.push(clearBadge);
     root.appendChild(launcher);
+
+    // ── Attractor precedence ──────────────────────────────────────────
+    // Only ONE primary attractor (teaser OR persona card) may render at
+    // a time. Rules are encoded in pickPrimaryAttractor() (pick-primary.ts)
+    // and tested independently — see HARD-8.
+    //
+    // Adding a future attractor? Edit pickPrimaryAttractor(), not here.
+    // ─────────────────────────────────────────────────────────────────
+    const primary = pickPrimaryAttractor(config.launcher);
+    if (primary === 'persona') {
+      mountedAttractors.push(
+        mountPersonaCard(config, root as unknown as HTMLElement, {
+          onOpen: () => {
+            if (!chatOpen) handleToggle();
+          },
+          onChipClick: (label) => {
+            // Defer until the open animation has settled so the input is
+            // visible and focusable.
+            setTimeout(() => inputBar.setValue(label), 220);
+          },
+        }),
+      );
+    } else if (primary === 'teaser') {
+      mountedAttractors.push(mountTeaser(config, root as unknown as HTMLElement));
+    }
+    // primary === null → mount neither
+
+    // Smart auto-open: opens the chat once per session when both time
+    // and scroll thresholds are met. The handle exposes
+    // notifyManualOpen() so handleToggle can suppress a pending auto-fire
+    // when the visitor clicks the launcher first.
+    autoOpenHandle = mountSmartAutoOpen(config, () => {
+      triggerStore.set('auto_open');
+      handleToggle();
+    });
+    mountedAttractors.push(autoOpenHandle);
   }
 
   // Close-on-outside-click (floating mode only). Inline mode stays
@@ -176,16 +247,35 @@ ${headerText ? `.mcx-header, .mcx-header * { color: ${headerText} !important; }`
   // the panel) and the chat closed on every input click. Test against
   // ``host`` instead — that's the actual element ``event.target``
   // resolves to for any click inside the shadow tree.
+  // Capture the listener as a named const so destroy() can remove it.
+  const onDocumentMouseDown = (event: MouseEvent): void => {
+    if (!chatOpen) return;
+    const target = event.target as Node | null;
+    if (!target) return;
+    // Click landed on (or inside) the shadow host → it's our chat.
+    if (host.contains(target) || target === host) return;
+    handleClose();
+  };
   if (config.mode !== 'inline' && config.closeOnOutsideClick !== false) {
-    document.addEventListener('mousedown', (event) => {
-      if (!chatOpen) return;
-      const target = event.target as Node | null;
-      if (!target) return;
-      // Click landed on (or inside) the shadow host → it's our chat.
-      if (host.contains(target) || target === host) return;
-      handleClose();
-    });
+    document.addEventListener('mousedown', onDocumentMouseDown);
   }
+
+  // Public destroy() — removes the mousedown listener, cleans up every
+  // mounted attractor handle, and detaches the shadow host from the DOM.
+  // Safe to call multiple times.
+  const destroy = (): void => {
+    document.removeEventListener('mousedown', onDocumentMouseDown);
+    for (const handle of mountedAttractors) {
+      try {
+        handle.cleanup();
+      } catch (e) {
+        console.warn('MemoxChatWidget: attractor cleanup failed', e);
+      }
+    }
+    mountedAttractors.length = 0;
+    host.remove();
+  };
+  window.MemoxChatWidget = { destroy };
 
   // --- Core functions ---
 
@@ -558,6 +648,7 @@ ${headerText ? `.mcx-header, .mcx-header * { color: ${headerText} !important; }`
   function handleClose(): void {
     if (config.mode === 'inline') return;
     chatOpen = false;
+    if (launcher) launcher.classList.remove('mcx-launcher--open');
     widget.classList.remove('mcx-widget--open');
     widget.classList.add('mcx-widget--closing');
     setTimeout(() => {
@@ -568,14 +659,23 @@ ${headerText ? `.mcx-header, .mcx-header * { color: ${headerText} !important; }`
   }
 
   function handleToggle(): void {
+    const trigger = triggerStore.consume();
     if (chatOpen) {
       handleClose();
     } else {
       chatOpen = true;
-      capture('chat_opened');
+      // Consume the unread-message badge on first open. Subsequent
+      // open/close cycles don't restore it — the visit is engaged.
+      clearBadge.cleanup();
+      // Suppress any pending auto-open if the visitor clicked the
+      // launcher manually — the auto-open shouldn't double-fire seconds
+      // later when the time threshold finally elapses.
+      if (trigger !== 'auto_open') autoOpenHandle?.notifyManualOpen();
+      analytics.capture('chat_opened', trigger ? { trigger } : undefined);
       widget.style.display = 'flex';
       widget.classList.add('mcx-widget--open');
       widget.classList.remove('mcx-widget--closing');
+      if (launcher) launcher.classList.add('mcx-launcher--open');
       if (launcher) launcher.style.display = 'none';
 
       // Validate session on open — skip for fresh sessions whose only
@@ -645,8 +745,7 @@ ${headerText ? `.mcx-header, .mcx-header * { color: ${headerText} !important; }`
       if (lead) {
         window.SimpleChatEmbedLead = lead;
         sessionStore.pushLead(lead as unknown as Record<string, unknown>);
-
-        capture('chat_lead_captured', {
+        analytics.capture('chat_lead_captured', {
           has_phone: !!lead.phone,
           has_zip: !!lead.zip,
         });
@@ -668,13 +767,17 @@ ${headerText ? `.mcx-header, .mcx-header * { color: ${headerText} !important; }`
       loadMessages();
       connectWebSocket();
 
-      // Server-driven greeting: as soon as the WS opens, send a
-      // ``request_greeting`` control event with the configured welcome
-      // text. The backend persists a real bot ChatMessage and broadcasts
-      // it back through the standard text_message pipeline, so the
-      // greeting renders like any other agent reply (visible in admin,
-      // operator dashboard, history). No client-side ``saveMessage`` —
-      // that would create a phantom bubble that the server never sees.
+      // Enable input after WS opens. Bounded by MAX_INIT_RETRIES so a
+      // dead socket can't spin forever — surface a user-visible error
+      // instead. Once open, fire a ``request_greeting`` control event
+      // (server-driven greeting): the backend persists a real bot
+      // ChatMessage and broadcasts it through the standard text_message
+      // pipeline, so the greeting renders like any other agent reply
+      // (visible in admin, operator dashboard, history). No client-side
+      // ``saveMessage`` — that would create a phantom bubble that the
+      // server never sees.
+      const MAX_INIT_RETRIES = 20; // ~6s at 300ms intervals
+      let retryCount = 0;
       const enableWhenReady = (): void => {
         if (ws.readyState === WebSocket.OPEN) {
           if (welcomeMessage) {
@@ -686,8 +789,25 @@ ${headerText ? `.mcx-header, .mcx-header * { color: ${headerText} !important; }`
           }
           inputBar.setDisabled(false);
           setBotResponding(false);
-        } else {
+        } else if (retryCount < MAX_INIT_RETRIES) {
+          retryCount++;
           setTimeout(enableWhenReady, 300);
+        } else {
+          console.warn('MemoxChatWidget: init timed out after 6s');
+          // Show a user-visible inline error so the panel doesn't appear
+          // silently frozen with the input bar disabled.
+          const errorEl = document.createElement('div');
+          errorEl.className = 'mcx-init-error';
+          errorEl.textContent = 'Unable to connect. Please refresh the page.';
+          // Insert before the input bar so the user sees it in context.
+          if (inputBar.container.parentElement) {
+            inputBar.container.parentElement.insertBefore(errorEl, inputBar.container);
+          } else {
+            widget.appendChild(errorEl);
+          }
+          // Capture observable failure in PostHog so silent frozen panels
+          // are surfaced in dashboards.
+          analytics.capture('widget_init_timeout', { reason: 'enableWhenReady_max_retries' });
         }
       };
       setTimeout(enableWhenReady, 500);
@@ -765,6 +885,7 @@ ${headerText ? `.mcx-header, .mcx-header * { color: ${headerText} !important; }`
 
   maybeShowLeadCapture();
   setTimeout(checkAndAutoConnect, 100);
+  analytics.capture('chat_widget_loaded');
 
   // --- Global API ---
   window.openChat = () => {
@@ -781,9 +902,18 @@ ${headerText ? `.mcx-header, .mcx-header * { color: ${headerText} !important; }`
   };
 }
 
-// Auto-initialize when DOM is ready
+// Auto-initialize when DOM is ready. ``init`` is async (it fetches
+// /embed/init before mounting) — swallow rejections so an unexpected
+// throw can't take down the host page's JS.
+function bootstrap(): void {
+  init().catch((e) => {
+    // eslint-disable-next-line no-console
+    console.error('[Memox] widget init failed', e);
+  });
+}
+
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', init);
+  document.addEventListener('DOMContentLoaded', bootstrap);
 } else {
-  init();
+  bootstrap();
 }

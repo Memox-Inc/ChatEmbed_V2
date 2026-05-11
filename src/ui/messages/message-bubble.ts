@@ -1,6 +1,7 @@
 import type { ChatEmbedConfig, StoredMessage, WelcomeMessageStyle } from '../../config/types';
 import { markdownToHtml } from './markdown-renderer';
 import { escapeHtml } from '../../utils/dom';
+import { isSafeImageUrl } from '../../utils/url';
 
 export interface BubbleRefs {
   container: HTMLDivElement;
@@ -33,8 +34,17 @@ function createAvatar(sender: string, config: ChatEmbedConfig): HTMLDivElement {
     av.style.border = theme.botAvatarBorder || 'none';
     av.style.borderRadius = '8px';
 
-    if (bIcon.botAvatarUrl) {
-      av.innerHTML = `<img src="${bIcon.botAvatarUrl}" alt="Bot" style="width:${bIcon.svgWidth || '14px'};height:${bIcon.svgHeight || '14px'};object-fit:${bIcon.objectFit || 'contain'};">`;
+    if (isSafeImageUrl(bIcon.botAvatarUrl)) {
+      // Build via DOM API instead of innerHTML — an attacker-controlled
+      // backend response carrying a URL with a stray `"` would otherwise
+      // escape the src attribute and inject HTML into the shadow root.
+      const img = document.createElement('img');
+      img.src = bIcon.botAvatarUrl;
+      img.alt = 'Bot';
+      img.style.width = bIcon.svgWidth || '14px';
+      img.style.height = bIcon.svgHeight || '14px';
+      img.style.objectFit = bIcon.objectFit || 'contain';
+      av.replaceChildren(img);
     } else {
       const color = theme.botAvatarSvgColor || theme.primary || '#6366f1';
       av.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2.2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>`;

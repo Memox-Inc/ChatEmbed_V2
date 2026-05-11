@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Embed Widget — Attractor Variants Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 40px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            font-size: 28px;
+            margin-bottom: 12px;
+            color: #1a1a1a;
+        }
+
+        .subtitle {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 30px;
+        }
+
+        .section {
+            margin-bottom: 40px;
+        }
+
+        .section h2 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 16px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        select {
+            padding: 10px 14px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: inherit;
+            background: white;
+            cursor: pointer;
+            flex: 1;
+            min-width: 250px;
+        }
+
+        select:hover {
+            border-color: #999;
+        }
+
+        select:focus {
+            outline: none;
+            border-color: #8349ff;
+            box-shadow: 0 0 0 3px rgba(131, 73, 255, 0.1);
+        }
+
+        button {
+            padding: 10px 20px;
+            background: #8349ff;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background: #6a39cc;
+        }
+
+        button:active {
+            background: #5a2fb8;
+        }
+
+        .status {
+            background: #f0f4ff;
+            border: 1px solid #d4deff;
+            border-radius: 8px;
+            padding: 16px;
+            margin-top: 20px;
+        }
+
+        .status h3 {
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .status pre {
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            padding: 12px;
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 12px;
+            color: #333;
+            overflow-x: auto;
+            line-height: 1.5;
+        }
+
+        .info {
+            background: #fffbf0;
+            border-left: 3px solid #ff9500;
+            padding: 12px 16px;
+            border-radius: 4px;
+            font-size: 13px;
+            color: #666;
+            margin-top: 20px;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Chat Embed Widget</h1>
+        <p class="subtitle">Attractor Variants Demo</p>
+
+        <div class="section">
+            <h2>Select a Variant</h2>
+            <div class="controls">
+                <select id="variantSelect">
+                    <option value="default">Round + bubble</option>
+                    <option value="pill-bubble">Pill + bubble</option>
+                    <option value="round-photo-pulse">Round + photo + pulse</option>
+                    <option value="round-bubble-persona">Round + bubble + persona card</option>
+                    <option value="round-bubble-auto">Round + bubble + smart auto-open (5s)</option>
+                    <option value="round-photo-badge">Round + photo + badge</option>
+                </select>
+                <button id="reloadBtn">Reload Widget</button>
+            </div>
+
+            <div class="status">
+                <h3>Current attractor_variant</h3>
+                <pre id="variantOutput">round+bubble</pre>
+            </div>
+
+            <div class="info">
+                <strong>How it works:</strong> Select a variant from the dropdown, then click "Reload Widget" to reinitialize the chat embed with that configuration. The variant string is sent to PostHog for funnel analysis.
+            </div>
+        </div>
+    </div>
+
+    <!-- Chat Widget Script -->
+    <script>
+        // Mock embed init endpoint (for testing without a backend)
+        const VARIANT_CONFIGS = {
+            'default': {
+                form_factor: 'round',
+                icon_type: 'bubble',
+                attractors: {},
+                attractor_variant: 'round+bubble'
+            },
+            'pill-bubble': {
+                form_factor: 'pill',
+                pill_text: 'Questions?',
+                icon_type: 'bubble',
+                attractors: {},
+                attractor_variant: 'pill+bubble'
+            },
+            'round-photo-pulse': {
+                form_factor: 'round',
+                icon_type: 'photo',
+                photo_url: 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ccircle cx=%2250%22 cy=%2250%22 r=%2245%22 fill=%22%238349ff%22/%3E%3C/svg%3E',
+                attractors: { pulse: { enabled: true } },
+                attractor_variant: 'round+photo+pulse'
+            },
+            'round-bubble-persona': {
+                form_factor: 'round',
+                icon_type: 'bubble',
+                attractors: {
+                    persona: {
+                        enabled: true,
+                        name: 'Sarah',
+                        message: 'Hi! Ready to help.',
+                        show_chips: true
+                    }
+                },
+                attractor_variant: 'round+bubble+persona'
+            },
+            'round-bubble-auto': {
+                form_factor: 'round',
+                icon_type: 'bubble',
+                attractors: {
+                    smart_auto_open: {
+                        enabled: true,
+                        time_seconds: 5,
+                        scroll_percent: 25
+                    }
+                },
+                attractor_variant: 'round+bubble+smart_auto_open'
+            },
+            'round-photo-badge': {
+                form_factor: 'round',
+                icon_type: 'photo',
+                photo_url: 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ccircle cx=%2250%22 cy=%2250%22 r=%2245%22 fill=%228349ff%22/%3E%3C/svg%3E',
+                attractors: { badge: { enabled: true } },
+                attractor_variant: 'round+photo+badge'
+            }
+        };
+
+        function loadVariant(variantKey) {
+            const config = VARIANT_CONFIGS[variantKey];
+            if (!config) return;
+
+            // Update the display
+            document.getElementById('variantOutput').textContent = config.attractor_variant;
+
+            // Configure the widget
+            window.MemoxChatConfig = {
+                socketUrl: 'wss://hub.memox.io',
+                workflowId: 'demo-workflow',
+                title: 'Chat with us',
+                welcomeMessage: 'Hello! How can we help?',
+                launcher: {
+                    form_factor: config.form_factor,
+                    icon_type: config.icon_type,
+                    pill_text: config.pill_text || null,
+                    photo_url: config.photo_url || null,
+                    attractors: config.attractors || {}
+                }
+            };
+
+            // Destroy any existing widget instance
+            if (window.MemoxChatWidget && window.MemoxChatWidget.destroy) {
+                window.MemoxChatWidget.destroy();
+            }
+
+            // Reload the script to reinitialize
+            if (document.getElementById('chatEmbedScript')) {
+                document.getElementById('chatEmbedScript').remove();
+            }
+
+            const script = document.createElement('script');
+            script.id = 'chatEmbedScript';
+            script.src = '../dist/chat-embed.js';
+            document.body.appendChild(script);
+        }
+
+        // Initialize
+        document.getElementById('variantSelect').addEventListener('change', (e) => {
+            loadVariant(e.target.value);
+        });
+
+        document.getElementById('reloadBtn').addEventListener('click', () => {
+            const selected = document.getElementById('variantSelect').value;
+            loadVariant(selected);
+        });
+
+        // Load default on page load
+        loadVariant('default');
+    </script>
+</body>
+</html>

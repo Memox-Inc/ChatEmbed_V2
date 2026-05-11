@@ -46,6 +46,128 @@
   right: auto;
   left: 20px;
 }
+/* ─── Pill form factor ─────────────────────────────────────────────
+   Sits in the same bottom-right corner as the round launcher but
+   stretches to fit the pill_text label. The label is hidden when the
+   panel is open so the launcher collapses back to the close-icon. */
+.mcx-launcher--pill {
+  width: auto;
+  min-height: 56px;
+  border-radius: 28px;
+  padding: 0 22px 0 18px;
+  gap: 10px;
+}
+.mcx-launcher-pill-text {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: #fff;
+  white-space: nowrap;
+}
+.mcx-launcher--pill.mcx-launcher--open .mcx-launcher-pill-text {
+  display: none;
+}
+/* ─── Photo icon variant ──────────────────────────────────────────
+   Replaces the gradient background with a circular cropped photo of
+   a salesperson or persona avatar, plus a small chat-bubble indicator
+   badge in the lower-right corner so visitors still recognise the
+   element as a launcher. */
+.mcx-launcher--photo {
+  background: transparent;
+  border: 3px solid #fff;
+  overflow: visible;
+  padding: 0;
+}
+.mcx-launcher--photo.mcx-launcher--pill {
+  border-radius: 28px;
+  padding: 0 18px 0 8px;
+}
+.mcx-launcher-photo-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.mcx-launcher--photo.mcx-launcher--pill .mcx-launcher-photo-img {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+}
+.mcx-launcher-photo-indicator {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #fff;
+  color: #fff;
+  background: linear-gradient(135deg, var(--p), var(--ph));
+}
+.mcx-launcher-photo-indicator svg {
+  width: 11px;
+  height: 11px;
+}
+/* ─── Custom logo variant ─────────────────────────────────────────
+   Owner-uploaded logo. Smaller than the photo to leave breathing
+   room inside the round (or pill) launcher. */
+.mcx-launcher-custom-img {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+}
+
+/* ═══════ Teaser attractor ═══════
+   Floats above and to the left of the round launcher with a chat-tail
+   that points down towards it. Stays out of the pill launcher's lane
+   (pill already has text) — suppression is enforced in mountTeaser. */
+.mcx-teaser {
+  position: fixed;
+  bottom: 92px;
+  right: 20px;
+  background: #fff;
+  color: var(--t1);
+  padding: 11px 30px 11px 16px;
+  border-radius: 14px 14px 4px 14px;
+  font: 500 13px/1.4 'Inter', system-ui, -apple-system, sans-serif;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.10), 0 1px 2px rgba(0, 0, 0, 0.04);
+  border: 1px solid #f0f0f0;
+  max-width: 220px;
+  z-index: 9997;
+  animation: mcx-teaser-rise 220ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.mcx-teaser-text {
+  display: block;
+}
+.mcx-teaser-close {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  width: 18px;
+  height: 18px;
+  background: #e8e8e8;
+  color: #555;
+  border: none;
+  border-radius: 50%;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+.mcx-teaser-close:hover {
+  background: #d8d8d8;
+  color: #222;
+}
+@keyframes mcx-teaser-rise {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
 @keyframes mcx-icon-float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-2px)} }
 .mcx-launcher:hover {
   transform: scale(1.08);
@@ -79,6 +201,161 @@
   0% { box-shadow: 0 0 0 0 rgba(131, 73, 255, 0.5); }
   70% { box-shadow: 0 0 0 15px rgba(131, 73, 255, 0); }
   100% { box-shadow: 0 0 0 0 rgba(131, 73, 255, 0); }
+}
+
+/* ─── Persistent pulse attractor ──────────────────────────────────
+   The default .mcx-launcher animation pulses 3 times then stops. With
+   the pulse attractor enabled, the launcher keeps a slower, softer
+   ring loop running indefinitely so it stays visible to inattentive
+   visitors. Stronger ring opacity + stacks the box-shadow so the
+   ambient drop-shadow on the launcher button is preserved. */
+@keyframes mcx-pulse-loop {
+  0%   { box-shadow: 0 4px 16px rgba(131, 73, 255, 0.4), 0 0 0 0 rgba(131, 73, 255, 0.45); }
+  70%  { box-shadow: 0 4px 16px rgba(131, 73, 255, 0.4), 0 0 0 18px rgba(131, 73, 255, 0); }
+  100% { box-shadow: 0 4px 16px rgba(131, 73, 255, 0.4), 0 0 0 0 rgba(131, 73, 255, 0); }
+}
+.mcx-launcher--pulse {
+  animation: mcx-pulse-loop 2s ease-out infinite;
+}
+/* When the panel is open, stop pulsing — the launcher is hidden anyway,
+   but this prevents the offscreen animation from costing CPU. */
+.mcx-launcher--pulse.mcx-launcher--open {
+  animation: none;
+}
+
+/* ─── Notification badge attractor ────────────────────────────────
+   Round launcher: small red corner-dot, top-right (iMessage style).
+   Pill launcher : inline white chip after the label so it stays
+   inside the capsule outline. The attractor is consumed on first
+   chat open — see clearBadge() in mountBadge. */
+.mcx-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  background: #ff3b30;
+  color: #fff;
+  border-radius: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: 700 12px 'Inter', system-ui, -apple-system, sans-serif;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+  pointer-events: none;
+}
+.mcx-badge--inline {
+  position: static;
+  background: #fff;
+  color: var(--p);
+  border: none;
+  box-shadow: none;
+  min-width: 20px;
+  height: 20px;
+  border-radius: 10px;
+  margin-left: 4px;
+}
+
+/* ═══════ Persona card attractor ═══════
+   Richer cousin of the teaser bubble: photo (or initials), name,
+   message, and optional quick-question chips. Suppresses the teaser
+   so we never stack two attention-grabbers. */
+.mcx-persona-card {
+  position: fixed;
+  bottom: 92px;
+  right: 20px;
+  background: #fff;
+  border: 1px solid #f0f0f0;
+  border-radius: 16px;
+  padding: 14px 16px 14px 14px;
+  max-width: 280px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.10), 0 1px 3px rgba(0, 0, 0, 0.04);
+  font: 13px 'Inter', system-ui, -apple-system, sans-serif;
+  z-index: 9997;
+  animation: mcx-teaser-rise 240ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.mcx-persona-row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+.mcx-persona-photo,
+.mcx-persona-initials {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  flex-shrink: 0;
+  object-fit: cover;
+}
+.mcx-persona-initials {
+  background: linear-gradient(135deg, var(--p), var(--ph));
+  color: #fff;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+}
+.mcx-persona-text {
+  flex: 1;
+  min-width: 0;
+}
+.mcx-persona-name {
+  font-weight: 600;
+  color: var(--t1);
+  font-size: 13px;
+}
+.mcx-persona-msg {
+  color: var(--t2);
+  margin-top: 3px;
+  line-height: 1.45;
+  font-size: 12.5px;
+}
+.mcx-persona-chips {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+.mcx-persona-chip {
+  padding: 6px 12px;
+  border-radius: 14px;
+  background: #F5EFFE;
+  border: 1px solid #E1D2FB;
+  color: var(--p);
+  font: 500 12px 'Inter', system-ui, -apple-system, sans-serif;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+.mcx-persona-chip:hover {
+  background: #E9DFFD;
+  border-color: var(--p);
+}
+.mcx-persona-close {
+  position: absolute;
+  top: -7px;
+  left: -7px;
+  width: 22px;
+  height: 22px;
+  background: #f3f3f3;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 13px;
+  color: #555;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+.mcx-persona-close:hover {
+  background: #e0e0e0;
+  color: #222;
 }
 
 /* ═══════ Widget Container ═══════ */
@@ -858,6 +1135,14 @@
   .mcx-lead-submit {
     max-width: none;
   }
+}
+
+/* ═══════ Init error ═══════ */
+.mcx-init-error {
+  padding: 10px 14px;
+  color: var(--err, #DC2626);
+  font-size: 13px;
+  text-align: center;
 }
 
 /* ═══════ prefers-reduced-motion ═══════ */
