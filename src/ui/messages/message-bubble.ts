@@ -8,7 +8,7 @@ export interface BubbleRefs {
   contentWrapper?: HTMLDivElement;
 }
 
-function createAvatar(sender: string, config: ChatEmbedConfig): HTMLDivElement {
+function createAvatar(sender: string, config: ChatEmbedConfig, photoUrl?: string): HTMLDivElement {
   const theme = config.theme || {};
   const av = document.createElement('div');
   av.className = `mcx-avatar mcx-avatar--${sender}`;
@@ -24,8 +24,29 @@ function createAvatar(sender: string, config: ChatEmbedConfig): HTMLDivElement {
   } else if (sender === 'sales_rep') {
     av.style.background = theme.salesRepAvatar || '#DBEAFE';
     av.style.border = theme.salesRepAvatarBorder || 'none';
-    const color = theme.salesRepAvatarSvgColor || theme.primary || '#8349FF';
-    av.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`;
+    // MMX-551: when memox-hub sends a sender_photo_url on the handover
+    // WS frame (the assigned rep uploaded a profile photo), render it
+    // here so customers see the rep's actual face. DOM API + isSafeImageUrl
+    // gate so a stray quote in the URL can't escape the src attribute.
+    if (photoUrl && isSafeImageUrl(photoUrl)) {
+      const img = document.createElement('img');
+      img.src = photoUrl;
+      img.alt = '';
+      img.style.width = '100%';
+      img.style.height = '100%';
+      img.style.objectFit = 'cover';
+      img.style.borderRadius = '50%';
+      img.onerror = () => {
+        const fallback = theme.salesRepAvatarSvgColor || theme.primary || '#8349FF';
+        av.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="${fallback}" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`;
+      };
+      av.style.padding = '0';
+      av.style.overflow = 'hidden';
+      av.replaceChildren(img);
+    } else {
+      const color = theme.salesRepAvatarSvgColor || theme.primary || '#8349FF';
+      av.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`;
+    }
   } else {
     const bIcon = theme.botIcon || config.botIcon || {};
     av.style.width = bIcon.botIconAvatarWidth || '29px';
@@ -63,7 +84,11 @@ export function createMessageBubble(
   const container = document.createElement('div');
   container.className = `mcx-msg-group${msg.sender === 'user' ? ' mcx-msg-group--user' : ''}`;
 
-  const avatar = createAvatar(msg.sender === 'ai' ? 'bot' : msg.sender, config);
+  const avatar = createAvatar(
+    msg.sender === 'ai' ? 'bot' : msg.sender,
+    config,
+    msg.sender === 'sales_rep' ? msg.senderPhotoUrl : undefined,
+  );
   const bubble = document.createElement('div');
   bubble.className = 'mcx-msg-stack';
   if (msg.sender === 'user') bubble.classList.add('mcx-msg-stack--user');

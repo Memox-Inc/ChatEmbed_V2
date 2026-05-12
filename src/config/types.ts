@@ -282,6 +282,10 @@ export interface StoredMessage {
   isStreaming?: boolean;
   messageId?: string;
   senderName?: string | { name?: string };
+  // MMX-551: the assigned rep's profile photo URL, pushed in the
+  // handover WS frame by memox-hub. When set, the sales-rep avatar
+  // renders as this image instead of the default SVG placeholder.
+  senderPhotoUrl?: string;
   created_at?: string;
   lastChunkTime?: number;
 }

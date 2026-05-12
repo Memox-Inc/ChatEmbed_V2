@@ -548,6 +548,9 @@ async function init(): Promise<void> {
         text: content,
         sender: 'sales_rep',
         senderName: (typeof data.sender === 'string' ? data.sender : data.sender_name) || 'Sales Representative',
+        // MMX-551: the assigned rep's profile photo (if they uploaded
+        // one). Falls back to default SVG avatar when empty.
+        senderPhotoUrl: data.sender_photo_url || undefined,
         isWelcomeMessage: false,
         created_at: formatTimeStamp(data.created_at || new Date().toISOString()),
       });

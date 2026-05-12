@@ -14,6 +14,9 @@ export interface WsMessageData {
   is_complete?: boolean;
   created_at?: string;
   sender_name?: string;
+  // MMX-551: profile photo of the assigned sales rep. Surfaced as the
+  // rep avatar in the chat bubble after handover.
+  sender_photo_url?: string;
   assigned_user_name?: string;
   assigned_user_email?: string;
 }
