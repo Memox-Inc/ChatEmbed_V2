@@ -73,7 +73,12 @@ describe('inline mount path — parentSelector (B1)', () => {
   });
 
   afterEach(() => {
-    vi.restoreAllMocks();
+    // ``clearAllMocks`` resets call data without wiping the
+    // ``mockResolvedValue`` implementations set on ``fetchInitConfig`` /
+    // ``createVisitor`` etc. above. ``restoreAllMocks`` would strip those
+    // and the second case would see ``serverConfig === undefined`` in
+    // ``mergeConfig``, crashing the boot path.
+    vi.clearAllMocks();
   });
 
   it('mounts the shadow host inside the element matched by parentSelector', async () => {
