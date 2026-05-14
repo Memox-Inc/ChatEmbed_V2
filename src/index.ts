@@ -13,6 +13,7 @@ import { createHeader } from './ui/header';
 import { createMessageList } from './ui/messages/message-list';
 import { createMessageBubble } from './ui/messages/message-bubble';
 import { createSystemNotification } from './ui/messages/system-notification';
+import { createSessionEndedToast, type SessionEndedToastHandle } from './ui/messages/session-ended-toast';
 import { StreamingRenderer } from './ui/messages/streaming-renderer';
 import { createInputBar } from './ui/input/input-bar';
 import { createQuickQuestions } from './ui/input/quick-questions';
@@ -96,6 +97,13 @@ async function init(): Promise<void> {
   // banners and stacked lead forms in one widget. Cleared at the end of
   // ``resetSession``. MMX-573.
   let sessionClosePending = false;
+  // Handle for the active session-ended toast so ``resetSession`` (and a
+  // racing second close trigger) can dispose its countdown interval.
+  let sessionEndedToast: SessionEndedToastHandle | null = null;
+  // Timer that drives the reset after the countdown elapses — tracked so a
+  // "Start now" click can cancel it and reset immediately.
+  let sessionResetTimer: ReturnType<typeof setTimeout> | null = null;
+  const SESSION_END_COUNTDOWN_SEC = 3;
 
   // --- Shadow DOM setup ---
   let root: ShadowRoot;
@@ -617,35 +625,43 @@ async function init(): Promise<void> {
     }
   }
 
-  function showSessionClosedNotification(message: string): void {
+  function showSessionClosedNotification(_message: string): void {
     // Idempotent: REST validate-session can fire concurrently with a WS
     // ``error_message`` for the same expired session. Without this gate
-    // each call schedules an independent ``resetSession`` timer which
-    // would stack banners and lead forms. MMX-573.
+    // each path would mount its own toast + reset timer, stacking banners
+    // and forms. MMX-573.
     if (sessionClosePending) return;
     sessionClosePending = true;
 
-    // Don't double-push the banner message into the store when state was
-    // rehydrated from localStorage with a prior close notification already
-    // at the tail — re-rendering would mount a second banner DOM node.
-    const existing = sessionStore.getMessages();
-    const last = existing[existing.length - 1];
-    const alreadyHasBanner = !!last
-      && last.isSystemNotification === true
-      && last.notificationType === 'session_closed';
-    if (!alreadyHasBanner) {
-      sessionStore.pushMessage({
-        text: message,
-        sender: 'system',
-        isWelcomeMessage: false,
-        isSystemNotification: true,
-        notificationType: 'session_closed',
-        created_at: formatTimeStamp(new Date().toISOString()),
-      });
-      loadMessages();
-    }
+    // Disable input so the visitor can't keep typing into a dead session.
     inputBar.setDisabled(true);
-    setTimeout(() => resetSession(), 3000);
+
+    // Mount the friendly session-ended toast directly into the messages
+    // list. Not pushed through ``sessionStore.pushMessage`` because this
+    // is an ephemeral, interactive UI element — not part of the
+    // transcript that should be replayed on reload.
+    sessionEndedToast = createSessionEndedToast(SESSION_END_COUNTDOWN_SEC, () => {
+      // Triggered either by countdown finishing or "Start now" click.
+      if (sessionResetTimer !== null) {
+        clearTimeout(sessionResetTimer);
+        sessionResetTimer = null;
+      }
+      resetSession();
+    });
+    messagesEl.appendChild(sessionEndedToast.element);
+    // Ensure the toast is visible without forcing the user to scroll.
+    // Guard: ``scrollIntoView`` is not implemented in jsdom tests.
+    if (typeof sessionEndedToast.element.scrollIntoView === 'function') {
+      sessionEndedToast.element.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }
+
+    // Belt-and-braces reset timer in case the toast's interval is paused
+    // by the browser (background tab) or fails. The toast itself fires
+    // ``onAdvance`` at the end of the countdown which clears this timer.
+    sessionResetTimer = setTimeout(() => {
+      sessionResetTimer = null;
+      resetSession();
+    }, (SESSION_END_COUNTDOWN_SEC + 1) * 1000);
   }
 
   function handleRefresh(): void {
@@ -725,6 +741,17 @@ async function init(): Promise<void> {
   }
 
   async function resetSession(): Promise<void> {
+    // Tear down any active session-ended toast (countdown interval) and
+    // belt-and-braces reset timer so they can't fire post-reset.
+    if (sessionEndedToast) {
+      sessionEndedToast.dispose();
+      sessionEndedToast = null;
+    }
+    if (sessionResetTimer !== null) {
+      clearTimeout(sessionResetTimer);
+      sessionResetTimer = null;
+    }
+
     sessionStore.clearAll();
     isHandoverActive = false;
     isFormShowing = false;

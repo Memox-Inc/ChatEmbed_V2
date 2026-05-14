@@ -146,8 +146,21 @@ describe('session-close idempotency (MMX-573)', () => {
     const banners = root.querySelectorAll('.mcx-sys-notification--closed');
     expect(banners.length, 'one banner per session close, not N').toBe(1);
 
-    // Advance past the 3-second reset timer.
-    await vi.advanceTimersByTimeAsync(3100);
+    // UX assertions: the friendly toast has a countdown number and a
+    // "Start now" button (MMX-573 UX polish).
+    const toast = banners[0] as HTMLElement;
+    const countdown = toast.querySelector('.mcx-session-ended-countdown');
+    expect(countdown, 'countdown number is rendered').toBeTruthy();
+    expect(countdown?.textContent, 'countdown starts at 3').toBe('3');
+    const startBtn = toast.querySelector('.mcx-session-ended-start') as HTMLButtonElement | null;
+    expect(startBtn, '"Start now" button is rendered').toBeTruthy();
+
+    // Tick the countdown forward by 1s — number should drop to 2.
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(countdown?.textContent, 'countdown ticks down').toBe('2');
+
+    // Advance past the rest of the countdown — reset should fire.
+    await vi.advanceTimersByTimeAsync(2500);
     await Promise.resolve();
 
     // After reset → exactly one lead form mounted on the widget.
