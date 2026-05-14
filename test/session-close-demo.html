@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>MMX-573 — Session Close Idempotency Demo</title>
+  <style>
+    body { font-family: system-ui, sans-serif; padding: 32px; background: #f5f5f5; max-width: 720px; }
+    h1 { margin-bottom: 8px; font-size: 20px; }
+    p { color: #333; line-height: 1.5; }
+    code { background: #eee; padding: 2px 6px; border-radius: 4px; }
+    .controls { margin-top: 16px; display: flex; gap: 8px; flex-wrap: wrap; }
+    button { padding: 8px 14px; border-radius: 6px; border: 1px solid #ccc; background: #fff; cursor: pointer; font-size: 14px; }
+    button:hover { background: #f0f0f0; }
+    .log { margin-top: 16px; background: #fff; border: 1px solid #ddd; border-radius: 6px; padding: 12px; font-family: ui-monospace, monospace; font-size: 12px; white-space: pre-wrap; max-height: 220px; overflow: auto; }
+  </style>
+</head>
+<body>
+  <h1>MMX-573 — Session Close Idempotency Demo</h1>
+  <p>
+    This page boots the widget against a <strong>stubbed WebSocket</strong> and stubbed REST calls — no
+    hub backend required. Steps:
+  </p>
+  <ol>
+    <li>Open the floating widget (bottom right) and submit the lead form.</li>
+    <li>Click <code>Fire 3 rapid close events</code> below.</li>
+    <li>Expected (fixed): exactly <strong>one</strong> "session closed" banner appears, and after 3 s
+        exactly <strong>one</strong> lead-capture form mounts. Pre-fix: 3 banners + 3 stacked forms.</li>
+  </ol>
+
+  <div class="controls">
+    <button onclick="window.openChat()">Open widget</button>
+    <button onclick="window.__memox573.fire(1)">Fire 1 close event</button>
+    <button onclick="window.__memox573.fire(3)">Fire 3 rapid close events</button>
+    <button onclick="window.__memox573.fire(5)">Fire 5 rapid close events</button>
+    <button onclick="localStorage.clear(); location.reload()">Reset + reload</button>
+  </div>
+
+  <div id="log" class="log">[demo] waiting for widget init…</div>
+
+  <script>
+    const log = (m) => {
+      const el = document.getElementById('log');
+      el.textContent += '\n' + m;
+      el.scrollTop = el.scrollHeight;
+    };
+
+    // --- Stub the REST surface the widget calls during init. ---
+    const originalFetch = window.fetch.bind(window);
+    window.fetch = async (url, opts) => {
+      const u = String(url);
+      // Server-driven init config.
+      if (u.includes('/embed/init')) {
+        return new Response(JSON.stringify({ ok: true, attractor_variant: null }), { status: 200 });
+      }
+      // Validate session — never returns "closed" via REST in this demo; the
+      // close path is exercised purely via the stub WS.
+      if (u.includes('/sessions/')) {
+        return new Response(JSON.stringify({ status: 'open' }), { status: 200 });
+      }
+      // Create visitor.
+      if (u.includes('/visitors')) {
+        return new Response(JSON.stringify({ id: 'v_demo', name: null }), { status: 200 });
+      }
+      // PostHog capture — fire and forget.
+      if (u.includes('/capture')) return new Response('ok', { status: 200 });
+      // Fall back to real fetch (won't hit anything else in this demo).
+      return originalFetch(url, opts);
+    };
+
+    // --- Stub WebSocket so we control inbound frames. ---
+    let stubInstance = null;
+    class StubWebSocket extends EventTarget {
+      constructor(url) {
+        super();
+        this.url = url;
+        this.readyState = 0; // CONNECTING
+        log('[stub-ws] connect → ' + url);
+        stubInstance = this;
+        setTimeout(() => {
+          this.readyState = 1; // OPEN
+          if (typeof this.onopen === 'function') this.onopen(new Event('open'));
+        }, 50);
+      }
+      send(payload) {
+        const p = typeof payload === 'string' ? payload : '';
+        if (p.includes('"heartbeat"')) return; // quiet
+        log('[stub-ws] client → server: ' + p.slice(0, 120));
+      }
+      close() {
+        this.readyState = 3; // CLOSED
+        if (typeof this.onclose === 'function') this.onclose(new Event('close'));
+      }
+    }
+    // Preserve constants the embed may read.
+    StubWebSocket.CONNECTING = 0;
+    StubWebSocket.OPEN = 1;
+    StubWebSocket.CLOSING = 2;
+    StubWebSocket.CLOSED = 3;
+    window.WebSocket = StubWebSocket;
+
+    // Helper exposed for the buttons above.
+    window.__memox573 = {
+      fire(n = 1) {
+        if (!stubInstance) { log('[stub-ws] no WS bound yet — open the widget + submit the lead form first'); return; }
+        if (typeof stubInstance.onmessage !== 'function') {
+          log('[stub-ws] onmessage handler not yet attached — submit the lead form to start chat first'); return;
+        }
+        for (let i = 0; i < n; i++) {
+          stubInstance.onmessage(new MessageEvent('message', {
+            data: JSON.stringify({
+              message_type: 'error_message',
+              content: 'This chat session has been closed.',
+              room_name: null, // null room_name = broadcast — bypasses the room filter
+              sender: null,
+              sender_type: 'bot',
+              created_at: new Date().toISOString(),
+            }),
+          }));
+        }
+        log('[stub-ws] fired ' + n + ' rapid error_message frame(s)');
+      },
+    };
+
+    // --- Embed config. Boot the widget. ---
+    window.MemoxChatConfig = {
+      embedId: 'emb_mmx_573_demo',
+      socketUrl: 'wss://stub.local',
+      baseUrl: 'https://stub.local/api/v1/chat/',
+      apiUrl: 'https://stub.local/api/v1/',
+      token: 'demo',
+      org_id: '1',
+      agent_id: '1',
+      welcomeMessage: 'Hi! This is the MMX-573 idempotency demo. Submit the lead form, then click "Fire 3 rapid close events".',
+      leadCapture: true,
+      mode: 'floating',
+    };
+    log('[demo] config installed, importing widget source…');
+  </script>
+
+  <!-- Vite serves src/index.ts directly during `npm run dev`. -->
+  <script type="module" src="/src/index.ts"></script>
+</body>
+</html>
