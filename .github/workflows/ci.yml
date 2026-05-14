@@ -20,6 +20,12 @@ jobs:
 
       - run: npm ci
 
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Unit tests (vitest)
+        run: npm test -- --run
+
       - run: npm run build
 
       - name: Check bundle size
