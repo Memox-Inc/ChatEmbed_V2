@@ -89,6 +89,13 @@ async function init(): Promise<void> {
   let isFormShowing = false;
   let isBotResponding = false;
   let chatOpen = false;
+  // Session-close idempotency. ``showSessionClosedNotification`` is reachable
+  // from three independent paths (REST validate on connect, REST validate on
+  // widget toggle, inbound WS ``error_message``). Without a single gate, each
+  // path schedules its own 3s ``resetSession`` timer, producing stacked
+  // banners and stacked lead forms in one widget. Cleared at the end of
+  // ``resetSession``. MMX-573.
+  let sessionClosePending = false;
 
   // --- Shadow DOM setup ---
   let root: ShadowRoot;
@@ -611,15 +618,32 @@ async function init(): Promise<void> {
   }
 
   function showSessionClosedNotification(message: string): void {
-    sessionStore.pushMessage({
-      text: message,
-      sender: 'system',
-      isWelcomeMessage: false,
-      isSystemNotification: true,
-      notificationType: 'session_closed',
-      created_at: formatTimeStamp(new Date().toISOString()),
-    });
-    loadMessages();
+    // Idempotent: REST validate-session can fire concurrently with a WS
+    // ``error_message`` for the same expired session. Without this gate
+    // each call schedules an independent ``resetSession`` timer which
+    // would stack banners and lead forms. MMX-573.
+    if (sessionClosePending) return;
+    sessionClosePending = true;
+
+    // Don't double-push the banner message into the store when state was
+    // rehydrated from localStorage with a prior close notification already
+    // at the tail — re-rendering would mount a second banner DOM node.
+    const existing = sessionStore.getMessages();
+    const last = existing[existing.length - 1];
+    const alreadyHasBanner = !!last
+      && last.isSystemNotification === true
+      && last.notificationType === 'session_closed';
+    if (!alreadyHasBanner) {
+      sessionStore.pushMessage({
+        text: message,
+        sender: 'system',
+        isWelcomeMessage: false,
+        isSystemNotification: true,
+        notificationType: 'session_closed',
+        created_at: formatTimeStamp(new Date().toISOString()),
+      });
+      loadMessages();
+    }
     inputBar.setDisabled(true);
     setTimeout(() => resetSession(), 3000);
   }
@@ -728,9 +752,21 @@ async function init(): Promise<void> {
       inputBar.container.style.display = 'none';
       showLeadForm();
     }
+    // Release the close-pending latch only after the fresh session UI is
+    // mounted — any close events that landed during this window are
+    // collapsed into this single reset. MMX-573.
+    sessionClosePending = false;
   }
 
   function showLeadForm(): void {
+    // Idempotent. If a prior lead form is already mounted in the widget,
+    // remove it before appending the new one — ``widget.appendChild`` would
+    // otherwise stack forms (the form lives on ``widget``, not on
+    // ``messagesEl``, so the reset's ``innerHTML = ''`` does not reach it).
+    // MMX-573.
+    const existingForm = widget.querySelector('.mcx-lead-conv');
+    if (existingForm) existingForm.remove();
+
     isFormShowing = true;
     headerRefs.setButtonsDisabled(true);
 
