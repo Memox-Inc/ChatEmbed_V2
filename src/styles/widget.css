@@ -1194,6 +1194,252 @@
   text-align: center;
 }
 
+/* ═══════ Lead capture v2 (MMX-575) — single-step + phone picker ═══════ */
+
+/* Single-step variant: card-style stack of fields with a single CTA. */
+.mcx-lead-conv--single { padding: 0; }
+.mcx-lead-conv--single .mcx-lead-single-head {
+  padding: 22px 20px 8px;
+}
+.mcx-lead-conv--single .mcx-lead-single-title {
+  margin: 0 0 4px;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--t1, #0f172a);
+}
+.mcx-lead-conv--single .mcx-lead-single-sub {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--tm, #64748b);
+}
+.mcx-lead-conv--single .mcx-lead-single-fields {
+  padding: 14px 20px 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+  flex: 1;
+}
+.mcx-lead-conv--single .mcx-lead-single-block {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.mcx-lead-conv--single .mcx-lead-single-submit-row {
+  padding: 16px 20px 20px;
+  background: #fff;
+  border-top: 1px solid var(--bl, #e2e8f0);
+}
+.mcx-lead-conv--single .mcx-lead-submit {
+  border-radius: 11px;
+  padding: 12px;
+}
+.mcx-lead-conv--single .mcx-lead-help {
+  margin-top: 10px;
+  font-size: 11px;
+  color: var(--tm, #64748b);
+  text-align: center;
+}
+.mcx-lead-optional {
+  font-weight: 400;
+  color: var(--t2, #94a3b8);
+  font-size: 11px;
+}
+
+/* Phone combo (visitor-side). Flag chip + input in a single bordered box. */
+.mcx-phone-combo {
+  display: flex;
+  align-items: stretch;
+  background: #fff;
+  border: 1.5px solid var(--bl, #e2e8f0);
+  border-radius: 9px;
+  overflow: hidden;
+  transition: border-color 120ms, box-shadow 120ms;
+}
+.mcx-phone-combo:focus-within {
+  border-color: var(--p, #8349ff);
+  box-shadow: 0 0 0 3px rgba(131, 73, 255, 0.12);
+}
+.mcx-phone-combo--error {
+  border-color: var(--err, #ef4444);
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.12);
+  animation: mcx-shake 360ms;
+}
+.mcx-phone-combo--valid {
+  border-color: #10b981;
+}
+.mcx-phone-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 8px 8px 10px;
+  background: var(--bg2, #f1f5f9);
+  border: none;
+  border-right: 1px solid var(--bl, #e2e8f0);
+  cursor: pointer;
+  font-size: 13.5px;
+  font-family: inherit;
+  color: inherit;
+}
+.mcx-phone-chip:hover {
+  background: #e8edf3;
+}
+.mcx-phone-flag { font-size: 18px; line-height: 1; }
+.mcx-phone-dial {
+  color: var(--t1, #0f172a);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+.mcx-phone-chev {
+  color: var(--tm, #64748b);
+  transition: transform 180ms ease;
+  margin-left: 2px;
+}
+.mcx-phone-chip--open .mcx-phone-chev { transform: rotate(180deg); }
+.mcx-phone-input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  padding: 10px 12px;
+  font-size: 14px;
+  color: inherit;
+  font-family: inherit;
+}
+.mcx-phone-input::placeholder { color: var(--t2, #94a3b8); }
+.mcx-phone-check {
+  display: none;
+  align-items: center;
+  padding: 0 12px;
+  color: #10b981;
+}
+.mcx-phone-combo--valid .mcx-phone-check { display: flex; }
+
+/* Country picker overlay — covers the lead form when chip clicked. */
+.mcx-lead-conv {
+  position: relative;
+}
+.mcx-lead-conv--picker-on > *:not(.mcx-phone-picker) {
+  opacity: 0.55;
+  pointer-events: none;
+  user-select: none;
+  transition: opacity 160ms ease;
+}
+.mcx-phone-picker {
+  position: absolute;
+  inset: 0;
+  background: #fff;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  animation: mcx-picker-in 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+@keyframes mcx-picker-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
+}
+.mcx-phone-picker-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 14px 10px;
+  border-bottom: 1px solid var(--bl, #e2e8f0);
+  background: #fff;
+}
+.mcx-phone-picker-back {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 6px;
+  color: var(--tm, #64748b);
+  border-radius: 6px;
+  display: flex;
+}
+.mcx-phone-picker-back:hover {
+  background: var(--bg2, #f1f5f9);
+  color: var(--t1, #0f172a);
+}
+.mcx-phone-picker-search {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid var(--bl, #e2e8f0);
+  border-radius: 8px;
+  font-size: 13.5px;
+  outline: none;
+  font-family: inherit;
+  color: inherit;
+  background: #fff;
+}
+.mcx-phone-picker-search:focus {
+  border-color: var(--p, #8349ff);
+  box-shadow: 0 0 0 3px rgba(131, 73, 255, 0.12);
+}
+.mcx-phone-picker-body { flex: 1; overflow-y: auto; }
+.mcx-phone-picker-section {
+  padding: 10px 16px 4px;
+  font-size: 10.5px;
+  color: var(--tm, #64748b);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  background: #fafbfc;
+}
+.mcx-phone-picker-row {
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13.5px;
+  cursor: pointer;
+  border-bottom: 1px solid #f1f5f9;
+  outline: none;
+  color: inherit;
+}
+.mcx-phone-picker-row:hover,
+.mcx-phone-picker-row--kbd,
+.mcx-phone-picker-row:focus-visible {
+  background: rgba(131, 73, 255, 0.06);
+}
+.mcx-phone-picker-row--current {
+  background: rgba(131, 73, 255, 0.08);
+}
+.mcx-phone-picker-flag { font-size: 22px; line-height: 1; }
+.mcx-phone-picker-name { flex: 1; color: var(--t1, #0f172a); }
+.mcx-phone-picker-dial {
+  color: var(--tm, #64748b);
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+}
+.mcx-phone-picker-row--suggested {
+  background: linear-gradient(90deg, rgba(131, 73, 255, 0.08), transparent);
+}
+.mcx-phone-picker-pill {
+  margin-left: 4px;
+  background: var(--p, #8349ff);
+  color: #fff;
+  font-size: 9.5px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 999px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+.mcx-phone-picker-empty {
+  padding: 40px 20px;
+  text-align: center;
+  color: var(--tm, #64748b);
+  font-size: 13px;
+}
+
+/* Shake animation (re-using if not already defined). */
+@keyframes mcx-shake {
+  0%,100% { transform: translateX(0); }
+  25%     { transform: translateX(-4px); }
+  75%     { transform: translateX(4px); }
+}
+
 /* ═══════ prefers-reduced-motion ═══════ */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
