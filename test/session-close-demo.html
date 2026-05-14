@@ -34,6 +34,11 @@
     <button onclick="window.__memox573.fire(5)">Fire 5 rapid close events</button>
     <button onclick="localStorage.clear(); location.reload()">Reset + reload</button>
   </div>
+  <div class="controls" style="margin-top: 8px;">
+    <strong style="align-self:center; font-size:13px;">Mode:</strong>
+    <a href="?leadCapture=true"><button>leadCapture: true (form)</button></a>
+    <a href="?leadCapture=false"><button>leadCapture: false (anonymous)</button></a>
+  </div>
 
   <div id="log" class="log">[demo] waiting for widget init…</div>
 
@@ -122,6 +127,12 @@
     };
 
     // --- Embed config. Boot the widget. ---
+    // Read ``?leadCapture=false`` to flip into anonymous mode for the
+    // second branch of resetSession().
+    const params = new URLSearchParams(location.search);
+    const leadCapture = params.get('leadCapture') !== 'false';
+    log('[demo] mode = ' + (leadCapture ? 'leadCapture: true (form path)' : 'leadCapture: false (anonymous path)'));
+
     window.MemoxChatConfig = {
       embedId: 'emb_mmx_573_demo',
       socketUrl: 'wss://stub.local',
@@ -130,8 +141,11 @@
       token: 'demo',
       org_id: '1',
       agent_id: '1',
-      welcomeMessage: 'Hi! This is the MMX-573 idempotency demo. Submit the lead form, then click "Fire 3 rapid close events".',
-      leadCapture: true,
+      welcomeMessage: 'Hi! This is the MMX-573 idempotency demo. ' +
+        (leadCapture
+          ? 'Submit the lead form, then click "Fire 3 rapid close events".'
+          : 'Anonymous mode — no lead form. Click "Fire 3 rapid close events" anytime.'),
+      leadCapture,
       mode: 'floating',
     };
     log('[demo] config installed, importing widget source…');

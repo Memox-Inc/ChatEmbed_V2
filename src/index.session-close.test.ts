@@ -176,4 +176,51 @@ describe('session-close idempotency (MMX-573)', () => {
     // Silence unused-import warning for re-imports across tests in watch mode.
     void indexModule;
   });
+
+  it('anonymous mode (leadCapture: false) — single toast + no lead form after reset', async () => {
+    // Re-configure to anonymous mode and re-import the module fresh.
+    window.MemoxChatConfig = {
+      embedId: 'emb_session_close_anon_test',
+      leadCapture: false,
+    } as unknown as typeof window.MemoxChatConfig;
+    vi.resetModules();
+
+    await import('./index');
+    await vi.advanceTimersByTimeAsync(0);
+    await Promise.resolve();
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(capturedOnMessage, 'WS onMessage captured (anon path)').toBeTruthy();
+    if (!capturedOnMessage) return;
+
+    // Fire 5 rapid close events — stress the idempotency latch.
+    for (let i = 0; i < 5; i++) {
+      capturedOnMessage({
+        message_type: 'error_message',
+        content: 'This chat session has been closed.',
+        room_name: 'room-MMX-573-test',
+      });
+    }
+
+    const host = document.querySelector('#memox-chat-embed-host') as HTMLElement;
+    const root = host.shadowRoot as ShadowRoot;
+
+    // Still exactly one toast — same idempotency guarantee in anonymous mode.
+    expect(
+      root.querySelectorAll('.mcx-sys-notification--closed').length,
+      'one toast in anonymous mode, not N',
+    ).toBe(1);
+
+    // Wait past the countdown so resetSession completes.
+    await vi.advanceTimersByTimeAsync(4500);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    // Anonymous mode reset path should NOT mount a lead form — straight
+    // back into chat with a welcome message.
+    expect(
+      root.querySelectorAll('.mcx-lead-conv').length,
+      'no lead form in anonymous mode',
+    ).toBe(0);
+  });
 });
