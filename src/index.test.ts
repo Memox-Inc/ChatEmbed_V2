@@ -105,6 +105,7 @@ describe('index bootstrap — chat_widget_loaded analytics contract', () => {
 
 describe('widget reads memox-namespaced PostHog config (MMX-598)', () => {
   beforeEach(() => {
+    vi.resetModules();
     analyticsInitSpy.mockClear();
     captureSpy.mockClear();
   });
@@ -117,7 +118,6 @@ describe('widget reads memox-namespaced PostHog config (MMX-598)', () => {
       leadCapture: false,
     };
 
-    vi.resetModules();
     await import('./index');
     await flushAsync();
 
@@ -134,7 +134,6 @@ describe('widget reads memox-namespaced PostHog config (MMX-598)', () => {
       leadCapture: false,
     };
 
-    vi.resetModules();
     await import('./index');
     await flushAsync();
 
