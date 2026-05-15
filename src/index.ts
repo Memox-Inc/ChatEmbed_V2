@@ -66,14 +66,14 @@ async function init(): Promise<void> {
   // sessionStore reads/writes so multiple widgets on the same origin
   // (marketing site widget + per-persona demo embed) don't share state.
   sessionStore.setNamespace(config.storageNamespace);
-  // Wire PostHog analytics (no-op when ``posthogApiKey`` is unset).
+  // Wire PostHog analytics (no-op when ``memoxPosthogApiKey`` is unset).
   // attractor_variant is read from the server's init response so every event
   // can be split by launcher variant in PostHog funnels.
   // ``chat_widget_loaded`` is captured at the end of init() instead of here
   // to ensure the event reflects a successfully bootstrapped widget.
   analytics.init({
-    apiKey: config.posthogApiKey,
-    host: config.posthogHost,
+    apiKey: config.memoxPosthogApiKey,
+    host: config.memoxPosthogHost,
     orgId: config.org_id ?? null,
     agentId: config.agent_id ?? null,
     attractorVariant: (serverConfig as Record<string, unknown>).attractor_variant as string | null | undefined,

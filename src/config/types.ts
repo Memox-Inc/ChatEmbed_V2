@@ -317,14 +317,19 @@ export interface ChatEmbedConfig {
    */
   apiBase?: string;
   /**
-   * PostHog project API key. When unset, all analytics calls are no-ops
-   * — self-hosted/OSS deployments don't need PostHog.
+   * Memox-owned PostHog project key for widget analytics. Injected by
+   * memox-hub's /embed/init response as ``memox_posthog_api_key`` and
+   * auto-aliased to camelCase by normalizeServerConfig. Namespaced under
+   * ``memox`` so customers who set their own ``posthogApiKey`` for THEIR
+   * own analytics aren't accidentally overridden by mergeConfig precedence
+   * (see merge.ts:20-22 — server wins on truthy values). MMX-598.
+   * When unset, all analytics calls are no-ops — self-hosted/OSS deployments
+   * don't need PostHog.
    */
-  posthogApiKey?: string | null;
-  /**
-   * PostHog host (defaults to https://us.i.posthog.com).
-   */
-  posthogHost?: string;
+  memoxPosthogApiKey?: string | null;
+
+  /** Optional override of PostHog ingest host (e.g. EU region). Defaults to https://us.i.posthog.com. */
+  memoxPosthogHost?: string;
   /**
    * Launcher form-factor + attractor system. Snake_case matches the
    * /embed/init wire format so server-fetched values can be merged in
