@@ -164,4 +164,13 @@ describe('normalizeServerConfig — theme snake→camel bridge', () => {
     // Array passes through untouched — guards against future bad payloads.
     expect(Array.isArray(out.theme)).toBe(true);
   });
+
+  it('aliases memox_posthog_api_key / memox_posthog_host to camelCase (MMX-598)', () => {
+    const out = normalizeServerConfig({
+      memox_posthog_api_key: 'phc_x',
+      memox_posthog_host: 'https://eu.i.posthog.com',
+    });
+    expect(out.memoxPosthogApiKey).toBe('phc_x');
+    expect(out.memoxPosthogHost).toBe('https://eu.i.posthog.com');
+  });
 });

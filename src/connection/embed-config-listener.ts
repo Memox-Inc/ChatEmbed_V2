@@ -27,6 +27,11 @@ interface EmbedConfigUpdatePayload {
     lead_capture?: { enabled?: boolean; mandatory?: boolean };
     quick_questions?: string[];
     attractor_variant?: string;
+    // Posthog fields ride the broadcast for completeness — analytics.init
+    // is NOT re-called on update, so a runtime key rotation requires a
+    // page refresh to take effect. MMX-598.
+    memox_posthog_api_key?: string;
+    memox_posthog_host?: string;
   };
 }
 
