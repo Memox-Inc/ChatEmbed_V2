@@ -143,6 +143,27 @@ export interface LeadFormHelperText {
   borderRadius?: string;
 }
 
+/**
+ * Per-field row inside ``leadCaptureConfig.fields``. Mirrors the
+ * Pydantic ``LeadCaptureField`` in
+ * memox-hub/memox_hub/embed_app/lead_capture_config.py and the
+ * ``LeadCaptureField`` type in mmx-unified-chat/services/embed.service.ts
+ * — keep the three in sync.
+ */
+export interface LeadCaptureFieldConfig {
+  key: string;
+  label: string;
+  type: 'text' | 'email' | 'phone' | 'number';
+  enabled: boolean;
+  required: boolean;
+  custom: boolean;
+  phone_options?: {
+    allowed_countries?: string[];
+    default_country?: string;
+    validation?: 'strict' | 'loose' | 'none';
+  };
+}
+
 // Launcher attractor system — mirrors the Pydantic LauncherConfig in
 // memox-hub/memox_hub/embed_app/launcher_config.py. Field names match
 // the wire format (snake_case) so a config fetched from /embed/init can
@@ -212,6 +233,20 @@ export interface ChatEmbedConfig {
   welcomeMessage?: string | null;
   welcomeMessageStyle?: WelcomeMessageStyle;
   leadCapture?: boolean;
+  /**
+   * Full lead-capture config object from the server (``/embed/init/``).
+   * Carries the per-field schema (key, label, type, enabled, required,
+   * custom, plus phone_options for the phone field) and the user-defined
+   * field order. The lead-capture form respects this order; if absent
+   * (legacy v1 config), the form falls back to the built-in defaults
+   * (name → email → phone → zip).
+   */
+  leadCaptureConfig?: {
+    enabled?: boolean;
+    mandatory?: boolean;
+    variant?: 'multi_step' | 'single_step';
+    fields?: LeadCaptureFieldConfig[];
+  };
   leadFormHelperText?: LeadFormHelperText;
   quickQuestions?: string[];
   quickQuestionsPermanent?: boolean;

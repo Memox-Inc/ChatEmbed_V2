@@ -1,4 +1,4 @@
-import type { ChatEmbedConfig } from '../../config/types';
+import type { ChatEmbedConfig, LeadCaptureFieldConfig } from '../../config/types';
 import { sanitizeInput } from '../../utils/dom';
 import { validateName, validateEmail, validatePhone, validateZip, normalizePhoneE164 } from './validation';
 import { createPhoneField } from './phone-field';
@@ -9,6 +9,8 @@ export interface LeadData {
   email: string;
   phone: string;
   zip: string;
+  /** Custom fields keyed by their config ``key`` (e.g. ``f_abc123``). */
+  customFields?: Record<string, string>;
   timestamp: string;
   userAgent: string;
   platform: string;
@@ -27,55 +29,135 @@ interface StepDef {
   helpText: string;
   validate: (val: string, extra?: unknown) => string | null;
   isPhone?: boolean;
+  /** Built-in keys we know how to render natively (name/email/phone/zip);
+   * everything else is a custom user-defined field rendered as a generic
+   * text input. */
+  custom?: boolean;
 }
 
-export function createLeadCaptureForm(
-  config: ChatEmbedConfig,
-  onComplete: (lead: LeadData | null) => void,
-): HTMLDivElement {
-  const steps: StepDef[] = [
-    {
+/**
+ * Build the per-step definitions for the lead-capture form.
+ *
+ * If ``config.leadCaptureConfig.fields`` is present (v2 server config),
+ * respect the user's field order, ``enabled`` flag, and ``label``
+ * overrides. If absent (legacy v1 boolean ``leadCapture``), fall back
+ * to the built-in default order: name \u2192 email \u2192 phone \u2192 zip (with zip
+ * disabled by default so the form is 3 steps).
+ *
+ * Built-in field keys (``name``/``email``/``phone``/``zip``) reuse the
+ * widget's typed validators and existing UX (phone country picker, zip
+ * format check). Custom fields render as a generic text input with the
+ * user-defined label.
+ */
+function buildSteps(config: ChatEmbedConfig): StepDef[] {
+  const builtins: Record<string, Omit<StepDef, 'label'>> = {
+    name: {
       field: 'name',
       botQuestion: '\u{1F44B} Welcome! I need a few quick details to get started. What\'s your name?',
-      label: 'Full name',
       type: 'text',
       placeholder: 'Full name',
       buttonText: 'Continue \u2192',
       helpText: '\u{1F512} Required to access the chat',
       validate: (v) => validateName(v),
     },
-    {
+    email: {
       field: 'email',
-      botQuestion: '', // dynamic: "Nice to meet you, {name}! What's your email?"
-      label: 'Email address',
+      botQuestion: '', // dynamic \u2014 uses collected name if available
       type: 'email',
       placeholder: 'you@company.com',
       buttonText: 'Continue \u2192',
       helpText: '\u{1F512} Required to access the chat',
       validate: (v) => validateEmail(v),
     },
-    {
+    phone: {
       field: 'phone',
       botQuestion: 'Great! What\'s your phone number?',
-      label: 'Phone number',
       type: 'tel',
       placeholder: '(555) 000-0000',
       buttonText: 'Continue \u2192',
-      helpText: '\u{1F512} Step 3 of 4',
+      helpText: '\u{1F512} Phone number',
       validate: (v, extra) => validatePhone(v, extra as CountryEntry),
       isPhone: true,
     },
-    {
+    zip: {
       field: 'zip',
       botQuestion: 'Almost done! What\'s your zip code?',
-      label: 'Zip code',
       type: 'text',
       placeholder: 'e.g. 75201',
-      buttonText: 'Get Started \u2192',
-      helpText: '\u{1F512} Final step',
+      buttonText: 'Continue \u2192',
+      helpText: '\u{1F512} Zip code',
       validate: (v) => validateZip(v),
     },
-  ];
+  };
+
+  const fields: LeadCaptureFieldConfig[] | undefined = config.leadCaptureConfig?.fields;
+
+  // Legacy / v1 path \u2014 no field config available, use built-in default
+  // order (without zip, matching prior visible behavior).
+  if (!Array.isArray(fields) || fields.length === 0) {
+    return [
+      { ...builtins.name, label: 'Full name' },
+      { ...builtins.email, label: 'Email address' },
+      { ...builtins.phone, label: 'Phone number' },
+    ];
+  }
+
+  const steps: StepDef[] = [];
+  for (const f of fields) {
+    if (!f || f.enabled === false) continue;
+
+    const builtin = builtins[f.key];
+    if (builtin && !f.custom) {
+      steps.push({ ...builtin, label: f.label || builtin.field });
+      continue;
+    }
+
+    // Custom field \u2014 generic non-empty text input. We don't infer a
+    // specialised validator from ``f.type`` for custom fields because
+    // the dashboard's "Add field" UI doesn't expose phone/email
+    // semantics on custom keys yet (see LeadCaptureSection.tsx);
+    // adding that mapping is a follow-up.
+    steps.push({
+      field: f.key,
+      botQuestion: `${f.label}?`,
+      label: f.label || f.key,
+      type: f.type === 'number' ? 'text' : (f.type || 'text'),
+      placeholder: f.label || '',
+      buttonText: 'Continue \u2192',
+      helpText: f.required ? '\u{1F512} Required' : 'Optional',
+      validate: (v) => (v && v.trim().length > 0 ? null : `${f.label} is required`),
+      custom: true,
+    });
+  }
+
+  // Replace the last step's button label to signal completion.
+  if (steps.length > 0) {
+    steps[steps.length - 1] = {
+      ...steps[steps.length - 1],
+      buttonText: 'Get Started \u2192',
+      helpText: '\u{1F512} Final step',
+    };
+  }
+
+  return steps;
+}
+
+export function createLeadCaptureForm(
+  config: ChatEmbedConfig,
+  onComplete: (lead: LeadData | null) => void,
+): HTMLDivElement {
+  const steps: StepDef[] = buildSteps(config);
+
+  // Defensive: if every field is disabled (or config is malformed)
+  // the form would render zero steps and never call ``onComplete``,
+  // stranding the visitor on a blank panel. Bail out by treating the
+  // form as instantly complete with empty data \u2014 the caller (init.ts)
+  // can decide whether to skip lead capture entirely upstream.
+  if (steps.length === 0) {
+    const empty = document.createElement('div');
+    queueMicrotask(() => onComplete(null));
+    return empty;
+  }
 
   let currentStep = 0;
   const collected: Record<string, string> = {};
@@ -231,11 +313,21 @@ export function createLeadCaptureForm(
         inputArea.appendChild(successDiv);
 
         setTimeout(() => {
+          // Pull custom (non-builtin) values into a dedicated bag so
+          // downstream consumers can read them without colliding with
+          // the four canonical keys.
+          const builtinKeys = new Set(['name', 'email', 'phone', 'zip']);
+          const customFields: Record<string, string> = {};
+          for (const [k, v] of Object.entries(collected)) {
+            if (!builtinKeys.has(k)) customFields[k] = sanitizeInput(v);
+          }
+
           const lead: LeadData = {
-            name: sanitizeInput(collected.name),
-            email: sanitizeInput(collected.email),
-            phone: collected.phone,
-            zip: sanitizeInput(collected.zip),
+            name: sanitizeInput(collected.name || ''),
+            email: sanitizeInput(collected.email || ''),
+            phone: collected.phone || '',
+            zip: sanitizeInput(collected.zip || ''),
+            customFields,
             timestamp: new Date().toISOString(),
             userAgent: navigator.userAgent,
             platform: navigator.platform,
@@ -251,8 +343,13 @@ export function createLeadCaptureForm(
       // Next step
       const nextStep = steps[currentStep];
       let question = nextStep.botQuestion;
-      if (nextStep.field === 'email') {
+      if (nextStep.field === 'email' && collected.name) {
+        // Personalize the email prompt only when we've already collected
+        // a name. If email comes before name in the user-configured
+        // order, fall back to the generic prompt.
         question = `Nice to meet you, ${sanitizeInput(collected.name)}! What's your email?`;
+      } else if (nextStep.field === 'email' && !question) {
+        question = 'What\'s your email?';
       }
       addBotBubble(question);
       renderInputForStep(nextStep);
