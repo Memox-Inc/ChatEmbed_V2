@@ -60,7 +60,7 @@ function flushAsync(): Promise<void> {
 // vi.mock is hoisted, but window globals are not — so we set them here at module scope.
 window.MemoxChatConfig = {
   embedId: 'emb_test',
-  posthogApiKey: 'phc_test',
+  memoxPosthogApiKey: 'phc_test',
   // Disable lead capture so maybeShowLeadCapture goes through the anonymous-visitor
   // path, avoiding the form UI which needs additional DOM scaffolding.
   leadCapture: false,
