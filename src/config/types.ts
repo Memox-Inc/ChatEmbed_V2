@@ -326,7 +326,7 @@ export interface ChatEmbedConfig {
    * When unset, all analytics calls are no-ops — self-hosted/OSS deployments
    * don't need PostHog.
    */
-  memoxPosthogApiKey?: string | null;
+  memoxPosthogApiKey?: string;
 
   /** Optional override of PostHog ingest host (e.g. EU region). Defaults to https://us.i.posthog.com. */
   memoxPosthogHost?: string;
