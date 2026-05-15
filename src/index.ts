@@ -81,7 +81,16 @@ async function init(): Promise<void> {
   const theme = config.theme || {};
   const welcomeMessage = config.welcomeMessage || null;
   const welcomeMessageStyle = config.welcomeMessageStyle as WelcomeMessageStyle | undefined;
-  const leadCapture = config.leadCapture !== undefined ? config.leadCapture : true;
+  // ``leadCapture`` is now boolean | LeadCaptureConfig (MMX-575). For the
+  // gating reads below ("show the form?") all callers care about is the
+  // master toggle, so collapse to a boolean once at boot time. Default to
+  // ``true`` when unset so self-hosted callers that omit config get the
+  // classic experience.
+  const leadCaptureRaw = config.leadCaptureConfig ?? config.leadCapture;
+  const leadCapture =
+    typeof leadCaptureRaw === 'boolean' ? leadCaptureRaw :
+    leadCaptureRaw === undefined ? true :
+    !!(leadCaptureRaw as { enabled?: boolean }).enabled;
 
   // State
   let visitorInfo: VisitorInfo | null = null;

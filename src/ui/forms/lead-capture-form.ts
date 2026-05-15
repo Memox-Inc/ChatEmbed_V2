@@ -1,16 +1,39 @@
-import type { ChatEmbedConfig, LeadCaptureFieldConfig } from '../../config/types';
+// Lead-capture form (MMX-575 v2).
+//
+// Now data-driven over the v2 ``leadCaptureConfig``:
+//   - Dispatches between multi-step (one field per screen, classic flow) and
+//     single-step (all fields on one card with a single submit) variants.
+//   - Renders the admin's enabled fields in admin-defined order, with the
+//     admin's labels + required flags.
+//   - Supports built-in (name/email/phone/zip) AND custom fields
+//     (text/email/phone/number with a custom label).
+//   - Phone fields use the new ``createPhoneInput`` component (curated
+//     country picker, strictness-aware validation).
+//
+// Back-compat: if no ``leadCaptureConfig`` is present, default to the
+// classic 4-step multi-step form so older self-hosted callers that pass
+// just ``leadCapture: true`` keep working.
+
+import type {
+  ChatEmbedConfig,
+  LeadCaptureConfig,
+  LeadCaptureField,
+  PhoneFieldOptions,
+} from '../../config/types';
 import { sanitizeInput } from '../../utils/dom';
-import { validateName, validateEmail, validatePhone, validateZip, normalizePhoneE164 } from './validation';
-import { createPhoneField } from './phone-field';
-import type { CountryEntry } from './country-data';
+import { validateField, normalizePhoneE164 } from './validation';
+import { createPhoneInput, type PhoneInputHandle } from './phone-input';
+import { countryByCode } from './country-data';
 
 export interface LeadData {
+  /** Free-form bag of submitted values keyed by field key. Backwards-
+   *  compatible aliases for ``name``/``email``/``phone``/``zip`` are
+   *  also set as top-level keys when those built-ins are enabled. */
   name: string;
   email: string;
   phone: string;
   zip: string;
-  /** Custom fields keyed by their config ``key`` (e.g. ``f_abc123``). */
-  customFields?: Record<string, string>;
+  values: Record<string, string>;
   timestamp: string;
   userAgent: string;
   platform: string;
@@ -19,181 +42,98 @@ export interface LeadData {
   referrer: string;
 }
 
-interface StepDef {
-  field: string;
-  botQuestion: string;
-  label: string;
-  type: string;
-  placeholder: string;
-  buttonText: string;
-  helpText: string;
-  validate: (val: string, extra?: unknown) => string | null;
-  isPhone?: boolean;
-  /** Built-in keys we know how to render natively (name/email/phone/zip);
-   * everything else is a custom user-defined field rendered as a generic
-   * text input. */
-  custom?: boolean;
+const DEFAULT_PHONE_OPTIONS: PhoneFieldOptions = {
+  allowed_countries: ['US', 'CA', 'GB', 'AU', 'DE', 'FR', 'ES', 'IT', 'NL',
+                      'BR', 'MX', 'IN', 'JP', 'SG', 'AE'],
+  default_country: 'US',
+  validation: 'strict',
+};
+
+function defaultV2Config(): LeadCaptureConfig {
+  return {
+    enabled: true,
+    variant: 'multi_step',
+    fields: [
+      { key: 'name',  label: 'Your name', type: 'text',  enabled: true, required: true,  custom: false },
+      { key: 'email', label: 'Email',     type: 'email', enabled: true, required: true,  custom: false },
+      { key: 'phone', label: 'Phone',     type: 'phone', enabled: true, required: true,  custom: false,
+        phone_options: { ...DEFAULT_PHONE_OPTIONS } },
+      { key: 'zip',   label: 'Zip code',  type: 'number', enabled: true, required: true, custom: false },
+    ],
+  };
 }
 
 /**
- * Build the per-step definitions for the lead-capture form.
- *
- * If ``config.leadCaptureConfig.fields`` is present (v2 server config),
- * respect the user's field order, ``enabled`` flag, and ``label``
- * overrides. If absent (legacy v1 boolean ``leadCapture``), fall back
- * to the built-in default order: name \u2192 email \u2192 phone \u2192 zip (with zip
- * disabled by default so the form is 3 steps).
- *
- * Built-in field keys (``name``/``email``/``phone``/``zip``) reuse the
- * widget's typed validators and existing UX (phone country picker, zip
- * format check). Custom fields render as a generic text input with the
- * user-defined label.
+ * Pull the effective ``LeadCaptureConfig`` from the embed config. Reads
+ * ``config.leadCaptureConfig`` first (server-driven v2), falls back to
+ * legacy boolean ``config.leadCapture`` and synthesizes a default v2.
  */
-function buildSteps(config: ChatEmbedConfig): StepDef[] {
-  const builtins: Record<string, Omit<StepDef, 'label'>> = {
-    name: {
-      field: 'name',
-      botQuestion: '\u{1F44B} Welcome! I need a few quick details to get started. What\'s your name?',
-      type: 'text',
-      placeholder: 'Full name',
-      buttonText: 'Continue \u2192',
-      helpText: '\u{1F512} Required to access the chat',
-      validate: (v) => validateName(v),
-    },
-    email: {
-      field: 'email',
-      botQuestion: '', // dynamic \u2014 uses collected name if available
-      type: 'email',
-      placeholder: 'you@company.com',
-      buttonText: 'Continue \u2192',
-      helpText: '\u{1F512} Required to access the chat',
-      validate: (v) => validateEmail(v),
-    },
-    phone: {
-      field: 'phone',
-      botQuestion: 'Great! What\'s your phone number?',
-      type: 'tel',
-      placeholder: '(555) 000-0000',
-      buttonText: 'Continue \u2192',
-      helpText: '\u{1F512} Phone number',
-      validate: (v, extra) => validatePhone(v, extra as CountryEntry),
-      isPhone: true,
-    },
-    zip: {
-      field: 'zip',
-      botQuestion: 'Almost done! What\'s your zip code?',
-      type: 'text',
-      placeholder: 'e.g. 75201',
-      buttonText: 'Continue \u2192',
-      helpText: '\u{1F512} Zip code',
-      validate: (v) => validateZip(v),
-    },
-  };
-
-  const fields: LeadCaptureFieldConfig[] | undefined = config.leadCaptureConfig?.fields;
-
-  // Legacy / v1 path \u2014 no field config available, use built-in default
-  // order (without zip, matching prior visible behavior).
-  if (!Array.isArray(fields) || fields.length === 0) {
-    return [
-      { ...builtins.name, label: 'Full name' },
-      { ...builtins.email, label: 'Email address' },
-      { ...builtins.phone, label: 'Phone number' },
-    ];
+function resolveConfig(config: ChatEmbedConfig): LeadCaptureConfig {
+  const v2 = config.leadCaptureConfig;
+  if (v2 && Array.isArray(v2.fields)) return v2;
+  if (typeof config.leadCapture === 'object' && config.leadCapture && Array.isArray((config.leadCapture as LeadCaptureConfig).fields)) {
+    return config.leadCapture as LeadCaptureConfig;
   }
-
-  const steps: StepDef[] = [];
-  for (const f of fields) {
-    if (!f || f.enabled === false) continue;
-
-    const builtin = builtins[f.key];
-    if (builtin && !f.custom) {
-      steps.push({ ...builtin, label: f.label || builtin.field });
-      continue;
-    }
-
-    // Custom field \u2014 generic non-empty text input. We don't infer a
-    // specialised validator from ``f.type`` for custom fields because
-    // the dashboard's "Add field" UI doesn't expose phone/email
-    // semantics on custom keys yet (see LeadCaptureSection.tsx);
-    // adding that mapping is a follow-up.
-    steps.push({
-      field: f.key,
-      botQuestion: `${f.label}?`,
-      label: f.label || f.key,
-      type: f.type === 'number' ? 'text' : (f.type || 'text'),
-      placeholder: f.label || '',
-      buttonText: 'Continue \u2192',
-      helpText: f.required ? '\u{1F512} Required' : 'Optional',
-      validate: (v) => (v && v.trim().length > 0 ? null : `${f.label} is required`),
-      custom: true,
-    });
-  }
-
-  // Replace the last step's button label to signal completion.
-  if (steps.length > 0) {
-    steps[steps.length - 1] = {
-      ...steps[steps.length - 1],
-      buttonText: 'Get Started \u2192',
-      helpText: '\u{1F512} Final step',
-    };
-  }
-
-  return steps;
+  // Legacy boolean true (or undefined → default to enabled multi-step).
+  return defaultV2Config();
 }
 
+/**
+ * Main entry — picks the right variant renderer and returns the form DOM.
+ * The widget mounts the returned node and calls back with the captured
+ * lead (or ``null`` on cancel/error).
+ */
 export function createLeadCaptureForm(
   config: ChatEmbedConfig,
   onComplete: (lead: LeadData | null) => void,
 ): HTMLDivElement {
-  const steps: StepDef[] = buildSteps(config);
-
-  // Defensive: if every field is disabled (or config is malformed)
-  // the form would render zero steps and never call ``onComplete``,
-  // stranding the visitor on a blank panel. Bail out by treating the
-  // form as instantly complete with empty data \u2014 the caller (init.ts)
-  // can decide whether to skip lead capture entirely upstream.
-  if (steps.length === 0) {
-    const empty = document.createElement('div');
-    queueMicrotask(() => onComplete(null));
-    return empty;
+  const cfg = resolveConfig(config);
+  const fields = cfg.fields.filter(f => f.enabled);
+  if (cfg.variant === 'single_step') {
+    return createSingleStepLeadForm(config, fields, onComplete);
   }
+  return createMultiStepLeadForm(config, fields, onComplete);
+}
 
-  let currentStep = 0;
+// ============================================================================
+// Multi-step variant — classic chat-bubble flow (one field per screen)
+// ============================================================================
+
+function createMultiStepLeadForm(
+  config: ChatEmbedConfig,
+  fields: LeadCaptureField[],
+  onComplete: (lead: LeadData | null) => void,
+): HTMLDivElement {
   const collected: Record<string, string> = {};
-  let phoneFieldRefs: ReturnType<typeof createPhoneField> | null = null;
+  const phoneHandles: Map<string, PhoneInputHandle> = new Map();
+  let currentStep = 0;
 
-  // Root wrapper — fills the messages area as an overlay
   const wrapper = document.createElement('div');
   wrapper.className = 'mcx-lead-conv';
 
-  // Progress dots
   const dotsRow = document.createElement('div');
   dotsRow.className = 'mcx-lead-dots';
-  for (let i = 0; i < steps.length; i++) {
+  for (let i = 0; i < fields.length; i++) {
     const dot = document.createElement('div');
-    dot.className = 'mcx-lead-dot';
-    if (i === 0) dot.classList.add('mcx-lead-dot--active');
+    dot.className = 'mcx-lead-dot' + (i === 0 ? ' mcx-lead-dot--active' : '');
     dotsRow.appendChild(dot);
   }
   wrapper.appendChild(dotsRow);
 
-  // Messages area (scrollable)
   const msgsArea = document.createElement('div');
   msgsArea.className = 'mcx-lead-msgs';
   wrapper.appendChild(msgsArea);
 
-  // Input area at bottom
   const inputArea = document.createElement('div');
   inputArea.className = 'mcx-lead-input-area';
   wrapper.appendChild(inputArea);
 
   function updateDots(): void {
     const dots = dotsRow.querySelectorAll('.mcx-lead-dot');
-    dots.forEach((dot, i) => {
-      dot.classList.remove('mcx-lead-dot--active', 'mcx-lead-dot--done');
-      if (i < currentStep) dot.classList.add('mcx-lead-dot--done');
-      else if (i === currentStep) dot.classList.add('mcx-lead-dot--active');
+    dots.forEach((d, i) => {
+      d.classList.remove('mcx-lead-dot--active', 'mcx-lead-dot--done');
+      if (i < currentStep) d.classList.add('mcx-lead-dot--done');
+      else if (i === currentStep) d.classList.add('mcx-lead-dot--active');
     });
   }
 
@@ -209,7 +149,7 @@ export function createLeadCaptureForm(
           <path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/>
         </svg>
       </div>
-      <div class="mcx-msg-stack"><div class="mcx-bubble mcx-bubble--bot">${text}</div></div>
+      <div class="mcx-msg-stack"><div class="mcx-bubble mcx-bubble--bot">${sanitizeInput(text)}</div></div>
     `;
     msgsArea.appendChild(group);
     msgsArea.scrollTop = msgsArea.scrollHeight;
@@ -218,7 +158,7 @@ export function createLeadCaptureForm(
   function addUserBubble(text: string): void {
     const group = document.createElement('div');
     group.className = 'mcx-msg-group mcx-msg-group--user';
-    const initial = text.charAt(0).toUpperCase();
+    const initial = (text.charAt(0) || '?').toUpperCase();
     group.innerHTML = `
       <div class="mcx-avatar mcx-avatar--user">${initial}</div>
       <div class="mcx-msg-stack mcx-msg-stack--user"><div class="mcx-bubble mcx-bubble--user">${sanitizeInput(text)}</div></div>
@@ -227,25 +167,39 @@ export function createLeadCaptureForm(
     msgsArea.scrollTop = msgsArea.scrollHeight;
   }
 
-  function renderInputForStep(step: StepDef): void {
+  function promptFor(field: LeadCaptureField): string {
+    // Conversational templates for built-ins; admin-set label otherwise.
+    if (field.key === 'name')  return '\u{1F44B} Welcome! I need a few quick details to get started. What\'s your name?';
+    if (field.key === 'email') {
+      const name = collected.name || '';
+      return name ? `Nice to meet you, ${name}! What's your email?` : `What's your email?`;
+    }
+    if (field.key === 'phone') return 'Great! What\'s your phone number?';
+    if (field.key === 'zip')   return 'Almost done! What\'s your zip code?';
+    return `${field.label}?`;
+  }
+
+  function renderInputForStep(field: LeadCaptureField): void {
     inputArea.innerHTML = '';
-    phoneFieldRefs = null;
 
     const labelEl = document.createElement('div');
     labelEl.className = 'mcx-lead-field-label';
-    labelEl.innerHTML = `${step.label} <span style="color:var(--err)">*</span>`;
+    labelEl.innerHTML = `${sanitizeInput(field.label)}${field.required ? ' <span style="color:var(--err)">*</span>' : ' <span class="mcx-lead-optional">optional</span>'}`;
     inputArea.appendChild(labelEl);
 
     let inputEl: HTMLInputElement;
-
-    if (step.isPhone) {
-      phoneFieldRefs = createPhoneField();
-      inputArea.appendChild(phoneFieldRefs.container);
-      inputEl = phoneFieldRefs.input;
+    let phoneHandle: PhoneInputHandle | null = null;
+    if (field.type === 'phone') {
+      const opt = field.phone_options ?? DEFAULT_PHONE_OPTIONS;
+      phoneHandle = createPhoneInput(opt);
+      phoneHandles.set(field.key, phoneHandle);
+      inputArea.appendChild(phoneHandle.container);
+      inputEl = phoneHandle.input;
     } else {
       inputEl = document.createElement('input');
-      inputEl.type = step.type;
-      inputEl.placeholder = step.placeholder;
+      inputEl.type = field.type === 'email' ? 'email' : (field.type === 'number' ? 'tel' : 'text');
+      if (field.type === 'number') inputEl.inputMode = 'numeric';
+      inputEl.placeholder = field.label;
       inputEl.className = 'mcx-form-input';
       inputArea.appendChild(inputEl);
     }
@@ -254,29 +208,28 @@ export function createLeadCaptureForm(
     errorEl.className = 'mcx-lead-field-error';
     inputArea.appendChild(errorEl);
 
+    const isLast = currentStep === fields.length - 1;
     const btn = document.createElement('button');
     btn.className = 'mcx-lead-submit';
-    btn.textContent = step.buttonText;
+    btn.textContent = isLast ? 'Get Started →' : 'Continue →';
     inputArea.appendChild(btn);
 
     const helpEl = document.createElement('div');
     helpEl.className = 'mcx-lead-help';
-    helpEl.textContent = step.helpText;
+    helpEl.textContent = `Step ${currentStep + 1} of ${fields.length}`;
     inputArea.appendChild(helpEl);
 
     function submit(): void {
       const val = inputEl.value.trim();
-      const extra = step.isPhone && phoneFieldRefs ? phoneFieldRefs.getSelectedCountry() : undefined;
-      const err = step.validate(val, extra);
+      const selectedCountry = phoneHandle ? phoneHandle.getSelectedCountry() : undefined;
+      const err = validateField(field, val, selectedCountry);
       if (err) {
-        if (step.isPhone && phoneFieldRefs) {
-          phoneFieldRefs.setError(err);
-        } else {
+        if (phoneHandle) phoneHandle.setError(err);
+        else {
           errorEl.textContent = err;
           errorEl.style.display = 'block';
           inputEl.classList.add('mcx-field-error');
         }
-        // Shake animation
         inputEl.classList.add('mcx-shake');
         setTimeout(() => inputEl.classList.remove('mcx-shake'), 400);
         return;
@@ -284,95 +237,221 @@ export function createLeadCaptureForm(
 
       errorEl.style.display = 'none';
       inputEl.classList.remove('mcx-field-error');
+      if (phoneHandle && val) phoneHandle.setValid(true);
 
-      // Normalize phone to E.164 if phone step
-      if (step.isPhone && phoneFieldRefs) {
-        collected[step.field] = normalizePhoneE164(val, phoneFieldRefs.getSelectedCountry().dial);
+      // Store collected value.
+      if (phoneHandle && val) {
+        collected[field.key] = normalizePhoneE164(val, phoneHandle.getSelectedCountry().dial);
       } else {
-        collected[step.field] = val;
+        collected[field.key] = val;
       }
-
-      // Show user answer as chat bubble
-      addUserBubble(val);
+      addUserBubble(val || '(skipped)');
 
       currentStep++;
       updateDots();
 
-      if (currentStep >= steps.length) {
-        // Done — show success, then complete
+      if (currentStep >= fields.length) {
+        // Done — show success splash, then call back.
+        // Tear down any open picker overlay before swapping the form area.
+        phoneHandles.forEach(h => h.closePicker());
         inputArea.innerHTML = '';
-        const successDiv = document.createElement('div');
-        successDiv.style.cssText = 'display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:16px;text-align:center';
-        successDiv.innerHTML = `
+        const success = document.createElement('div');
+        success.style.cssText = 'display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:16px;text-align:center';
+        success.innerHTML = `
           <div style="width:44px;height:44px;border-radius:50%;background:rgba(5,150,105,.12);display:flex;align-items:center;justify-content:center">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
           </div>
           <div style="font-size:14px;font-weight:600;color:#0F172A">You're all set!</div>
           <div style="font-size:12px;color:#64748B">Starting your chat now...</div>
         `;
-        inputArea.appendChild(successDiv);
-
-        setTimeout(() => {
-          // Pull custom (non-builtin) values into a dedicated bag so
-          // downstream consumers can read them without colliding with
-          // the four canonical keys.
-          const builtinKeys = new Set(['name', 'email', 'phone', 'zip']);
-          const customFields: Record<string, string> = {};
-          for (const [k, v] of Object.entries(collected)) {
-            if (!builtinKeys.has(k)) customFields[k] = sanitizeInput(v);
-          }
-
-          const lead: LeadData = {
-            name: sanitizeInput(collected.name || ''),
-            email: sanitizeInput(collected.email || ''),
-            phone: collected.phone || '',
-            zip: sanitizeInput(collected.zip || ''),
-            customFields,
-            timestamp: new Date().toISOString(),
-            userAgent: navigator.userAgent,
-            platform: navigator.platform,
-            url: window.location.href,
-            language: navigator.language,
-            referrer: document.referrer,
-          };
-          onComplete(lead);
-        }, 1200);
+        inputArea.appendChild(success);
+        setTimeout(() => onComplete(buildLead(collected, fields)), 1200);
         return;
       }
 
-      // Next step
-      const nextStep = steps[currentStep];
-      let question = nextStep.botQuestion;
-      if (nextStep.field === 'email' && collected.name) {
-        // Personalize the email prompt only when we've already collected
-        // a name. If email comes before name in the user-configured
-        // order, fall back to the generic prompt.
-        question = `Nice to meet you, ${sanitizeInput(collected.name)}! What's your email?`;
-      } else if (nextStep.field === 'email' && !question) {
-        question = 'What\'s your email?';
-      }
-      addBotBubble(question);
-      renderInputForStep(nextStep);
+      addBotBubble(promptFor(fields[currentStep]));
+      renderInputForStep(fields[currentStep]);
     }
 
     btn.addEventListener('click', submit);
-    inputEl.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') submit();
-    });
+    inputEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') submit(); });
     inputEl.addEventListener('input', () => {
       inputEl.classList.remove('mcx-field-error');
       errorEl.style.display = 'none';
-      if (step.isPhone && phoneFieldRefs) {
-        phoneFieldRefs.setError(null);
-      }
+      if (phoneHandle) phoneHandle.setError(null);
     });
-
     setTimeout(() => inputEl.focus(), 100);
   }
 
-  // Start step 0
-  addBotBubble(steps[0].botQuestion);
-  renderInputForStep(steps[0]);
+  if (fields.length === 0) {
+    // Edge case: admin enabled lead capture but disabled every field.
+    // Treat as "no form needed" — emit empty lead and let the widget continue.
+    setTimeout(() => onComplete(buildLead({}, [])), 0);
+    return wrapper;
+  }
+  addBotBubble(promptFor(fields[0]));
+  renderInputForStep(fields[0]);
 
   return wrapper;
+}
+
+// ============================================================================
+// Single-step variant — all fields on one card, one CTA
+// ============================================================================
+
+function createSingleStepLeadForm(
+  config: ChatEmbedConfig,
+  fields: LeadCaptureField[],
+  onComplete: (lead: LeadData | null) => void,
+): HTMLDivElement {
+  const wrapper = document.createElement('div');
+  wrapper.className = 'mcx-lead-conv mcx-lead-conv--single';
+
+  const head = document.createElement('div');
+  head.className = 'mcx-lead-single-head';
+  head.innerHTML = `
+    <h3 class="mcx-lead-single-title">Let's get started</h3>
+    <p class="mcx-lead-single-sub">Tell us a bit about you so we can help right away.</p>
+  `;
+  wrapper.appendChild(head);
+
+  const fieldsBox = document.createElement('div');
+  fieldsBox.className = 'mcx-lead-single-fields';
+  wrapper.appendChild(fieldsBox);
+
+  // Track per-field input refs + phone handles so we can read values + show
+  // errors on the single click.
+  const refs: Array<{
+    field: LeadCaptureField;
+    input: HTMLInputElement;
+    phone?: PhoneInputHandle;
+    error: HTMLDivElement;
+  }> = [];
+
+  for (const f of fields) {
+    const block = document.createElement('div');
+    block.className = 'mcx-lead-single-block';
+
+    const label = document.createElement('div');
+    label.className = 'mcx-lead-field-label';
+    label.innerHTML = `${sanitizeInput(f.label)}${f.required ? ' <span style="color:var(--p,#8349ff)">*</span>' : ' <span class="mcx-lead-optional">optional</span>'}`;
+    block.appendChild(label);
+
+    let input: HTMLInputElement;
+    let phone: PhoneInputHandle | undefined;
+    if (f.type === 'phone') {
+      phone = createPhoneInput(f.phone_options ?? DEFAULT_PHONE_OPTIONS);
+      block.appendChild(phone.container);
+      input = phone.input;
+    } else {
+      input = document.createElement('input');
+      input.type = f.type === 'email' ? 'email' : (f.type === 'number' ? 'tel' : 'text');
+      if (f.type === 'number') input.inputMode = 'numeric';
+      input.placeholder = '';
+      input.className = 'mcx-form-input';
+      block.appendChild(input);
+    }
+    const errEl = document.createElement('div');
+    errEl.className = 'mcx-lead-field-error';
+    block.appendChild(errEl);
+
+    fieldsBox.appendChild(block);
+    refs.push({ field: f, input, phone, error: errEl });
+
+    input.addEventListener('input', () => {
+      input.classList.remove('mcx-field-error');
+      errEl.style.display = 'none';
+      if (phone) phone.setError(null);
+    });
+  }
+
+  const submitRow = document.createElement('div');
+  submitRow.className = 'mcx-lead-single-submit-row';
+  const btn = document.createElement('button');
+  btn.className = 'mcx-lead-submit';
+  btn.textContent = 'Get started →';
+  submitRow.appendChild(btn);
+  const helper = document.createElement('div');
+  helper.className = 'mcx-lead-help';
+  helper.textContent = 'By continuing you agree to our terms.';
+  submitRow.appendChild(helper);
+  wrapper.appendChild(submitRow);
+
+  function submit(): void {
+    let anyError = false;
+    const collected: Record<string, string> = {};
+
+    for (const r of refs) {
+      const val = r.input.value.trim();
+      const country = r.phone ? r.phone.getSelectedCountry() : undefined;
+      const err = validateField(r.field, val, country);
+      if (err) {
+        anyError = true;
+        if (r.phone) r.phone.setError(err);
+        else {
+          r.error.textContent = err;
+          r.error.style.display = 'block';
+          r.input.classList.add('mcx-field-error');
+        }
+        r.input.classList.add('mcx-shake');
+        setTimeout(() => r.input.classList.remove('mcx-shake'), 400);
+        continue;
+      }
+      if (r.phone && val) r.phone.setValid(true);
+      collected[r.field.key] = r.phone && val
+        ? normalizePhoneE164(val, r.phone.getSelectedCountry().dial)
+        : val;
+    }
+    if (anyError) {
+      // Focus the first error for screen readers + ease of correction.
+      const firstBadInput = wrapper.querySelector<HTMLInputElement>('.mcx-field-error, .mcx-phone-combo--error input');
+      firstBadInput?.focus();
+      return;
+    }
+    refs.forEach(r => r.phone?.closePicker());
+    btn.disabled = true;
+    btn.textContent = 'Starting your chat...';
+    setTimeout(() => onComplete(buildLead(collected, fields)), 600);
+  }
+
+  btn.addEventListener('click', submit);
+  wrapper.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && (e.target as HTMLElement).tagName === 'INPUT') {
+      e.preventDefault();
+      submit();
+    }
+  });
+
+  if (fields.length === 0) {
+    setTimeout(() => onComplete(buildLead({}, [])), 0);
+  }
+  return wrapper;
+}
+
+// ============================================================================
+// Shared lead-payload builder
+// ============================================================================
+
+function buildLead(collected: Record<string, string>, fields: LeadCaptureField[]): LeadData {
+  // Map collected values back to the top-level back-compat aliases for
+  // the four built-ins so existing PostHog events / CRM ingestion that
+  // reads ``lead.name``, ``lead.email``, etc. keep working unchanged.
+  const builtin = (key: string): string => sanitizeInput(collected[key] ?? '');
+  void countryByCode; // silence unused-import warning when phone fields disabled
+
+  return {
+    name: builtin('name'),
+    email: builtin('email'),
+    phone: collected.phone ?? '',
+    zip: builtin('zip'),
+    values: { ...collected },
+    timestamp: new Date().toISOString(),
+    userAgent: navigator.userAgent,
+    platform: (navigator as any).platform || '',
+    url: window.location.href,
+    language: navigator.language,
+    referrer: document.referrer,
+  };
+  // ``fields`` reserved for future per-field analytics (e.g. drop-off stats).
+  void fields;
 }

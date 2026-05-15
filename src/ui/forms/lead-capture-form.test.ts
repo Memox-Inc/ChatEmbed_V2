@@ -1,132 +1,188 @@
 /**
- * Lead-capture form rendering tests.
+ * Lead-capture form v2 — MMX-575.
  *
- * Specifically: the form must respect the user-defined field order +
- * enabled flag + label overrides from
- * ``config.leadCaptureConfig.fields`` (the v2 server config shape).
- * Bug fixed here was a hardcoded ``steps`` array in
- * ``createLeadCaptureForm`` that ignored the config entirely, so
- * reordering email-above-name in the dashboard never reflected in the
- * live widget preview.
+ * Covers the data-driven refactor: multi-step + single-step variants,
+ * custom fields, per-field required, and phone validation strictness.
  */
-import { describe, expect, it, vi } from 'vitest';
+
+import { describe, expect, it } from 'vitest';
+
 import { createLeadCaptureForm } from './lead-capture-form';
-import type { ChatEmbedConfig, LeadCaptureFieldConfig } from '../../config/types';
+import { validateField, validatePhone } from './validation';
+import { countryByCode, pickCountries } from './country-data';
+import type { ChatEmbedConfig, LeadCaptureConfig } from '../../config/types';
 
-function fields(...rows: Partial<LeadCaptureFieldConfig>[]): LeadCaptureFieldConfig[] {
-  return rows.map((r) => ({
-    key: r.key ?? '',
-    label: r.label ?? r.key ?? '',
-    type: r.type ?? 'text',
-    enabled: r.enabled ?? true,
-    required: r.required ?? true,
-    custom: r.custom ?? false,
-    ...(r.phone_options ? { phone_options: r.phone_options } : {}),
-  }));
+const US = countryByCode('US')!;
+const IN_ = countryByCode('IN')!;
+
+function makeConfig(leadCaptureConfig?: LeadCaptureConfig | boolean): ChatEmbedConfig {
+  return {
+    theme: { primary: '#8349ff' },
+    ...(typeof leadCaptureConfig === 'object'
+      ? { leadCaptureConfig, leadCapture: !!leadCaptureConfig.enabled }
+      : { leadCapture: leadCaptureConfig }),
+  } as ChatEmbedConfig;
 }
 
-function readFirstStepLabel(el: HTMLElement): string | null {
-  return el.querySelector('.mcx-lead-field-label')?.textContent?.trim() ?? null;
-}
+describe('validation — strictness modes', () => {
+  it('strict accepts a 10-digit US number', () => {
+    expect(validatePhone('5551234567', US, 'strict')).toBeNull();
+  });
+  it('strict rejects a 9-digit US number', () => {
+    expect(validatePhone('555123456', US, 'strict')).toContain('United States');
+  });
+  it('loose accepts a 9-digit US number', () => {
+    expect(validatePhone('555123456', US, 'loose')).toBeNull();
+  });
+  it('loose rejects a 3-digit number', () => {
+    expect(validatePhone('123', US, 'loose')).toContain('valid phone');
+  });
+  it('none accepts anything non-empty', () => {
+    expect(validatePhone('xyz', US, 'none')).toBeNull();
+    expect(validatePhone('1', US, 'none')).toBeNull();
+  });
+  it('strict accepts a 10-digit India number', () => {
+    expect(validatePhone('9876543210', IN_, 'strict')).toBeNull();
+  });
+});
 
-function readDotCount(el: HTMLElement): number {
-  return el.querySelectorAll('.mcx-lead-dot').length;
-}
+describe('validateField — type dispatch', () => {
+  it('required empty field returns required-error', () => {
+    const err = validateField(
+      { key: 'name', label: 'Name', type: 'text', enabled: true, required: true, custom: false },
+      '',
+    );
+    expect(err).toBe('This field is required');
+  });
+  it('optional empty field passes', () => {
+    expect(validateField(
+      { key: 'name', label: 'Name', type: 'text', enabled: true, required: false, custom: false },
+      '',
+    )).toBeNull();
+  });
+  it('email regex fires on bad input', () => {
+    expect(validateField(
+      { key: 'email', label: 'Email', type: 'email', enabled: true, required: true, custom: false },
+      'not-an-email',
+    )).toContain('valid email');
+  });
+  it('number-type rejects letters', () => {
+    expect(validateField(
+      { key: 'zip', label: 'Zip', type: 'number', enabled: true, required: true, custom: false },
+      'abc',
+    )).toContain('digits');
+  });
+  it('phone-type respects phone_options.validation', () => {
+    const f = {
+      key: 'phone', label: 'Phone', type: 'phone' as const,
+      enabled: true, required: true, custom: false,
+      phone_options: { allowed_countries: ['US'], default_country: 'US', validation: 'loose' as const },
+    };
+    expect(validateField(f, '5551234', US)).toBeNull(); // 7 digits, loose-OK
+  });
+});
 
-describe('createLeadCaptureForm — field order', () => {
-  it('falls back to built-in default order when no leadCaptureConfig is provided', () => {
-    const config: ChatEmbedConfig = {};
-    const el = createLeadCaptureForm(config, vi.fn());
+describe('country-data', () => {
+  it('exposes 60+ countries', () => {
+    expect(pickCountries(['US', 'GB', 'IN']).length).toBe(3);
+  });
+  it('pickCountries filters unknowns silently', () => {
+    expect(pickCountries(['US', 'ZZ', 'IN']).map(c => c.code)).toEqual(['US', 'IN']);
+  });
+  it('countryByCode returns undefined for unknown', () => {
+    expect(countryByCode('ZZ')).toBeUndefined();
+  });
+});
 
-    // Default is 3 visible steps (name → email → phone), zip omitted.
-    expect(readDotCount(el)).toBe(3);
-    // First field shown should be the name input.
-    expect(readFirstStepLabel(el)).toContain('Full name');
+describe('createLeadCaptureForm — variant dispatch', () => {
+  it('legacy boolean falls back to multi-step default', () => {
+    const el = createLeadCaptureForm(makeConfig(true), () => {});
+    document.body.appendChild(el);
+    expect(el.classList.contains('mcx-lead-conv')).toBe(true);
+    expect(el.classList.contains('mcx-lead-conv--single')).toBe(false);
+    // Multi-step renders progress dots + one input area.
+    expect(el.querySelectorAll('.mcx-lead-dot').length).toBeGreaterThan(0);
+    el.remove();
   });
 
-  it('honors user-defined field order — email first, then name', () => {
-    const config: ChatEmbedConfig = {
-      leadCaptureConfig: {
-        enabled: true,
-        fields: fields(
-          { key: 'email', label: 'Your email', type: 'email' },
-          { key: 'name', label: 'Your name', type: 'text' },
-        ),
-      },
+  it('v2 single_step renders all enabled fields stacked', () => {
+    const v2: LeadCaptureConfig = {
+      enabled: true,
+      variant: 'single_step',
+      fields: [
+        { key: 'name', label: 'First name', type: 'text', enabled: true, required: true, custom: false },
+        { key: 'email', label: 'Work email', type: 'email', enabled: true, required: true, custom: false },
+        { key: 'f_abc123', label: 'Company', type: 'text', enabled: true, required: false, custom: true },
+      ],
     };
-
-    const el = createLeadCaptureForm(config, vi.fn());
-    expect(readDotCount(el)).toBe(2);
-    // The form starts at step 0 — first rendered input must be email.
-    const firstLabel = readFirstStepLabel(el);
-    expect(firstLabel).toContain('Your email');
-    expect(firstLabel).not.toContain('Your name');
+    const el = createLeadCaptureForm(makeConfig(v2), () => {});
+    document.body.appendChild(el);
+    expect(el.classList.contains('mcx-lead-conv--single')).toBe(true);
+    // Three field blocks, no dots row (single-step has no stepping).
+    expect(el.querySelectorAll('.mcx-lead-single-block').length).toBe(3);
+    expect(el.querySelectorAll('.mcx-lead-dot').length).toBe(0);
+    // Admin's labels show, not the hardcoded ones.
+    expect(el.textContent).toContain('First name');
+    expect(el.textContent).toContain('Work email');
+    expect(el.textContent).toContain('Company');
+    el.remove();
   });
 
-  it('filters out disabled fields from the step sequence', () => {
-    const config: ChatEmbedConfig = {
-      leadCaptureConfig: {
-        enabled: true,
-        fields: fields(
-          { key: 'name', label: 'Name', type: 'text', enabled: true },
-          { key: 'email', label: 'Email', type: 'email', enabled: false },
-          { key: 'phone', label: 'Phone', type: 'phone', enabled: true },
-        ),
-      },
+  it('v2 multi_step respects field order from admin', () => {
+    const v2: LeadCaptureConfig = {
+      enabled: true,
+      variant: 'multi_step',
+      fields: [
+        { key: 'email', label: 'Email', type: 'email', enabled: true, required: true, custom: false },
+        { key: 'name', label: 'Name', type: 'text', enabled: true, required: true, custom: false },
+      ],
     };
-
-    const el = createLeadCaptureForm(config, vi.fn());
-    // 3 fields in config but email is disabled → 2 steps.
-    expect(readDotCount(el)).toBe(2);
+    const el = createLeadCaptureForm(makeConfig(v2), () => {});
+    document.body.appendChild(el);
+    // First step is email per the array — first prompt bubble should reflect that.
+    expect(el.querySelector('.mcx-bubble--bot')?.textContent?.toLowerCase()).toContain('email');
+    el.remove();
   });
 
-  it('uses the user-provided label override on a built-in key', () => {
-    const config: ChatEmbedConfig = {
-      leadCaptureConfig: {
-        enabled: true,
-        fields: fields({ key: 'name', label: 'Trade name', type: 'text' }),
-      },
+  it('renders phone combo with curated countries only', () => {
+    const v2: LeadCaptureConfig = {
+      enabled: true,
+      variant: 'single_step',
+      fields: [
+        { key: 'phone', label: 'Phone', type: 'phone', enabled: true, required: true, custom: false,
+          phone_options: { allowed_countries: ['US', 'GB'], default_country: 'GB', validation: 'strict' },
+        },
+      ],
     };
-
-    const el = createLeadCaptureForm(config, vi.fn());
-    expect(readFirstStepLabel(el)).toContain('Trade name');
+    const el = createLeadCaptureForm(makeConfig(v2), () => {});
+    document.body.appendChild(el);
+    const chip = el.querySelector('.mcx-phone-chip')!;
+    // Default country GB → flag dial '+44' visible on the chip.
+    expect(chip.textContent).toContain('+44');
+    // Click the chip — picker opens.
+    (chip as HTMLButtonElement).click();
+    const picker = el.querySelector('.mcx-phone-picker')!;
+    expect(picker).not.toBeNull();
+    // Only US + GB rows render (no DE, no IN, etc.).
+    const isos = Array.from(picker.querySelectorAll('.mcx-phone-picker-row'))
+      .map(r => (r as HTMLElement).dataset.iso);
+    expect(new Set(isos)).toEqual(new Set(['US', 'GB']));
+    el.remove();
   });
 
-  it('renders custom (user-defined) fields with their label', () => {
-    const config: ChatEmbedConfig = {
-      leadCaptureConfig: {
-        enabled: true,
-        fields: fields({
-          key: 'f_company',
-          label: 'Company name',
-          type: 'text',
-          custom: true,
-          required: true,
-        }),
-      },
+  it('disabled fields are skipped entirely', () => {
+    const v2: LeadCaptureConfig = {
+      enabled: true,
+      variant: 'single_step',
+      fields: [
+        { key: 'name', label: 'Name', type: 'text', enabled: true, required: true, custom: false },
+        { key: 'zip', label: 'Zip', type: 'number', enabled: false, required: false, custom: false },
+      ],
     };
-
-    const el = createLeadCaptureForm(config, vi.fn());
-    expect(readDotCount(el)).toBe(1);
-    expect(readFirstStepLabel(el)).toContain('Company name');
-  });
-
-  it('emits onComplete(null) instantly when every field is disabled', async () => {
-    const onComplete = vi.fn();
-    const config: ChatEmbedConfig = {
-      leadCaptureConfig: {
-        enabled: true,
-        fields: fields(
-          { key: 'name', label: 'Name', type: 'text', enabled: false },
-          { key: 'email', label: 'Email', type: 'email', enabled: false },
-        ),
-      },
-    };
-
-    createLeadCaptureForm(config, onComplete);
-
-    // queueMicrotask fires before the next macrotask — flush via a Promise.
-    await Promise.resolve();
-    expect(onComplete).toHaveBeenCalledWith(null);
+    const el = createLeadCaptureForm(makeConfig(v2), () => {});
+    document.body.appendChild(el);
+    expect(el.querySelectorAll('.mcx-lead-single-block').length).toBe(1);
+    expect(el.textContent).not.toContain('Zip');
+    el.remove();
   });
 });

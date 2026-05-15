@@ -143,27 +143,6 @@ export interface LeadFormHelperText {
   borderRadius?: string;
 }
 
-/**
- * Per-field row inside ``leadCaptureConfig.fields``. Mirrors the
- * Pydantic ``LeadCaptureField`` in
- * memox-hub/memox_hub/embed_app/lead_capture_config.py and the
- * ``LeadCaptureField`` type in mmx-unified-chat/services/embed.service.ts
- * — keep the three in sync.
- */
-export interface LeadCaptureFieldConfig {
-  key: string;
-  label: string;
-  type: 'text' | 'email' | 'phone' | 'number';
-  enabled: boolean;
-  required: boolean;
-  custom: boolean;
-  phone_options?: {
-    allowed_countries?: string[];
-    default_country?: string;
-    validation?: 'strict' | 'loose' | 'none';
-  };
-}
-
 // Launcher attractor system — mirrors the Pydantic LauncherConfig in
 // memox-hub/memox_hub/embed_app/launcher_config.py. Field names match
 // the wire format (snake_case) so a config fetched from /embed/init can
@@ -217,6 +196,48 @@ export interface LauncherConfig {
   attractors?: Attractors;
 }
 
+// ───────────────── Lead capture v2 — MMX-575 ─────────────────
+// These mirror memox-hub's Pydantic LeadCaptureConfig (memox_hub/embed_app/
+// lead_capture_config.py) so the wire format is one-to-one. The server
+// validates against the same shape; the widget renders from it.
+
+export type LeadFieldType = 'text' | 'email' | 'phone' | 'number';
+export type LeadFormVariant = 'multi_step' | 'single_step';
+export type PhoneValidationMode = 'strict' | 'loose' | 'none';
+
+export interface PhoneFieldOptions {
+  /** ISO 3166-1 alpha-2 codes the visitor can pick from. Non-empty. */
+  allowed_countries: string[];
+  /** Pre-selected ISO code. Must be present in ``allowed_countries``. */
+  default_country: string;
+  /**
+   * Validation strictness:
+   *   - ``strict`` (default): must be a valid number for the selected country
+   *     (min/max digit length enforced).
+   *   - ``loose``: 5-15 digit total, no per-country rules.
+   *   - ``none``: only checked for emptiness if ``required``.
+   */
+  validation?: PhoneValidationMode;
+}
+
+export interface LeadCaptureField {
+  /** ``name``/``email``/``phone``/``zip`` for built-ins; ``f_<nanoid>`` for custom. */
+  key: string;
+  label: string;
+  type: LeadFieldType;
+  enabled: boolean;
+  required: boolean;
+  custom: boolean;
+  /** Required when ``type === 'phone'``; forbidden otherwise. */
+  phone_options?: PhoneFieldOptions;
+}
+
+export interface LeadCaptureConfig {
+  enabled: boolean;
+  variant: LeadFormVariant;
+  fields: LeadCaptureField[];
+}
+
 export interface ChatEmbedConfig {
   title?: string;
   customIcon?: string | null;
@@ -232,21 +253,25 @@ export interface ChatEmbedConfig {
   agent_id?: string;
   welcomeMessage?: string | null;
   welcomeMessageStyle?: WelcomeMessageStyle;
-  leadCapture?: boolean;
   /**
-   * Full lead-capture config object from the server (``/embed/init/``).
-   * Carries the per-field schema (key, label, type, enabled, required,
-   * custom, plus phone_options for the phone field) and the user-defined
-   * field order. The lead-capture form respects this order; if absent
-   * (legacy v1 config), the form falls back to the built-in defaults
-   * (name → email → phone → zip).
+   * Lead-capture form gate. Accepts:
+   *   - ``boolean`` (legacy) — true shows the multi-step default form,
+   *     false skips the form entirely.
+   *   - ``LeadCaptureConfig`` (v2) — full data-driven config with
+   *     variant (multi/single step) + per-field labels, types, and
+   *     required flags. MMX-575.
+   * The server's ``/embed/init`` response always ships v2; legacy
+   * boolean is preserved for self-hosted/OSS callers that don't talk
+   * to a Memox backend.
    */
-  leadCaptureConfig?: {
-    enabled?: boolean;
-    mandatory?: boolean;
-    variant?: 'multi_step' | 'single_step';
-    fields?: LeadCaptureFieldConfig[];
-  };
+  leadCapture?: boolean | LeadCaptureConfig;
+  /**
+   * v2 server-driven config object. Populated by ``normalizeServerConfig``
+   * alongside the legacy ``leadCapture`` boolean for backward compat.
+   * Readers should prefer this when present — it's the source of truth
+   * for variant + fields.
+   */
+  leadCaptureConfig?: LeadCaptureConfig;
   leadFormHelperText?: LeadFormHelperText;
   quickQuestions?: string[];
   quickQuestionsPermanent?: boolean;
