@@ -100,7 +100,7 @@ Key design choices:
 - **Shadow DOM** — widget renders inside a shadow root so host-page CSS cannot bleed in.
 - **WebSocket** — persistent connection to memox-hub for real-time chat and streaming.
 - **Markdown rendering** — `marked` + `DOMPurify` (both bundled; DOMPurify sanitizes before DOM insertion).
-- **PostHog** — no SDK; events posted directly to `/capture/` via `fetch` with `keepalive: true`. No-op when `posthogApiKey` is unset.
+- **PostHog** — no SDK; events posted directly to `/capture/` via `fetch` with `keepalive: true`. No-op when `memoxPosthogApiKey` is unset (the field is server-injected via memox-hub's /embed/init from a POSTHOG_PROJECT_API_KEY env var; namespaced under `memox` so customers can keep using their own `posthogApiKey` for their own analytics without collision).
 
 ## Embed Config
 
@@ -117,7 +117,7 @@ Key config fields (`ChatEmbedConfig` in `src/config/types.ts`):
 | `agent_id` | Agent ID |
 | `mode` | `'floating'` (default) or `'inline'` |
 | `storageNamespace` | localStorage prefix — set a unique value when multiple widgets share an origin |
-| `posthogApiKey` | PostHog project key — omit to disable analytics |
+| `memoxPosthogApiKey` | Memox-owned PostHog key (server-injected). Customers' own `posthogApiKey` is NOT read by the widget — set this only for self-hosted / OSS deploys without a Memox backend. |
 | `posthogHost` | PostHog host (default: `https://us.i.posthog.com`) |
 | `theme` | Full theme object (colors, fonts, dimensions) |
 | `leadCapture` | Show lead form before chat starts (default: `true`) |
