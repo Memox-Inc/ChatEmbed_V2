@@ -6,6 +6,13 @@ function buildHeaders(config: ChatEmbedConfig): Record<string, string> {
     'Content-Type': 'application/json',
     Authorization: `Token ${config.token} `,
   };
+  // X-Org-Id is required for the backend's RBAC / org-scoping middleware.
+  // Without it, ChatSessionViewSet.get_queryset falls back to for_user(None)
+  // which yields an empty queryset and a 404 on the detail endpoint —
+  // causing the chatID-drift cascade tracked in MMX-597.
+  if (config.org_id !== undefined && config.org_id !== null) {
+    headers['X-Org-Id'] = String(config.org_id);
+  }
   if (config.isMobileDevice) {
     headers['X-App-Platform'] = 'react-native-webview';
   }
