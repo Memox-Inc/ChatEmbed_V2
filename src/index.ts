@@ -843,6 +843,13 @@ async function init(): Promise<void> {
           config,
         );
         sessionStore.updateSession({ visitorInfo });
+        void postEmbedEvent({
+          baseUrl: config.baseUrl ?? '',
+          embedId: config.embedId ?? '',
+          eventType: 'form_submitted',
+          distinctId: getOrCreateDistinctId(),
+          visitorId: typeof visitorInfo?.id === 'number' ? visitorInfo.id : null,
+        });
       }
 
       // Show input but keep disabled until WS connects
