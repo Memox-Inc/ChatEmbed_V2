@@ -835,12 +835,19 @@ async function init(): Promise<void> {
           has_zip: !!lead.zip,
         });
 
+        // Collect custom fields (f_<nanoid> keys) from lead.values so
+        // they flow through to Visitor.metadata on the backend.
+        const customFields: Record<string, string> = {};
+        for (const [k, v] of Object.entries(lead.values ?? {})) {
+          if (k.startsWith('f_')) customFields[k] = v;
+        }
         visitorInfo = await createVisitor(
           sanitizeInput(lead.name),
           sanitizeInput(lead.email),
           lead.phone,
           sanitizeInput(lead.zip),
           config,
+          Object.keys(customFields).length > 0 ? customFields : undefined,
         );
         sessionStore.updateSession({ visitorInfo });
         void postEmbedEvent({
