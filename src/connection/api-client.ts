@@ -2,9 +2,19 @@ import type { ChatEmbedConfig, VisitorInfo } from '../config/types';
 import { collectBrowserMetadata, createAnonymousEmail } from './browser-metadata';
 
 function buildHeaders(config: ChatEmbedConfig): Record<string, string> {
+  // Prefer the per-session embed token (EmbedTokenAuthentication on the
+  // backend, org-scoped via embed config) over the legacy global
+  // ``Token`` (a superuser key publicly returned by /embed/init/ that we
+  // are killing in Phase B PR3 of MMX-227). The fallback exists for two
+  // cases: (a) an older backend that does not yet ship ``session_token``
+  // in the init response, (b) OSS / self-hosted deploys without the
+  // embed-init handshake.
+  const authHeader = config.sessionToken
+    ? `EmbedToken ${config.sessionToken}`
+    : `Token ${config.token ?? ''}`;
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    Authorization: `Token ${config.token} `,
+    Authorization: authHeader,
   };
   if (config.isMobileDevice) {
     headers['X-App-Platform'] = 'react-native-webview';
@@ -15,6 +25,10 @@ function buildHeaders(config: ChatEmbedConfig): Record<string, string> {
   return headers;
 }
 
+function hasAuthCredentials(config: ChatEmbedConfig): boolean {
+  return Boolean(config.sessionToken || config.token);
+}
+
 export type SessionValidation = 'valid' | 'closed' | 'orphaned';
 
 export async function validateSession(
@@ -23,8 +37,7 @@ export async function validateSession(
 ): Promise<SessionValidation> {
   try {
     const baseUrl = config.baseUrl;
-    const token = config.token;
-    if (!baseUrl || !token || !sessionChatID) return 'valid';
+    if (!baseUrl || !hasAuthCredentials(config) || !sessionChatID) return 'valid';
 
     const response = await fetch(`${baseUrl}sessions/${sessionChatID}/`, {
       method: 'GET',
@@ -57,10 +70,9 @@ export async function createVisitor(
 ): Promise<VisitorInfo> {
   try {
     const baseUrl = config.baseUrl;
-    const token = config.token;
 
-    if (!baseUrl || !token) {
-      throw new Error('Missing required configuration: baseUrl and token');
+    if (!baseUrl || !hasAuthCredentials(config)) {
+      throw new Error('Missing required configuration: baseUrl and (sessionToken or token)');
     }
 
     const isAnonymous = !email;
