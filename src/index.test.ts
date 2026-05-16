@@ -60,7 +60,7 @@ function flushAsync(): Promise<void> {
 // vi.mock is hoisted, but window globals are not — so we set them here at module scope.
 window.MemoxChatConfig = {
   embedId: 'emb_test',
-  posthogApiKey: 'phc_test',
+  memoxPosthogApiKey: 'phc_test',
   // Disable lead capture so maybeShowLeadCapture goes through the anonymous-visitor
   // path, avoiding the form UI which needs additional DOM scaffolding.
   leadCapture: false,
@@ -98,5 +98,47 @@ describe('index bootstrap — chat_widget_loaded analytics contract', () => {
     expect(initOrder).toBeDefined();
     expect(loadedOrder).toBeDefined();
     expect(initOrder).toBeLessThan(loadedOrder!);
+  });
+});
+
+// ── MMX-598: Memox-namespaced PostHog config rename ───────────────────────────
+
+describe('widget reads memox-namespaced PostHog config (MMX-598)', () => {
+  beforeEach(() => {
+    vi.resetModules();
+    analyticsInitSpy.mockClear();
+    captureSpy.mockClear();
+  });
+
+  it('passes memoxPosthogApiKey from config into analytics.init', async () => {
+    (window as any).MemoxChatConfig = {
+      embedId: undefined,
+      memoxPosthogApiKey: 'phc_test_memox_key',
+      memoxPosthogHost: 'https://us.i.posthog.com',
+      leadCapture: false,
+    };
+
+    await import('./index');
+    await flushAsync();
+
+    expect(analyticsInitSpy).toHaveBeenCalled();
+    const callArg = analyticsInitSpy.mock.calls[0][0];
+    expect(callArg.apiKey).toBe('phc_test_memox_key');
+    expect(callArg.host).toBe('https://us.i.posthog.com');
+  });
+
+  it('ignores legacy posthogApiKey field (does not read it for Memox events)', async () => {
+    (window as any).MemoxChatConfig = {
+      embedId: undefined,
+      posthogApiKey: 'phc_customer_owned_must_not_leak',
+      leadCapture: false,
+    };
+
+    await import('./index');
+    await flushAsync();
+
+    expect(analyticsInitSpy).toHaveBeenCalled();
+    const callArg = analyticsInitSpy.mock.calls[0][0];
+    expect(callArg.apiKey).toBeUndefined();
   });
 });

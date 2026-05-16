@@ -99,7 +99,7 @@ vi.mock('./ui/shadow-host', () => ({
 // Enable leadCapture so showLeadForm() is triggered.
 window.MemoxChatConfig = {
   embedId: 'emb_timeout_test',
-  posthogApiKey: 'phc_test',
+  memoxPosthogApiKey: 'phc_test',
   leadCapture: true,
 } as unknown as typeof window.MemoxChatConfig;
 
