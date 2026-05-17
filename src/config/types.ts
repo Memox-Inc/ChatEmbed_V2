@@ -249,6 +249,18 @@ export interface ChatEmbedConfig {
   socketUrl?: string;
   baseUrl?: string;
   token?: string;
+  /**
+   * Per-session embed token issued by ``POST /api/v1/embed/init/``.
+   * When present, REST calls send ``Authorization: EmbedToken <sessionToken>``
+   * instead of the legacy global ``Token <token>`` — which is org-scoped
+   * server-side via the embed config, so a leaked widget bundle can only
+   * see/modify visitors in its own org. Falls back to the legacy
+   * ``token`` if the server omits it (older backend, OSS deploys).
+   *
+   * Phase B PR3 of the embed-token-leak fix will drop ``token`` from
+   * the init response, making this the only auth path.
+   */
+  sessionToken?: string;
   org_id?: string | number;
   agent_id?: string;
   welcomeMessage?: string | null;

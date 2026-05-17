@@ -71,6 +71,25 @@ describe('fetchInitConfig', () => {
     expect(body2.distinct_id).toBe(firstId);
   });
 
+  it('exposes session_token from server response as runtime.sessionToken (MMX-611)', async () => {
+    // The widget should prefer the per-session embed token over the
+    // legacy global token. Both arrive on the same /embed/init/ response
+    // during the Phase B transition; PR3 will drop the legacy field.
+    const mockResponse = {
+      embed_id: 'emb_x',
+      token: 'legacy-global-token',
+      session_token: 'per-session-abc123',
+      config: {},
+    };
+    fetchMock.mockResolvedValue(new Response(JSON.stringify(mockResponse), { status: 200 }));
+
+    const result = await fetchInitConfig('emb_x', 'https://api.memox.io');
+    expect(result.sessionToken).toBe('per-session-abc123');
+    // Legacy token remains exposed so the fallback path keeps working
+    // until PR3 strips it server-side. buildHeaders picks the right one.
+    expect(result.token).toBe('legacy-global-token');
+  });
+
   it('strips trailing slash from apiBase', async () => {
     fetchMock.mockResolvedValue(
       new Response(JSON.stringify({ embed_id: 'emb', config: {} }), { status: 200 }),

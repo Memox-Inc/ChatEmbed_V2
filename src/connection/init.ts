@@ -66,6 +66,12 @@ export async function fetchInitConfig(
     // ``normalizeServerConfig`` exactly as before.
     const runtime: Record<string, any> = {};
     if (typeof data.token === 'string' && data.token) runtime.token = data.token;
+    // Per-session embed token — preferred over the legacy global token.
+    // Carries the embed config server-side, so REST calls under this auth
+    // are org-scoped. See ChatEmbedConfig.sessionToken for details.
+    if (typeof data.session_token === 'string' && data.session_token) {
+      runtime.sessionToken = data.session_token;
+    }
     if (typeof data.base_url === 'string' && data.base_url) runtime.baseUrl = data.base_url;
     if (typeof data.socket_url === 'string' && data.socket_url) runtime.socketUrl = data.socket_url;
     if (data.org_id !== undefined && data.org_id !== null) runtime.org_id = String(data.org_id);
