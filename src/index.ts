@@ -29,6 +29,8 @@ import { pickPrimaryAttractor } from './ui/attractors/pick-primary';
 import { createOpenTriggerStore } from './ui/open-trigger';
 import { normalizePhoneE164 } from './ui/forms/validation';
 import * as analytics from './analytics/posthog';
+import { postEmbedEvent } from './analytics/embed-events';
+import { getOrCreateDistinctId } from './utils/distinct-id';
 import { fetchInitConfig, normalizeServerConfig } from './connection/init';
 import { applyTheme } from './ui/theme-vars';
 import { startEmbedConfigListener } from './connection/embed-config-listener';
@@ -725,6 +727,13 @@ async function init(): Promise<void> {
       // later when the time threshold finally elapses.
       if (trigger !== 'auto_open') autoOpenHandle?.notifyManualOpen();
       analytics.capture('chat_opened', trigger ? { trigger } : undefined);
+      void postEmbedEvent({
+        baseUrl: config.baseUrl ?? '',
+        embedId: config.embedId ?? '',
+        eventType: 'chat_opened',
+        distinctId: getOrCreateDistinctId(),
+        metadata: trigger ? { trigger } : undefined,
+      });
       widget.style.display = 'flex';
       widget.classList.add('mcx-widget--open');
       widget.classList.remove('mcx-widget--closing');
@@ -826,14 +835,28 @@ async function init(): Promise<void> {
           has_zip: !!lead.zip,
         });
 
+        // Collect custom fields (f_<nanoid> keys) from lead.values so
+        // they flow through to Visitor.metadata on the backend.
+        const customFields: Record<string, string> = {};
+        for (const [k, v] of Object.entries(lead.values ?? {})) {
+          if (k.startsWith('f_')) customFields[k] = v;
+        }
         visitorInfo = await createVisitor(
           sanitizeInput(lead.name),
           sanitizeInput(lead.email),
           lead.phone,
           sanitizeInput(lead.zip),
           config,
+          Object.keys(customFields).length > 0 ? customFields : undefined,
         );
         sessionStore.updateSession({ visitorInfo });
+        void postEmbedEvent({
+          baseUrl: config.baseUrl ?? '',
+          embedId: config.embedId ?? '',
+          eventType: 'form_submitted',
+          distinctId: getOrCreateDistinctId(),
+          visitorId: typeof visitorInfo?.id === 'number' ? visitorInfo.id : null,
+        });
       }
 
       // Show input but keep disabled until WS connects

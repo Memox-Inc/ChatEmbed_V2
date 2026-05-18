@@ -67,6 +67,7 @@ export async function createVisitor(
   phone: string | null,
   zip: string | null,
   config: ChatEmbedConfig,
+  customFields?: Record<string, string>,
 ): Promise<VisitorInfo> {
   try {
     const baseUrl = config.baseUrl;
@@ -98,13 +99,17 @@ export async function createVisitor(
 
     if (getJson.detail === 'Not found.' || !getJson.results?.length) {
       // Create new visitor
+      const metadata: Record<string, unknown> = { anonymous: isAnonymous };
+      if (customFields && Object.keys(customFields).length > 0) {
+        Object.assign(metadata, customFields);
+      }
       const visitorPayload = {
         name: visitorName,
         email: visitorEmail,
         phone_number: phone || '',
         zip_code: zip || '',
         organization: config.org_id,
-        metadata: { anonymous: isAnonymous },
+        metadata,
       };
 
       const postResponse = await fetch(`${baseUrl}visitors/`, {
