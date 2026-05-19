@@ -8,7 +8,11 @@ export interface BubbleRefs {
   contentWrapper?: HTMLDivElement;
 }
 
-function createAvatar(sender: string, config: ChatEmbedConfig): HTMLDivElement {
+function createAvatar(
+  sender: string,
+  config: ChatEmbedConfig,
+  photoUrl?: string,
+): HTMLDivElement {
   const theme = config.theme || {};
   const av = document.createElement('div');
   av.className = `mcx-avatar mcx-avatar--${sender}`;
@@ -24,8 +28,31 @@ function createAvatar(sender: string, config: ChatEmbedConfig): HTMLDivElement {
   } else if (sender === 'sales_rep') {
     av.style.background = theme.salesRepAvatar || '#DBEAFE';
     av.style.border = theme.salesRepAvatarBorder || 'none';
+    av.style.overflow = 'hidden';
+    av.style.position = 'relative';
     const color = theme.salesRepAvatarSvgColor || theme.primary || '#8349FF';
+    // Default-icon path: shown when no photoUrl is supplied AND as the
+    // fallback rendering beneath the <img> so an onError silently
+    // reveals it without leaving an empty circle.
     av.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`;
+    // MMX-551: signed R2/S3 URL → render the rep's real photo on top.
+    // Built via DOM API (not innerHTML) — the URL comes from the
+    // backend but we still want defense-in-depth against attribute
+    // escape via a stray `"` in a presigned query string.
+    if (photoUrl && isSafeImageUrl(photoUrl)) {
+      const img = document.createElement('img');
+      img.src = photoUrl;
+      img.alt = '';
+      img.style.position = 'absolute';
+      img.style.inset = '0';
+      img.style.width = '100%';
+      img.style.height = '100%';
+      img.style.objectFit = 'cover';
+      img.onerror = () => {
+        img.remove();
+      };
+      av.appendChild(img);
+    }
   } else {
     const bIcon = theme.botIcon || config.botIcon || {};
     av.style.width = bIcon.botIconAvatarWidth || '29px';
@@ -63,7 +90,11 @@ export function createMessageBubble(
   const container = document.createElement('div');
   container.className = `mcx-msg-group${msg.sender === 'user' ? ' mcx-msg-group--user' : ''}`;
 
-  const avatar = createAvatar(msg.sender === 'ai' ? 'bot' : msg.sender, config);
+  const avatar = createAvatar(
+    msg.sender === 'ai' ? 'bot' : msg.sender,
+    config,
+    msg.sender === 'sales_rep' ? msg.senderPhotoUrl : undefined,
+  );
   const bubble = document.createElement('div');
   bubble.className = 'mcx-msg-stack';
   if (msg.sender === 'user') bubble.classList.add('mcx-msg-stack--user');

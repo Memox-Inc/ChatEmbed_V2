@@ -98,6 +98,11 @@ async function init(): Promise<void> {
   let visitorInfo: VisitorInfo | null = null;
   let chatID: string | null = null;
   let isHandoverActive = false;
+  // MMX-551: signed R2/S3 URL for the assigned sales rep's profile
+  // photo. Captured from the handover_message WS frame and reused on
+  // every subsequent rep text message in the session so the avatar
+  // doesn't flicker back to the default icon mid-conversation.
+  let currentRepPhotoUrl: string | null = null;
   let isFormShowing = false;
   let isBotResponding = false;
   let chatOpen = false;
@@ -469,6 +474,14 @@ async function init(): Promise<void> {
       isHandoverActive = true;
       sessionStore.updateSession({ handoverOccurred: true });
 
+      // MMX-551: stash the rep's signed photo URL so every subsequent
+      // 'sales_rep' message bubble renders the actual avatar. Empty
+      // string is the explicit "no photo set" signal — keep the
+      // default colored icon fallback in that case.
+      if (typeof data.sender_photo_url === 'string') {
+        currentRepPhotoUrl = data.sender_photo_url || '';
+      }
+
       const senderName = data.assigned_user_name
         || (typeof data.sender === 'object' ? data.sender?.name : null)
         || data.sender_name
@@ -570,10 +583,17 @@ async function init(): Promise<void> {
       const content = data.content || '';
       if (!content.trim()) return;
 
+      // MMX-551: capture the latest signed photo URL so subsequent
+      // rep messages on this session render with the same avatar.
+      if (typeof data.sender_photo_url === 'string' && data.sender_photo_url) {
+        currentRepPhotoUrl = data.sender_photo_url;
+      }
+
       sessionStore.pushMessage({
         text: content,
         sender: 'sales_rep',
         senderName: (typeof data.sender === 'string' ? data.sender : data.sender_name) || 'Sales Representative',
+        senderPhotoUrl: currentRepPhotoUrl || undefined,
         isWelcomeMessage: false,
         created_at: formatTimeStamp(data.created_at || new Date().toISOString()),
       });
@@ -772,6 +792,7 @@ async function init(): Promise<void> {
 
     sessionStore.clearAll();
     isHandoverActive = false;
+    currentRepPhotoUrl = null;
     isFormShowing = false;
     window.__simpleChatEmbedLeadCaptured = false;
     visitorInfo = null;
