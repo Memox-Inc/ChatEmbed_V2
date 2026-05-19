@@ -359,6 +359,11 @@ export interface StoredMessage {
   isStreaming?: boolean;
   messageId?: string;
   senderName?: string | { name?: string };
+  // MMX-551: backend serves a freshly-signed R2/S3 URL for the sales
+  // rep's profile photo on handover_message and post-handover text
+  // frames. When present we render it as the sales-rep avatar `<img>`
+  // overlay; absent / empty falls back to the default colored circle.
+  senderPhotoUrl?: string;
   created_at?: string;
   lastChunkTime?: number;
 }

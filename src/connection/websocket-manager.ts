@@ -14,6 +14,10 @@ export interface WsMessageData {
   is_complete?: boolean;
   created_at?: string;
   sender_name?: string;
+  // MMX-551: signed R2 / S3 URL for the sales rep's profile photo,
+  // shipped on handover_message and post-handover text frames. Empty
+  // string = no photo set, fall back to the default avatar icon.
+  sender_photo_url?: string;
   assigned_user_name?: string;
   assigned_user_email?: string;
 }
