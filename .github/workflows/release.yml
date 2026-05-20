@@ -58,6 +58,42 @@ jobs:
           git push
           git push origin "v${{ inputs.version }}"
 
+      # MMX-578: jsDelivr has TWO cache layers and BOTH must be purged on
+      # every release, or new tags become unreachable for hours:
+      #
+      #   1. Package-level tag index — maps tag names to commit SHAs.
+      #      The metadata API may already know about a new tag, but the
+      #      CDN content layer keeps serving the previous tag list until
+      #      the package URL is purged. Without this, ``@v3`` keeps
+      #      resolving to the prior version AND
+      #      ``@v3.0.18/dist/chat-embed.js`` returns 404 even though the
+      #      tag exists on GitHub. Observed on the v3.0.17 → v3.0.19
+      #      rollout: dashboard snippets kept serving the old bundle for
+      #      ~10 hours and v3.0.18 was 404 on the CDN.
+      #
+      #   2. URL-level edge cache — Cloudflare keeps each rendered URL
+      #      for up to 12h (s-maxage=43200). Even after the tag index is
+      #      refreshed, individual URLs serve stale content until purged.
+      #
+      # The order matters: purge the package index first so the next file
+      # request triggers a fresh tag-to-commit lookup; then purge each
+      # file URL the dashboard / snippets / latest.json consumers use.
+      - name: Purge jsDelivr edge cache
+        run: |
+          set -e
+          # 1) Package-level tag index — this is the critical one that
+          #    makes new tags reachable from the CDN content layer.
+          curl -fsSL "https://purge.jsdelivr.net/gh/Memox-Inc/ChatEmbed_V2" | head -c 300; echo
+          # 2a) `@v3` ambiguous pin — every dashboard-generated snippet uses this.
+          curl -fsSL "https://purge.jsdelivr.net/gh/Memox-Inc/ChatEmbed_V2@v3/dist/chat-embed.js" | head -c 300; echo
+          # 2b) `latest.json` so any consumer reading it gets the fresh active-version pointer.
+          curl -fsSL "https://purge.jsdelivr.net/gh/Memox-Inc/ChatEmbed_V2/latest.json" | head -c 300; echo
+          # 2c) `@latest` semver pin — anyone using this should pick up the new tag immediately.
+          curl -fsSL "https://purge.jsdelivr.net/gh/Memox-Inc/ChatEmbed_V2@latest/dist/chat-embed.js" | head -c 300; echo
+          # 2d) The just-released specific URL. Usually cold, but on first hit
+          #     it can 404 if step 1 was skipped — see commit message.
+          curl -fsSL "https://purge.jsdelivr.net/gh/Memox-Inc/ChatEmbed_V2@v${{ inputs.version }}/dist/chat-embed.js" | head -c 300; echo
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
