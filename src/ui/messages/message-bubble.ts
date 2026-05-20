@@ -75,15 +75,12 @@ function createAvatar(
     } else {
       const color = theme.botAvatarSvgColor || theme.primary || '#8349FF';
       av.style.color = color;
-      // Animated audio-bars / equalizer avatar — five vertical bars
-      // oscillating in height like an EQ visualizer. Signals "voice /
-      // active conversation" without committing to a face or character.
-      // Filled rects, currentColor for theming. The CSS keyframes live
-      // inside the SVG so they're scoped to the shadow root and don't
-      // leak into the host page. Wrapped in @media (prefers-reduced-
-      // motion: no-preference) so a11y users get a static version —
-      // WCAG 2.1 AA requirement. Class names are mcx-prefixed to avoid
-      // collisions if other CSS bleeds into the shadow root.
+      // Robot-face bot avatar — head with two eyes + smile and a thin
+      // antenna with a bead. Filled with currentColor so the dashboard's
+      // ``botAvatarSvgColor`` / ``primary`` theme override flows through
+      // via ``av.style.color`` above. Same SVG used by the lead-capture
+      // form's welcome bubble and the thinking indicator so the bot
+      // identity stays consistent across every surface.
       av.innerHTML = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle class="antenna-ball" cx="12" cy="2.5" r="0.9" fill="currentColor" stroke="none"/><path d="M12 3.4v2.1"/><circle class="cable-bead" cx="12" cy="4.45" r="0.45" fill="currentColor" stroke="none"/><rect x="4" y="5.5" width="16" height="14" rx="4"/><circle class="eye-left" cx="9" cy="12" r="1.2" fill="currentColor" stroke="none"/><circle class="eye-right" cx="15" cy="12" r="1.2" fill="currentColor" stroke="none"/><path class="smile" d="M10.5 16q1.5 0.8 3 0" stroke-width="1.4" fill="none"/></svg>`;
     }
   }
