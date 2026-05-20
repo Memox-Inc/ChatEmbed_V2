@@ -144,9 +144,14 @@ function createMultiStepLeadForm(
     group.className = 'mcx-msg-group';
     group.innerHTML = `
       <div class="mcx-avatar mcx-avatar--bot">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="${strokeColor}" stroke-width="2.2">
-          <circle cx="12" cy="12" r="3"/>
-          <path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/>
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="${strokeColor}" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <circle class="antenna-ball" cx="12" cy="2.5" r="0.9" fill="${strokeColor}" stroke="none"/>
+          <path d="M12 3.4v2.1"/>
+          <circle class="cable-bead" cx="12" cy="4.45" r="0.45" fill="${strokeColor}" stroke="none"/>
+          <rect x="4" y="5.5" width="16" height="14" rx="4"/>
+          <circle class="eye-left" cx="9" cy="12" r="1.2" fill="${strokeColor}" stroke="none"/>
+          <circle class="eye-right" cx="15" cy="12" r="1.2" fill="${strokeColor}" stroke="none"/>
+          <path class="smile" d="M10.5 16q1.5 0.8 3 0" stroke-width="1.4" fill="none"/>
         </svg>
       </div>
       <div class="mcx-msg-stack"><div class="mcx-bubble mcx-bubble--bot">${sanitizeInput(text)}</div></div>

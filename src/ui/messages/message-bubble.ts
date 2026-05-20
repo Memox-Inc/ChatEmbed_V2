@@ -57,7 +57,7 @@ function createAvatar(
     const bIcon = theme.botIcon || config.botIcon || {};
     av.style.width = bIcon.botIconAvatarWidth || '29px';
     av.style.height = bIcon.botIconAvatarHeight || '29px';
-    av.style.background = theme.botAvatar || '#E2E8F0';
+    av.style.background = theme.botAvatar || '#E4E7FC';
     av.style.border = theme.botAvatarBorder || 'none';
     av.style.borderRadius = '8px';
 
@@ -73,8 +73,15 @@ function createAvatar(
       img.style.objectFit = bIcon.objectFit || 'contain';
       av.replaceChildren(img);
     } else {
-      const color = theme.botAvatarSvgColor || theme.primary || '#6366f1';
-      av.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2.2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>`;
+      const color = theme.botAvatarSvgColor || theme.primary || '#8349FF';
+      av.style.color = color;
+      // Robot-face bot avatar — head with two eyes + smile and a thin
+      // antenna with a bead. Filled with currentColor so the dashboard's
+      // ``botAvatarSvgColor`` / ``primary`` theme override flows through
+      // via ``av.style.color`` above. Same SVG used by the lead-capture
+      // form's welcome bubble and the thinking indicator so the bot
+      // identity stays consistent across every surface.
+      av.innerHTML = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle class="antenna-ball" cx="12" cy="2.5" r="0.9" fill="currentColor" stroke="none"/><path d="M12 3.4v2.1"/><circle class="cable-bead" cx="12" cy="4.45" r="0.45" fill="currentColor" stroke="none"/><rect x="4" y="5.5" width="16" height="14" rx="4"/><circle class="eye-left" cx="9" cy="12" r="1.2" fill="currentColor" stroke="none"/><circle class="eye-right" cx="15" cy="12" r="1.2" fill="currentColor" stroke="none"/><path class="smile" d="M10.5 16q1.5 0.8 3 0" stroke-width="1.4" fill="none"/></svg>`;
     }
   }
   return av;
