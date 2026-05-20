@@ -57,7 +57,7 @@ function createAvatar(
     const bIcon = theme.botIcon || config.botIcon || {};
     av.style.width = bIcon.botIconAvatarWidth || '29px';
     av.style.height = bIcon.botIconAvatarHeight || '29px';
-    av.style.background = theme.botAvatar || '#E2E8F0';
+    av.style.background = theme.botAvatar || '#E4E7FC';
     av.style.border = theme.botAvatarBorder || 'none';
     av.style.borderRadius = '8px';
 
@@ -73,8 +73,18 @@ function createAvatar(
       img.style.objectFit = bIcon.objectFit || 'contain';
       av.replaceChildren(img);
     } else {
-      const color = theme.botAvatarSvgColor || theme.primary || '#6366f1';
-      av.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2.2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>`;
+      const color = theme.botAvatarSvgColor || theme.primary || '#8349FF';
+      av.style.color = color;
+      // Animated audio-bars / equalizer avatar — five vertical bars
+      // oscillating in height like an EQ visualizer. Signals "voice /
+      // active conversation" without committing to a face or character.
+      // Filled rects, currentColor for theming. The CSS keyframes live
+      // inside the SVG so they're scoped to the shadow root and don't
+      // leak into the host page. Wrapped in @media (prefers-reduced-
+      // motion: no-preference) so a11y users get a static version —
+      // WCAG 2.1 AA requirement. Class names are mcx-prefixed to avoid
+      // collisions if other CSS bleeds into the shadow root.
+      av.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><style>.mcx-bot-bar{transform-box:fill-box;transform-origin:center;}@media (prefers-reduced-motion: no-preference){@keyframes mcx-bb1{0%,100%{transform:scaleY(.4)}50%{transform:scaleY(1)}}@keyframes mcx-bb2{0%,100%{transform:scaleY(1)}50%{transform:scaleY(.35)}}@keyframes mcx-bb3{0%,100%{transform:scaleY(.6)}50%{transform:scaleY(.9)}}@keyframes mcx-bb4{0%,100%{transform:scaleY(1)}50%{transform:scaleY(.5)}}@keyframes mcx-bb5{0%,100%{transform:scaleY(.5)}50%{transform:scaleY(.85)}}.mcx-bb1{animation:mcx-bb1 .9s ease-in-out infinite}.mcx-bb2{animation:mcx-bb2 .9s ease-in-out .1s infinite}.mcx-bb3{animation:mcx-bb3 .9s ease-in-out .2s infinite}.mcx-bb4{animation:mcx-bb4 .9s ease-in-out .3s infinite}.mcx-bb5{animation:mcx-bb5 .9s ease-in-out .4s infinite}}</style><rect class="mcx-bot-bar mcx-bb1" x="3" y="10" width="2.5" height="4" rx="1.2"/><rect class="mcx-bot-bar mcx-bb2" x="7" y="7" width="2.5" height="10" rx="1.2"/><rect class="mcx-bot-bar mcx-bb3" x="11" y="4" width="2.5" height="16" rx="1.2"/><rect class="mcx-bot-bar mcx-bb4" x="15" y="7" width="2.5" height="10" rx="1.2"/><rect class="mcx-bot-bar mcx-bb5" x="19" y="10" width="2.5" height="4" rx="1.2"/></svg>`;
     }
   }
   return av;
