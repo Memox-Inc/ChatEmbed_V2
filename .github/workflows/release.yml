@@ -58,6 +58,27 @@ jobs:
           git push
           git push origin "v${{ inputs.version }}"
 
+      # MMX-578: jsDelivr keeps the resolution of non-pinned URLs like
+      # ``@v3`` and ``@latest`` cached at its edge for up to 12h (s-maxage).
+      # Without purging, every release silently leaves customers on the
+      # previous bundle until that cache expires — even though the new
+      # tag is published seconds after the workflow finishes. The dashboard
+      # snippet uses ``@v3`` for every customer, so this MUST be invalidated
+      # to make the release actually reach end users.
+      - name: Purge jsDelivr edge cache
+        run: |
+          set -e
+          # `@v3` ambiguous pin — every dashboard-generated snippet uses this.
+          curl -fsSL "https://purge.jsdelivr.net/gh/Memox-Inc/ChatEmbed_V2@v3/dist/chat-embed.js" | head -c 300; echo
+          # `latest.json` so any consumer reading it gets the fresh active-version pointer.
+          curl -fsSL "https://purge.jsdelivr.net/gh/Memox-Inc/ChatEmbed_V2/latest.json" | head -c 300; echo
+          # `@latest` semver pin — anyone using this should pick up the new tag immediately.
+          curl -fsSL "https://purge.jsdelivr.net/gh/Memox-Inc/ChatEmbed_V2@latest/dist/chat-embed.js" | head -c 300; echo
+          # The just-released specific URL. Usually cold (jsDelivr fetches a tag's
+          # first request on demand), but purging is harmless and removes any
+          # accidental stale entry from a prior workflow run.
+          curl -fsSL "https://purge.jsdelivr.net/gh/Memox-Inc/ChatEmbed_V2@v${{ inputs.version }}/dist/chat-embed.js" | head -c 300; echo
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
