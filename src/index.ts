@@ -85,10 +85,11 @@ async function init(): Promise<void> {
     attractorVariant: (serverConfig as Record<string, unknown>).attractor_variant as string | null | undefined,
   });
   // Tag every PostHog event with the experiment assignment from /embed/init
-  // so the backend HogQL stats query can group impressions and conversions
-  // by variant. Must run BEFORE the first capture() (chat_widget_loaded)
-  // below. Skipped when disableExperiments is true so uncontested visitors
-  // are never bucketed or tagged.
+  // so PostHog funnel analysis can group events by variant. This is OPTIONAL
+  // telemetry only: Memox Optimize counts impressions/conversions in-platform
+  // from ExperimentAssignment rows, not from these tags. Must run BEFORE the
+  // first capture() (chat_widget_loaded) below. Skipped when disableExperiments
+  // is true so uncontested visitors are never bucketed or tagged.
   if (!config.disableExperiments) {
     const experiments = (serverConfig as Record<string, unknown>).experiments;
     if (Array.isArray(experiments) && experiments.length > 0) {

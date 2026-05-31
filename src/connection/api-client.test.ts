@@ -90,4 +90,46 @@ describe('api-client Authorization header (MMX-611)', () => {
     expect(result.id).toMatch(/^offline_/);
     expect(fetchMock).not.toHaveBeenCalled();
   });
+
+  // MMX-562: the visitor POST must carry distinct_id so the backend bandit
+  // conversion hook can set ExperimentAssignment.converted_at. Without it,
+  // Memox Optimize counts every experiment's conversions as zero.
+  it('createVisitor includes distinct_id in the POST body (Optimize conversion link)', async () => {
+    localStorage.setItem('mmx_chat_distinct_id', 'visitor-distinct-xyz');
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ results: [] }), { status: 200 }),
+    );
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ id: 7, name: 'Lead' }), { status: 201 }),
+    );
+
+    await createVisitor('Lead', 'lead@example.com', null, null, {
+      ...baseConfig,
+      sessionToken: 'per-session-abc',
+    });
+
+    const postInit = fetchMock.mock.calls[1][1] as RequestInit;
+    const body = JSON.parse(postInit.body as string);
+    expect(body.distinct_id).toBe('visitor-distinct-xyz');
+  });
+
+  it('createVisitor omits distinct_id when disableExperiments is set (opt-out symmetry)', async () => {
+    localStorage.setItem('mmx_chat_distinct_id', 'visitor-distinct-xyz');
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ results: [] }), { status: 200 }),
+    );
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ id: 8, name: 'Lead' }), { status: 201 }),
+    );
+
+    await createVisitor('Lead', 'lead@example.com', null, null, {
+      ...baseConfig,
+      sessionToken: 'per-session-abc',
+      disableExperiments: true,
+    });
+
+    const postInit = fetchMock.mock.calls[1][1] as RequestInit;
+    const body = JSON.parse(postInit.body as string);
+    expect(body.distinct_id).toBeUndefined();
+  });
 });
