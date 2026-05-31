@@ -46,4 +46,46 @@ describe('sanitizeText', () => {
     expect(result).toContain('bold');
     expect(result).toContain('text');
   });
+
+  // Entity-decoding assertions — FIX for HTML-entity-encodes-plain-text bug.
+  // DOMPurify with ALLOWED_TAGS:[] encodes angle brackets and ampersands as
+  // HTML entities. These tests confirm we decode them back to true plain text
+  // so callers rendering via .textContent see "Save <50% today" not
+  // "Save &lt;50% today".
+
+  it('preserves angle brackets in plain text (no HTML tag)', () => {
+    // "Save <50% today" contains a lone "<" — not a tag — and must be
+    // returned verbatim so it reads correctly when set via .textContent.
+    expect(sanitizeText('Save <50% today')).toBe('Save <50% today');
+  });
+
+  it('preserves ampersands in plain text', () => {
+    // "Tom & Jerry" must not be encoded to "Tom &amp; Jerry".
+    expect(sanitizeText('Tom & Jerry')).toBe('Tom & Jerry');
+  });
+
+  it('still strips tags AND decodes entities in mixed input', () => {
+    // The tag is stripped first; the remaining plain text entities are decoded.
+    const result = sanitizeText('<b>Bold</b> & <50% off');
+    expect(result).not.toContain('<b>');
+    expect(result).toContain('Bold');
+    expect(result).toContain('& <50% off');
+  });
+
+  it('strips <script> tag even when inner text looks like an entity', () => {
+    // Confirm the tag-strip still fires before entity decode.
+    const result = sanitizeText('<script>alert(1)</script>&lt;safe&gt;');
+    expect(result).not.toContain('<script>');
+    expect(result).not.toContain('alert');
+    // The literal "&lt;safe&gt;" text outside the script is decoded to "<safe>".
+    expect(result).toBe('<safe>');
+  });
+
+  it('strips <img onerror> and decodes remaining plain text entities', () => {
+    const result = sanitizeText('<img src="x" onerror="alert(1)">Tom &amp; Jerry');
+    expect(result).not.toContain('<img');
+    expect(result).not.toContain('onerror');
+    // After tag strip, "&amp;" is decoded to "&".
+    expect(result).toBe('Tom & Jerry');
+  });
 });

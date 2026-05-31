@@ -19,11 +19,14 @@
 // fetch that we actively await.
 
 import { getOrCreateDistinctId } from '../utils/distinct-id';
+import type { ExperimentAssignment } from '../analytics/posthog';
 
 export interface InitResponse {
   embed_id: string;
   config: Record<string, any>;
 }
+
+export type { ExperimentAssignment };
 
 /** Abort the init fetch after this many milliseconds to unblock widget bootstrap. */
 const INIT_TIMEOUT_MS = 1500;
@@ -84,6 +87,13 @@ export async function fetchInitConfig(
     if (typeof data.socket_url === 'string' && data.socket_url) runtime.socketUrl = data.socket_url;
     if (data.org_id !== undefined && data.org_id !== null) runtime.org_id = String(data.org_id);
     if (data.agent_id !== undefined && data.agent_id !== null) runtime.agent_id = String(data.agent_id);
+    // Capture experiment assignments from the init response. The backend
+    // returns an array of { experiment, variant, variant_label } objects
+    // when the visitor has been bucketed. May be absent or empty on
+    // backends that have not deployed the bandit yet.
+    if (Array.isArray(data.experiments) && data.experiments.length > 0) {
+      runtime.experiments = data.experiments as ExperimentAssignment[];
+    }
     return { ...runtime, ...normalizeServerConfig(data.config || {}) };
   } catch (e) {
     // eslint-disable-next-line no-console
