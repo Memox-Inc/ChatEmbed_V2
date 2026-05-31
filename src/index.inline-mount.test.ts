@@ -21,6 +21,8 @@ vi.mock('./connection/init', () => ({
 vi.mock('./analytics/posthog', () => ({
   init: vi.fn(),
   capture: vi.fn(),
+  identify: vi.fn(),
+  group: vi.fn(),
   __resetForTesting: vi.fn(),
 }));
 

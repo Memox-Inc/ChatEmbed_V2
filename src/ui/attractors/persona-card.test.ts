@@ -84,7 +84,7 @@ describe('mountPersonaCard', () => {
     expect(initials?.textContent).toBe('JM');
   });
 
-  it('escapes name and message (no script execution)', () => {
+  it('strips HTML/script injection from name and message via DOMPurify sanitization', () => {
     const cfg = makeConfig({
       launcher: {
         ...makeConfig().launcher,
@@ -98,9 +98,12 @@ describe('mountPersonaCard', () => {
       },
     });
     mountPersonaCard(cfg, document.body, {});
+    // DOMPurify strips all tags — script content and the injected img tag are removed.
     expect(document.querySelectorAll('script').length).toBe(0);
-    expect(document.querySelectorAll('.mcx-persona-card img').length).toBe(1); // only the photo
-    expect(document.querySelector('.mcx-persona-name')?.textContent).toBe('<script>alert(1)</script>');
+    // The name was pure <script> tag — no text survives after sanitization.
+    expect(document.querySelector('.mcx-persona-name')?.textContent).toBe('');
+    // The message img tag is stripped; no text node survives either.
+    expect(document.querySelector('.mcx-persona-msg')?.textContent).toBe('');
   });
 
   it('rejects javascript: photo URLs and falls back to initials', () => {

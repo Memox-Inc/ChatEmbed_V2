@@ -11,6 +11,7 @@
 
 import type { ChatEmbedConfig } from '../../config/types';
 import type { AttractorHandle } from './types';
+import { sanitizeText } from '../sanitize';
 
 export type TeaserCleanup = () => void;
 
@@ -31,7 +32,7 @@ export function mountTeaser(config: ChatEmbedConfig, host: HTMLElement): Attract
 
   timerId = setTimeout(() => {
     timerId = null;
-    element = renderTeaserBubble(teaser.text!, teaser.dismissible !== false);
+    element = renderTeaserBubble(sanitizeText(teaser.text), teaser.dismissible !== false);
     host.appendChild(element);
   }, delayMs);
 

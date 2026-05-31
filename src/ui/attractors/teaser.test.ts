@@ -55,7 +55,7 @@ describe('mountTeaser', () => {
     expect(teaser?.querySelector('.mcx-teaser-text')?.textContent).toBe('Need help?');
   });
 
-  it('escapes user-supplied teaser text', () => {
+  it('strips HTML/script injection from teaser text via DOMPurify sanitization', () => {
     const cfg = baseConfig({
       attractors: {
         teaser: {
@@ -68,8 +68,10 @@ describe('mountTeaser', () => {
     });
     mountTeaser(cfg, document.body);
     vi.advanceTimersByTime(1500);
+    // DOMPurify strips all tags when ALLOWED_TAGS: [] — the textContent is
+    // empty because the entire input was a <script> tag with no surviving text.
     expect(document.querySelectorAll('script').length).toBe(0);
-    expect(document.querySelector('.mcx-teaser-text')?.textContent).toBe('<script>alert(1)</script>');
+    expect(document.querySelector('.mcx-teaser-text')?.textContent).toBe('');
   });
 
   it('renders dismiss button when dismissible=true and removes on click', () => {
