@@ -1,5 +1,6 @@
 import type { ChatEmbedConfig, LauncherConfig } from '../config/types';
 import { isSafeImageUrl } from '../utils/url';
+import { sanitizeText } from './sanitize';
 
 // Inline chat-bubble glyph used as the default icon and as the small
 // indicator badge on the photo variant.
@@ -100,7 +101,7 @@ export function createLauncher(
   if (isPill) {
     const textSpan = document.createElement('span');
     textSpan.className = 'mcx-launcher-pill-text';
-    const raw = (launcherCfg.pill_text ?? '').trim();
+    const raw = sanitizeText((launcherCfg.pill_text ?? '').trim());
     textSpan.textContent = raw || 'Chat';
     btn.appendChild(textSpan);
   }

@@ -31,6 +31,8 @@ const captureSpy = vi.fn();
 vi.mock('./analytics/posthog', () => ({
   init: vi.fn(),
   capture: captureSpy,
+  identify: vi.fn(),
+  group: vi.fn(),
   __resetForTesting: vi.fn(),
 }));
 

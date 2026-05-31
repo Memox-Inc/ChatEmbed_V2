@@ -31,6 +31,7 @@ const INIT_TIMEOUT_MS = 1500;
 export async function fetchInitConfig(
   embedId: string | null,
   apiBase: string,
+  disableExperiments?: boolean,
 ): Promise<Record<string, any>> {
   if (!embedId) return {};
 
@@ -38,17 +39,24 @@ export async function fetchInitConfig(
   const timeoutId = setTimeout(() => controller.abort(), INIT_TIMEOUT_MS);
 
   try {
-    const distinctId = getOrCreateDistinctId();
     const base = apiBase.replace(/\/$/, '');
+    // Build the init body conditionally: when disableExperiments is true, omit
+    // distinct_id entirely (visitor is not bucketed into any A/B variant) and
+    // send disable_experiments: true so the backend skips bandit resolution.
+    const initBody: Record<string, unknown> = {
+      embed_id: embedId,
+      page_url: location.href,
+      page_title: document.title,
+    };
+    if (disableExperiments) {
+      initBody.disable_experiments = true;
+    } else {
+      initBody.distinct_id = getOrCreateDistinctId();
+    }
     const resp = await fetch(`${base}/api/v1/embed/init/`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        embed_id: embedId,
-        distinct_id: distinctId,
-        page_url: location.href,
-        page_title: document.title,
-      }),
+      body: JSON.stringify(initBody),
       signal: controller.signal,
     });
 

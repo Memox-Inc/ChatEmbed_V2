@@ -62,7 +62,11 @@ async function init(): Promise<void> {
   // Dev: hub-dev.memox.io). Without this default a customer pasting only
   // ``embedId`` would silently fail DNS on every init request.
   const apiBase = localConfig.apiBase || localConfig.apiUrl || 'https://hub.memox.io';
-  const serverConfig = await fetchInitConfig(localConfig.embedId ?? null, apiBase);
+  const serverConfig = await fetchInitConfig(
+    localConfig.embedId ?? null,
+    apiBase,
+    localConfig.disableExperiments,
+  );
   const config = mergeConfig(localConfig, serverConfig as Partial<ChatEmbedConfig>);
   // Scope localStorage to this embed instance — must run before any
   // sessionStore reads/writes so multiple widgets on the same origin
@@ -878,6 +882,20 @@ async function init(): Promise<void> {
           distinctId: getOrCreateDistinctId(),
           visitorId: typeof visitorInfo?.id === 'number' ? visitorInfo.id : null,
         });
+
+        // PostHog identify + group — links the anonymous visitor to their
+        // identified profile and associates them with the org.
+        // Guarded by disableExperiments: when consent is withheld, skip
+        // all identity-linking calls.
+        if (!config.disableExperiments) {
+          const identityProps: Record<string, unknown> = {};
+          if (lead.email) identityProps.email = lead.email;
+          if (lead.name) identityProps.name = lead.name;
+          analytics.identify(getOrCreateDistinctId(), identityProps);
+          if (config.org_id != null) {
+            analytics.group('organization', String(config.org_id), {});
+          }
+        }
       }
 
       // Show input but keep disabled until WS connects

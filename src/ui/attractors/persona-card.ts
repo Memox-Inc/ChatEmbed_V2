@@ -14,6 +14,7 @@
 import type { ChatEmbedConfig } from '../../config/types';
 import type { AttractorHandle } from './types';
 import { isSafeImageUrl } from '../../utils/url';
+import { sanitizeText } from '../sanitize';
 
 export interface PersonaHandlers {
   onOpen?: () => void;
@@ -67,11 +68,11 @@ export function mountPersonaCard(
 
   const nameEl = document.createElement('div');
   nameEl.className = 'mcx-persona-name';
-  nameEl.textContent = persona.name;
+  nameEl.textContent = sanitizeText(persona.name);
 
   const msgEl = document.createElement('div');
   msgEl.className = 'mcx-persona-msg';
-  msgEl.textContent = persona.message;
+  msgEl.textContent = sanitizeText(persona.message);
 
   text.appendChild(nameEl);
   text.appendChild(msgEl);

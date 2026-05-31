@@ -34,7 +34,7 @@ describe('createLauncher', () => {
     expect(el.querySelector('.mcx-launcher-pill-text')?.textContent).toBe('Chat');
   });
 
-  it('escapes pill_text to prevent injection', () => {
+  it('strips HTML injection from pill_text via DOMPurify sanitization', () => {
     const config: ChatEmbedConfig = {
       launcher: {
         form_factor: 'pill',
@@ -43,12 +43,11 @@ describe('createLauncher', () => {
       },
     };
     const el = createLauncher(config, vi.fn());
-    // textContent reads the raw text; the rendered DOM should not contain
-    // an actual <img> element.
+    // DOMPurify strips all tags — the img tag is removed entirely, leaving empty string,
+    // which then falls back to the 'Chat' default.
     expect(el.querySelector('img')).toBeNull();
-    expect(el.querySelector('.mcx-launcher-pill-text')?.textContent).toBe(
-      '<img src=x onerror=alert(1)>',
-    );
+    // Empty sanitized string falls back to 'Chat' in the pill text rendering.
+    expect(el.querySelector('.mcx-launcher-pill-text')?.textContent).toBe('Chat');
   });
 
   it('renders round form factor by default', () => {

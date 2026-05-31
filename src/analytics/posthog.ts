@@ -140,6 +140,81 @@ export function capture(eventName: string, additionalProps?: Record<string, unkn
   }
 }
 
+/**
+ * Link an anonymous visitor to their identified profile in PostHog.
+ * Fires a ``$identify`` event which stitches the anonymous ``distinct_id``
+ * to the identified person (email, name, etc.).
+ * No-op when analytics has not been initialized or has no apiKey.
+ */
+export function identify(distinctId: string, setProps: Record<string, unknown>): void {
+  if (!state.apiKey) return;
+
+  try {
+    const body = JSON.stringify({
+      api_key: state.apiKey,
+      event: '$identify',
+      distinct_id: distinctId,
+      properties: {
+        $set: setProps,
+      },
+      timestamp: new Date().toISOString(),
+    });
+
+    const url = `${state.host.replace(/\/$/, '')}/capture/`;
+    void fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body,
+      keepalive: true,
+      mode: 'no-cors',
+    }).catch(() => {
+      // swallow — analytics must never break the widget
+    });
+  } catch {
+    // swallow — analytics must never break the widget
+  }
+}
+
+/**
+ * Associate the current visitor with a PostHog group (e.g. organization).
+ * Fires a ``$groupidentify`` event.
+ * No-op when analytics has not been initialized or has no apiKey.
+ */
+export function group(
+  groupType: string,
+  groupKey: string,
+  setProps: Record<string, unknown> = {},
+): void {
+  if (!state.apiKey) return;
+
+  try {
+    const body = JSON.stringify({
+      api_key: state.apiKey,
+      event: '$groupidentify',
+      distinct_id: state.distinctId,
+      properties: {
+        $group_type: groupType,
+        $group_key: groupKey,
+        $group_set: setProps,
+      },
+      timestamp: new Date().toISOString(),
+    });
+
+    const url = `${state.host.replace(/\/$/, '')}/capture/`;
+    void fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body,
+      keepalive: true,
+      mode: 'no-cors',
+    }).catch(() => {
+      // swallow — analytics must never break the widget
+    });
+  } catch {
+    // swallow — analytics must never break the widget
+  }
+}
+
 // Test-only helper. Resets module-level state so vitest can run multiple
 // init/capture sequences in the same process. Not exported through any
 // public barrel; safe to call from tests via direct import.
