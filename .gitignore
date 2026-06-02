@@ -76,3 +76,6 @@ jspm_packages/
 # Temporary folders
 tmp/
 temp/
+
+# Entire checkpoint tool
+.entire/
