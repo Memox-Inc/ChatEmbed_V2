@@ -2,6 +2,16 @@
 
 Embeddable chat widget for the Memox platform. Distributes via jsDelivr CDN. Pinned by URL on the consumer side.
 
+## Code intelligence: read code via codegraph first
+
+This workspace has a **codegraph** MCP index: a SQLite knowledge graph of every symbol, edge, and file across all repos (Python + TS/TSX). It is the fastest, most reliable way to understand this codebase, so reach for it before blind `grep` or `Read` sweeps.
+
+- **`codegraph_explore`** (PRIMARY, call first): pass a natural-language question or a bag of symbol/file names. It returns the verbatim source of the relevant symbols grouped by file in one call (Read-equivalent, so do not re-`Read` the files it shows). Use it for "how does X work", architecture, tracing a flow, or "where/what is X".
+- **`codegraph_search`**: locate a symbol by name (locations only).
+- **`codegraph_callers` / `codegraph_callees` / `codegraph_impact`**: "what calls this", "what does this call", and "what breaks if I change this". Run these before editing any shared code.
+
+Notes: the index lags writes by about a second, so consult it before editing, not mid-edit. Static caller lookup does not see dynamic dispatch (callbacks, signal handlers, DI): if `codegraph_callers` returns "no callers" for something clearly wired, cross-check with `codegraph_explore`, which follows callback hops. One codegraph call usually replaces a dozen grep-plus-read steps.
+
 ## V1 vs V3 Source Layout
 
 The repo contains two parallel implementations. They are NOT both maintained.
