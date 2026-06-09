@@ -1,5 +1,6 @@
 import type { ChatEmbedConfig, VisitorInfo } from '../config/types';
 import { collectBrowserMetadata, createAnonymousEmail } from './browser-metadata';
+import { getOrCreateDistinctId } from '../utils/distinct-id';
 
 function buildHeaders(config: ChatEmbedConfig): Record<string, string> {
   // Prefer the per-session embed token (EmbedTokenAuthentication on the
@@ -110,6 +111,10 @@ export async function createVisitor(
         zip_code: zip || '',
         organization: config.org_id,
         metadata,
+        // Memox Optimize: the backend's lead-capture conversion hook attributes
+        // the conversion to this visitor's bandit assignment by distinct_id.
+        // Without it, conversions for running experiments are never recorded.
+        distinct_id: getOrCreateDistinctId(),
       };
 
       const postResponse = await fetch(`${baseUrl}visitors/`, {
