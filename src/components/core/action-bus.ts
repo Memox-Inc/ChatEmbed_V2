@@ -20,6 +20,18 @@ function networkErrorResult(recoverable = true): ActionResult {
   return { ok: false, error: env };
 }
 
+/**
+ * True when a parsed non-2xx body is the hub's error envelope
+ * ({ok:false, error:{code,message,recoverable}}) and can be surfaced verbatim.
+ */
+function isServerErrorEnvelope(body: unknown): body is ActionResult {
+  if (typeof body !== 'object' || body === null) return false;
+  const candidate = body as { ok?: unknown; error?: unknown };
+  return candidate.ok === false
+    && typeof candidate.error === 'object'
+    && candidate.error !== null;
+}
+
 export function createActionBus(opts: ActionBusOptions): ActionBus {
   const _fetch = opts.fetch ?? globalThis.fetch.bind(globalThis);
   let _pending = false;
@@ -41,7 +53,19 @@ export function createActionBus(opts: ActionBusOptions): ActionBus {
         } catch {
           return networkErrorResult(true);
         }
-        if (!resp.ok) return networkErrorResult(true);
+        if (!resp.ok) {
+          // The hub returns its {ok:false, error:{...}} envelope WITH HTTP error
+          // statuses (400 validation, 403 ownership, 409 stock, 429 rate limit).
+          // Surface that envelope verbatim so renderers show the server's message
+          // and honor its recoverable flag instead of a generic network error.
+          try {
+            const body: unknown = await resp.json();
+            if (isServerErrorEnvelope(body)) return body;
+          } catch {
+            // fall through to the generic recoverable error
+          }
+          return networkErrorResult(true);
+        }
         try {
           return (await resp.json()) as ActionResult;
         } catch {

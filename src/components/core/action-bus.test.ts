@@ -66,6 +66,31 @@ describe('ActionBus.dispatch()', () => {
     expect(result.error?.recoverable).toBe(true);
   });
 
+  it('surfaces the server error envelope verbatim on non-2xx with a valid body', async () => {
+    // Hub returns {ok:false, error:{...}} WITH HTTP error statuses (400/403/409/429).
+    const serverEnvelope: ActionResult = {
+      ok: false,
+      error: { code: 'out_of_stock', message: 'Variant is out of stock.', recoverable: false },
+    };
+    fetchFn.mockResolvedValue({ ok: false, status: 409, json: async () => serverEnvelope });
+    const result = await bus.dispatch(makeAction());
+    expect(result).toEqual(serverEnvelope);
+    expect(result.error?.code).toBe('out_of_stock');
+    expect(result.error?.recoverable).toBe(false);
+  });
+
+  it('falls back to the generic recoverable error when a non-2xx body fails to parse', async () => {
+    fetchFn.mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: async () => { throw new Error('invalid json'); },
+    });
+    const result = await bus.dispatch(makeAction());
+    expect(result.ok).toBe(false);
+    expect(result.error?.code).toBe('NETWORK_ERROR');
+    expect(result.error?.recoverable).toBe(true);
+  });
+
   it('tracks pending state during inflight request', async () => {
     let resolve!: (v: unknown) => void;
     const deferred = new Promise((r) => { resolve = r; });
