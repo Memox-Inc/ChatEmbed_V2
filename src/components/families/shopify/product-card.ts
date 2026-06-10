@@ -16,29 +16,8 @@
 
 import type { ComponentModule, RenderCtx, ShopifyProductCardData } from '../../core/types';
 import { el, svg, text } from '../../core/dom';
-import { isSafeImageUrl } from '../../../utils/url';
-
-// ---- helpers ----------------------------------------------------------------
-
-function formatMoney(amount: string, currency: string): string {
-  const num = parseFloat(amount);
-  if (isNaN(num)) return `${currency} ${amount}`;
-  try {
-    // useGrouping: false keeps digits contiguous ("$3500.00", not "$3,500.00").
-    return new Intl.NumberFormat(undefined, {
-      style: 'currency',
-      currency,
-      useGrouping: false,
-    }).format(num);
-  } catch {
-    // Unknown/invalid currency code (Intl throws RangeError): raw fallback.
-    return `${currency} ${amount}`;
-  }
-}
-
-function isSafeHttpsUrl(url: string | null | undefined): url is string {
-  return typeof url === 'string' && /^https:\/\//i.test(url);
-}
+import { isSafeImageUrl, isSafeHttpsUrl } from '../../../utils/url';
+import { formatMoney, withAlpha } from '../../../utils/format';
 
 // ---- SVG icons (no hex literals: colors via currentColor or theme param) ----
 
@@ -159,8 +138,12 @@ function renderCard(data: ShopifyProductCardData, ctx: RenderCtx): HTMLElement {
         'data-variant-id': variant.id,
         'data-selected': isSelected ? 'true' : 'false',
         'data-available': variant.available ? 'true' : 'false',
+        'aria-pressed': isSelected ? 'true' : 'false',
         type: 'button',
       }, [text(variant.title)]) as HTMLButtonElement;
+      // Native disabled blocks mouse AND keyboard activation; styling alone
+      // would leave the pill reachable and clickable for keyboard users.
+      if (!variant.available) pill.disabled = true;
       applyPillStyles(pill, isSelected, variant.available, t);
       pillEls.push(pill);
       pillsWrap.appendChild(pill);
@@ -177,6 +160,7 @@ function renderCard(data: ShopifyProductCardData, ctx: RenderCtx): HTMLElement {
         for (const p of pillEls) {
           const selected = p.getAttribute('data-variant-id') === variantId;
           p.setAttribute('data-selected', selected ? 'true' : 'false');
+          p.setAttribute('aria-pressed', selected ? 'true' : 'false');
           const available = p.getAttribute('data-available') === 'true';
           applyPillStyles(p, selected, available, t);
         }
@@ -211,6 +195,8 @@ function renderCard(data: ShopifyProductCardData, ctx: RenderCtx): HTMLElement {
     }
   });
   qtyIncBtn.addEventListener('click', () => {
+    // Cap of 10 is a widget-side UX guard only; the server enforces real
+    // inventory limits when shopify.add_to_cart is dispatched.
     if (state.qty < 10) {
       state.qty++;
       qtyDisplay.textContent = String(state.qty);
@@ -357,7 +343,7 @@ function applyOosOverlayStyles(el: HTMLElement, t: RenderCtx['theme']): void {
   el.style.cssText = [
     'position:absolute',
     'inset:0',
-    `background:${t.surface}cc`,
+    `background:${withAlpha(t.surface, 'cc')}`,
     'display:flex',
     'align-items:center',
     'justify-content:center',
@@ -373,7 +359,7 @@ function applyOosLabelStyles(el: HTMLElement, t: RenderCtx['theme']): void {
     'font-weight:700',
     'padding:4px 10px',
     'border-radius:20px',
-    `border:1px solid ${t.error}66`,
+    `border:1px solid ${withAlpha(t.error, '66')}`,
   ].join(';');
 }
 

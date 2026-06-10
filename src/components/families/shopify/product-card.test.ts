@@ -52,6 +52,16 @@ describe('ShopifyProductCardModule', () => {
     const el = ShopifyProductCardModule.render(baseProduct, makeCtx());
     const selected = el.querySelector('[data-part="variant-pill"][data-selected="true"]');
     expect(selected?.textContent?.trim()).toBe('New');
+    expect(selected?.getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('disables unavailable variant pills so they cannot be activated', () => {
+    const el = ShopifyProductCardModule.render(baseProduct, makeCtx());
+    const usedPill = el.querySelector('[data-part="variant-pill"][data-variant-id="v2"]') as HTMLButtonElement;
+    expect(usedPill.disabled).toBe(true);
+    usedPill.click();
+    const selected = el.querySelector('[data-part="variant-pill"][data-selected="true"]');
+    expect(selected?.getAttribute('data-variant-id')).toBe('v1');
   });
 
   it('disables Add to Cart for unavailable variant', () => {
@@ -110,5 +120,41 @@ describe('ShopifyProductCardModule', () => {
     const el = ShopifyProductCardModule.render(baseProduct, makeCtx());
     expect(el.getAttribute('data-part')).toBe('card');
     expect(el.querySelector('[data-part="carousel"]')).toBeNull();
+  });
+
+  it('disables the Add to Cart button while a dispatch is pending', async () => {
+    let resolveDispatch!: (r: { ok: boolean; components: [] }) => void;
+    const dispatch = vi.fn().mockImplementation(
+      () => new Promise((resolve) => { resolveDispatch = resolve; }),
+    );
+    const el = ShopifyProductCardModule.render(baseProduct, makeCtx({ dispatch }));
+    const btn = el.querySelector('[data-part="add-to-cart-btn"]') as HTMLButtonElement;
+    btn.click();
+    expect(btn.disabled).toBe(true);
+    resolveDispatch({ ok: true, components: [] });
+    await new Promise((r) => setTimeout(r, 0));
+    expect(btn.textContent).toBe('Added!');
+  });
+
+  it('shows the action error and re-enables the button on a recoverable failure', async () => {
+    const dispatch = vi.fn().mockResolvedValue({
+      ok: false,
+      error: { code: 'RATE_LIMITED', message: 'Too many requests.', recoverable: true },
+    });
+    const el = ShopifyProductCardModule.render(baseProduct, makeCtx({ dispatch }));
+    const btn = el.querySelector('[data-part="add-to-cart-btn"]') as HTMLButtonElement;
+    btn.click();
+    await new Promise((r) => setTimeout(r, 0));
+    const err = el.querySelector('[data-part="action-error"]') as HTMLElement;
+    expect(err.style.display).not.toBe('none');
+    expect(err.textContent).toBe('Too many requests.');
+    // Recoverable: retry affordance means the button is clickable again.
+    expect(btn.disabled).toBe(false);
+  });
+
+  it('suppresses the View on store link for a non-https product url', () => {
+    const insecure = { ...baseProduct, url: 'http://store.example.com/products/20ft-standard' };
+    const el = ShopifyProductCardModule.render(insecure, makeCtx());
+    expect(el.querySelector('[data-part="view-on-store"]')).toBeNull();
   });
 });
