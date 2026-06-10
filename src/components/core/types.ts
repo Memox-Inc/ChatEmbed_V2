@@ -6,63 +6,114 @@ export interface WireComponent {
   data: unknown;
 }
 
-export interface MoneyV2 { amount: string; currency: string; }
+export interface MoneyV2 {
+  amount: string;
+  currency: string;
+}
 
 // Shopify product card
 export interface ShopifyVariant {
-  id: string; title: string; available: boolean; price: MoneyV2;
+  id: string;
+  title: string;
+  available: boolean;
+  price: MoneyV2;
 }
+
 export interface ShopifyProductCardData {
-  product_id: string; handle: string; title: string;
-  image_url: string; url: string;
-  price: MoneyV2; compare_at_price: MoneyV2 | null;
-  variants: ShopifyVariant[]; selected_variant_id: string;
-  available: boolean; badge: string | null;
+  product_id: string;
+  handle: string;
+  title: string;
+  image_url: string;
+  url: string;
+  price: MoneyV2;
+  compare_at_price: MoneyV2 | null;
+  variants: ShopifyVariant[];
+  selected_variant_id: string;
+  available: boolean;
+  badge: string | null;
 }
 
 // Shopify cart
 export interface CartLine {
-  line_id: string; variant_id: string; title: string; variant_title: string;
-  image_url: string; quantity: number; line_total: MoneyV2;
+  line_id: string;
+  variant_id: string;
+  title: string;
+  variant_title: string;
+  image_url: string;
+  quantity: number;
+  line_total: MoneyV2;
 }
+
 export interface ShopifyCartData {
-  cart_id: string; lines: CartLine[];
-  subtotal: MoneyV2; total_quantity: number;
+  cart_id: string;
+  lines: CartLine[];
+  subtotal: MoneyV2;
+  total_quantity: number;
   discount_codes: Array<{ code: string; applicable: boolean }>;
   checkout_url: string;
 }
 
 // Calendar slots
-export interface CalendarSlot { start_iso: string; end_iso: string; }
-export interface CalendarDay { date: string; slots: CalendarSlot[]; }
+export interface CalendarSlot {
+  start_iso: string;
+  end_iso: string;
+}
+
+export interface CalendarDay {
+  date: string;
+  slots: CalendarSlot[];
+}
+
 export interface CalendarSlotsData {
-  duration_minutes: number; timezone: string;
-  days: CalendarDay[]; requires_contact: boolean; notice: string | null;
+  duration_minutes: number;
+  timezone: string;
+  days: CalendarDay[];
+  requires_contact: boolean;
+  notice: string | null;
 }
 
 // Calendar booking confirmed
 export interface CalendarBookingConfirmedData {
-  start_iso: string; end_iso: string; timezone: string;
-  host_name: string; title: string;
-  google_calendar_url: string; ics_url: string;
+  start_iso: string;
+  end_iso: string;
+  timezone: string;
+  host_name: string;
+  title: string;
+  google_calendar_url: string;
+  ics_url: string;
 }
 
 // Web call
 export type WebCallState = 'idle' | 'connecting' | 'live' | 'ended' | 'error';
+
 export interface WebCallData {
-  state: WebCallState; agent_name: string; max_duration_seconds: number;
-  started_at: string | null; duration_seconds: number | null; error: string | null;
+  state: WebCallState;
+  agent_name: string;
+  max_duration_seconds: number;
+  started_at: string | null;
+  duration_seconds: number | null;
+  error: string | null;
 }
 
 // Action / result
 export interface Action {
-  message_id: string; component_id: string; action_type: string;
+  message_id: string;
+  component_id: string;
+  action_type: string;
   payload: Record<string, unknown>;
 }
-export interface ErrorEnvelope { code: string; message: string; recoverable: boolean; }
+
+export interface ErrorEnvelope {
+  code: string;
+  message: string;
+  recoverable: boolean;
+}
+
 export interface ActionResult {
-  ok: boolean; components?: WireComponent[];
-  message?: unknown | null; checkout_url?: string | null;
+  ok: boolean;
+  components?: WireComponent[];
+  message?: unknown;
+  checkout_url?: string | null;
   error?: ErrorEnvelope;
 }
 
@@ -84,7 +135,9 @@ export interface ThemeTokens {
 }
 
 export interface ComponentsEnabled {
-  shopify: boolean; calendar: boolean; web_call: boolean;
+  shopify: boolean;
+  calendar: boolean;
+  web_call: boolean;
 }
 
 export interface RenderCtx {

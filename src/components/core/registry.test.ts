@@ -43,4 +43,25 @@ describe('ComponentRegistry', () => {
     expect(registry.lookup('type_b')).toBe(modB);
     expect(registry.lookup('type_a', 2)).toBeUndefined(); // version mismatch for A
   });
+
+  it('throws on duplicate type registration', () => {
+    registry.register('test_card', stubModule);
+    expect(() => registry.register('test_card', stubModule)).toThrowError(
+      /already registered/,
+    );
+  });
+
+  it('list() returns a snapshot decoupled from the registry', () => {
+    registry.register('test_card', stubModule);
+    const snapshot = registry.list();
+
+    // Later registrations must not appear in an earlier snapshot.
+    const modB: ComponentModule = { version: 1, render: () => document.createElement('p') };
+    registry.register('type_b', modB);
+    expect(snapshot.has('type_b')).toBe(false);
+
+    // Mutating the snapshot (via cast) must not corrupt the registry.
+    (snapshot as Map<string, ComponentModule>).delete('test_card');
+    expect(registry.lookup('test_card')).toBe(stubModule);
+  });
 });

@@ -9,14 +9,19 @@ export interface ComponentRegistry {
 export function createRegistry(): ComponentRegistry {
   const _map = new Map<string, ComponentModule>();
   return {
-    register(type, module) { _map.set(type, module); },
+    register(type, module) {
+      if (_map.has(type)) {
+        throw new Error(`Component type "${type}" is already registered`);
+      }
+      _map.set(type, module);
+    },
     lookup(type, wireVersion) {
       const mod = _map.get(type);
       if (!mod) return undefined;
       if (wireVersion !== undefined && wireVersion > mod.version) return undefined;
       return mod;
     },
-    list() { return _map; },
+    list() { return new Map(_map); },
   };
 }
 
