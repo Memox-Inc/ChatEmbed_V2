@@ -2,6 +2,8 @@ import type { ChatEmbedConfig, StoredMessage, WelcomeMessageStyle } from '../../
 import { markdownToHtml } from './markdown-renderer';
 import { escapeHtml } from '../../utils/dom';
 import { isSafeImageUrl } from '../../utils/url';
+import { renderComponentsBlock, renderSuggestionPills } from '../../components/core/message-integration';
+import type { WireComponent, RenderCtx } from '../../components/core/types';
 
 export interface BubbleRefs {
   container: HTMLDivElement;
@@ -92,10 +94,17 @@ export function createMessageBubble(
   config: ChatEmbedConfig,
   isLast: boolean,
   welcomeMessageStyle?: WelcomeMessageStyle,
+  options?: {
+    components?: WireComponent[];
+    suggestions?: string[];
+    ctx?: RenderCtx;
+    onSuggestionSelect?: (s: string) => void;
+  },
 ): BubbleRefs {
   const theme = config.theme || {};
   const container = document.createElement('div');
   container.className = `mcx-msg-group${msg.sender === 'user' ? ' mcx-msg-group--user' : ''}`;
+  if (msg.messageId) container.setAttribute('data-message-id', msg.messageId);
 
   const avatar = createAvatar(
     msg.sender === 'ai' ? 'bot' : msg.sender,
@@ -162,6 +171,15 @@ export function createMessageBubble(
   }
 
   bubble.appendChild(msgDiv);
+
+  if (options?.components?.length && options.ctx) {
+    const block = renderComponentsBlock(options.components, options.ctx);
+    if (block) bubble.appendChild(block);
+  }
+  if (options?.suggestions?.length && options.onSuggestionSelect && options.ctx) {
+    const pills = renderSuggestionPills(options.suggestions, options.onSuggestionSelect, options.ctx.theme);
+    if (pills) bubble.appendChild(pills);
+  }
 
   // Timestamp
   if (!msg.isWelcomeMessage && msg.created_at) {
