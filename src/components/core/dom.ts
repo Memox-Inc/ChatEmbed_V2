@@ -11,6 +11,18 @@
 
 type Attrs = Record<string, string>;
 
+/**
+ * Reject inline event-handler attributes (onclick, onerror, ...) so an
+ * attribute name can never turn a string into executable code via
+ * setAttribute. Renderers attach behavior with addEventListener on the
+ * returned element instead.
+ */
+function assertNotEventHandler(name: string): void {
+  if (/^on/i.test(name)) {
+    throw new Error(`Refusing to set event-handler attribute "${name}"; use addEventListener`);
+  }
+}
+
 export function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
   attrs?: Attrs,
@@ -19,6 +31,7 @@ export function el<K extends keyof HTMLElementTagNameMap>(
   const element = document.createElement(tag);
   if (attrs) {
     for (const [k, v] of Object.entries(attrs)) {
+      assertNotEventHandler(k);
       if (k === 'className') {
         element.className = v;
       } else {
@@ -42,6 +55,7 @@ export function svg<K extends keyof SVGElementTagNameMap>(
   const element = document.createElementNS('http://www.w3.org/2000/svg', tag) as SVGElementTagNameMap[K];
   if (attrs) {
     for (const [k, v] of Object.entries(attrs)) {
+      assertNotEventHandler(k);
       element.setAttribute(k, v);
     }
   }

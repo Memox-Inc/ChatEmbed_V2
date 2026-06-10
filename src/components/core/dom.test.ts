@@ -39,6 +39,28 @@ describe('el() builder', () => {
     expect(d.getAttribute('title')).toBe(evil);
     expect(d.querySelector('script')).toBeNull();
   });
+
+  it('throws on onclick attribute (string handlers execute when clicked)', () => {
+    expect(() => el('div', { onclick: 'evil()' })).toThrow(/onclick/);
+  });
+
+  it('throws on onerror attribute', () => {
+    expect(() => el('img', { onerror: 'evil()' })).toThrow(/onerror/);
+  });
+
+  it('throws on ONCLICK attribute (guard is case-insensitive)', () => {
+    expect(() => el('div', { ONCLICK: 'evil()' })).toThrow(/ONCLICK/);
+  });
+
+  it('allows attribute names merely containing "on" elsewhere', () => {
+    const d = el('div', { 'data-once': 'true' });
+    expect(d.getAttribute('data-once')).toBe('true');
+  });
+
+  it('allows attribute values equal to "on"', () => {
+    const d = el('div', { 'aria-label': 'on' });
+    expect(d.getAttribute('aria-label')).toBe('on');
+  });
 });
 
 describe('svg() builder', () => {
@@ -52,6 +74,23 @@ describe('svg() builder', () => {
     const path = svg('path', { d: 'M0 0' });
     const root = svg('svg', {}, [path]);
     expect(root.firstChild).toBe(path);
+  });
+
+  it('throws on onclick attribute (string handlers execute when clicked)', () => {
+    expect(() => svg('svg', { onclick: 'evil()' })).toThrow(/onclick/);
+  });
+
+  it('throws on onerror attribute', () => {
+    expect(() => svg('svg', { onerror: 'evil()' })).toThrow(/onerror/);
+  });
+
+  it('throws on ONCLICK attribute (guard is case-insensitive)', () => {
+    expect(() => svg('svg', { ONCLICK: 'evil()' })).toThrow(/ONCLICK/);
+  });
+
+  it('allows attribute names merely containing "on" elsewhere', () => {
+    const s = svg('svg', { 'data-once': 'true' });
+    expect(s.getAttribute('data-once')).toBe('true');
   });
 });
 
