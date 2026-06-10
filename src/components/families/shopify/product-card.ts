@@ -1,10 +1,10 @@
 /**
  * Shopify product-card renderer (MMX-468, Task 6).
  *
- * Receives either:
- *   - An array of WireComponent (carousel or single) when called from tests / external usage.
- *   - A single ShopifyProductCardData payload (unknown) when called via mod.render(card.data, ctx)
- *     from message-integration.ts.
+ * render(data, ctx) takes ONE raw ShopifyProductCardData payload, exactly as
+ * message-integration.ts calls it (mod.render(card.data, ctx)). Carousel
+ * grouping of consecutive card runs lives ONLY in renderComponentsBlock
+ * (Task 3), which wraps each card in its own data-component-id wrapper.
  *
  * CONTRACT (immutable):
  *   dispatch action_type = "shopify.add_to_cart"
@@ -14,20 +14,26 @@
  * All DOM created via el()/svg()/text() from core/dom.ts. No innerHTML with data.
  */
 
-import type { ComponentModule, RenderCtx, ShopifyProductCardData, WireComponent } from '../../core/types';
+import type { ComponentModule, RenderCtx, ShopifyProductCardData } from '../../core/types';
 import { el, svg, text } from '../../core/dom';
 import { isSafeImageUrl } from '../../../utils/url';
 
 // ---- helpers ----------------------------------------------------------------
 
 function formatMoney(amount: string, currency: string): string {
-  // Keep the raw amount string (e.g. "3500.00" or "3150.00") so tests can
-  // assert `.toContain('3500')` without locale-specific comma formatting.
-  // Strip trailing zeros for display: "3150.00" -> "$3150", "3150.50" -> "$3150.50"
   const num = parseFloat(amount);
   if (isNaN(num)) return `${currency} ${amount}`;
-  const formatted = Number.isInteger(num) ? String(num) : num.toFixed(2);
-  return `$${formatted}`;
+  try {
+    // useGrouping: false keeps digits contiguous ("$3500.00", not "$3,500.00").
+    return new Intl.NumberFormat(undefined, {
+      style: 'currency',
+      currency,
+      useGrouping: false,
+    }).format(num);
+  } catch {
+    // Unknown/invalid currency code (Intl throws RangeError): raw fallback.
+    return `${currency} ${amount}`;
+  }
 }
 
 function isSafeHttpsUrl(url: string | null | undefined): url is string {
@@ -59,7 +65,7 @@ interface CardState {
   qty: number;
 }
 
-function renderCard(data: ShopifyProductCardData, ctx: RenderCtx, wireId?: string): HTMLElement {
+function renderCard(data: ShopifyProductCardData, ctx: RenderCtx): HTMLElement {
   const t = ctx.theme;
   const state: CardState = {
     selectedVariantId: data.selected_variant_id,
@@ -238,12 +244,12 @@ function renderCard(data: ShopifyProductCardData, ctx: RenderCtx, wireId?: strin
     addToCartBtn.textContent = 'Adding...';
     errorDiv.style.display = 'none';
 
-    const messageId = wireId ?? '';
-    const componentId = wireId ?? '';
-
+    // message_id / component_id are filled by the per-component dispatch
+    // wrapper Task 10 builds into RenderCtx (the renderer only receives raw
+    // payload data, never the WireComponent envelope ids).
     ctx.dispatch({
-      message_id: messageId,
-      component_id: componentId,
+      message_id: '',
+      component_id: '',
       action_type: 'shopify.add_to_cart',
       payload: { variant_id: state.selectedVariantId, quantity: state.qty },
     }).then((result) => {
@@ -523,83 +529,32 @@ function applyViewLinkStyles(a: HTMLAnchorElement, t: RenderCtx['theme']): void 
   ].join(';');
 }
 
-// ---- carousel wrapper -------------------------------------------------------
-
-function applyCarouselStyles(el: HTMLElement, _t: RenderCtx['theme']): void {
-  el.style.cssText = [
-    'display:flex',
-    'gap:10px',
-    'overflow-x:auto',
-    'padding:12px',
-    'scrollbar-width:none',
-  ].join(';');
-}
-
 // ---- module export ----------------------------------------------------------
-
-/**
- * Normalize render input: the module accepts either
- *   - An array of WireComponent (test / external usage) or
- *   - A raw ShopifyProductCardData (called as mod.render(card.data, ctx) from message-integration)
- *
- * In both cases it returns an HTMLElement that wraps the rendered card(s).
- */
-function normalizeInput(data: unknown): Array<{ wireId?: string; payload: ShopifyProductCardData }> {
-  if (Array.isArray(data)) {
-    // Array of WireComponent objects (has .data property)
-    const first = data[0] as Record<string, unknown> | undefined;
-    if (first && 'data' in first) {
-      return (data as Array<{ id: string; data: ShopifyProductCardData }>).map((item) => ({
-        wireId: item.id,
-        payload: item.data,
-      }));
-    }
-    // Array of raw ShopifyProductCardData (unlikely but guard it)
-    return (data as ShopifyProductCardData[]).map((d) => ({ payload: d }));
-  }
-  // Single raw data object from message-integration
-  return [{ payload: data as ShopifyProductCardData }];
-}
 
 export const ShopifyProductCardModule: ComponentModule = {
   version: 1,
 
+  /**
+   * data is ONE raw ShopifyProductCardData payload (the WireComponent.data
+   * field). The returned element's root is the card itself; carousel
+   * grouping of multi-card runs is renderComponentsBlock's job.
+   */
   render(data: unknown, ctx: RenderCtx): HTMLElement {
-    const items = normalizeInput(data);
-
-    if (items.length > 1) {
-      // Carousel wrapper for multiple cards
-      const wrapper = el('div', { 'data-part': 'carousel-wrapper' });
-      const carousel = el('div', { 'data-part': 'carousel' });
-      applyCarouselStyles(carousel, ctx.theme);
-      for (const item of items) {
-        carousel.appendChild(renderCard(item.payload, ctx, item.wireId));
-      }
-      wrapper.appendChild(carousel);
-      return wrapper;
-    }
-
-    // Single card — return directly in a wrapper div
-    const item = items[0];
-    const wrapper = el('div', { 'data-part': 'single-card-wrapper' });
-    wrapper.appendChild(renderCard(item.payload, ctx, item.wireId));
-    return wrapper;
+    return renderCard(data as ShopifyProductCardData, ctx);
   },
 
+  /**
+   * Re-run the full render for the card (simplest correct update) and swap
+   * it in place. Requires the RenderCtx stashed on the element as _ctx;
+   * Task 10 sets _ctx during render wiring. Until then this guard makes
+   * update() a safe no-op, which is what keeps early registration of this
+   * module safe while index.ts still passes a null ctx placeholder.
+   */
   update(el: HTMLElement, data: unknown): void {
-    const items = normalizeInput(data);
-    if (!items.length) return;
-
-    // Re-render: replace inner content. This is the simplest correct update.
-    // For multi-card updates (component_update always targets one component),
-    // we re-render the single card matched by message-integration.
     const ctx = (el as HTMLElement & { _ctx?: RenderCtx })._ctx;
-    if (!ctx) {
-      // No stored ctx (first render via message-integration did not set it):
-      // re-render is a no-op. Task 10 will wire ctx at widget init time.
-      return;
-    }
-    const rendered = ShopifyProductCardModule.render(data, ctx);
-    el.replaceChildren(...Array.from(rendered.childNodes));
+    if (!ctx) return;
+    const rendered = renderCard(data as ShopifyProductCardData, ctx);
+    (rendered as HTMLElement & { _ctx?: RenderCtx })._ctx = ctx;
+    el.replaceWith(rendered);
   },
 };

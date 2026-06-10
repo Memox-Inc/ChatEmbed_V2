@@ -1,7 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
 import { renderComponentsBlock, renderSuggestionPills, applyComponentUpdate } from './message-integration';
-import type { WireComponent, RenderCtx, ThemeTokens, ComponentModule } from './types';
+import type { WireComponent, RenderCtx, ThemeTokens, ComponentModule, ShopifyProductCardData } from './types';
 import { createRegistry } from './registry';
+import { ShopifyProductCardModule } from '../families/shopify/product-card';
 
 const theme: ThemeTokens = {
   primary: '#8349ff', primaryLight: '#f0ebff', text: '#072032',
@@ -98,6 +99,33 @@ describe('renderComponentsBlock()', () => {
     wrappers.forEach((w) => {
       expect(w.getAttribute('data-component-type')).toBe('shopify_product_card');
     });
+  });
+
+  it('renders a multi-card run with the real product-card module: one carousel, one title per card', () => {
+    function realProduct(id: string, title: string): WireComponent {
+      const data: ShopifyProductCardData = {
+        product_id: id, handle: id, title,
+        image_url: 'https://cdn.shopify.com/img.jpg',
+        url: 'https://store.example.com/products/x',
+        price: { amount: '100.00', currency: 'USD' },
+        compare_at_price: null,
+        variants: [{ id: 'v1', title: 'Default', available: true, price: { amount: '100.00', currency: 'USD' } }],
+        selected_variant_id: 'v1', available: true, badge: null,
+      };
+      return { id, type: 'shopify_product_card', version: 1, data };
+    }
+    const registry = createRegistry();
+    registry.register('shopify_product_card', ShopifyProductCardModule);
+    const container = renderComponentsBlock(
+      [realProduct('c1', 'First Product'), realProduct('c2', 'Second Product')],
+      makeCtx(),
+      registry,
+    );
+    const carousel = container!.querySelector('[data-carousel="true"]');
+    expect(carousel).not.toBeNull();
+    const titles = Array.from(carousel!.querySelectorAll('[data-part="product-title"]'))
+      .map((t) => t.textContent);
+    expect(titles).toEqual(['First Product', 'Second Product']);
   });
 
   it('does not merge non-consecutive product cards into one carousel', () => {

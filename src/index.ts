@@ -468,11 +468,14 @@ async function init(): Promise<void> {
     if ((data as Record<string, unknown>).message_type === 'component_update') {
       const upd = data as { message_type: string; message_id: string; component_id: string; data: unknown };
       // TODO(Task 10): replace the null cast with the real renderCtx once it is
-      // constructed at widget init time. The cast is intentional and safe here
-      // because no renderer is registered yet — applyComponentUpdate will
-      // no-op on a registry miss before ctx is ever read.
-      // UNSAFE if any component is registered into the default registry before
-      // Task 10 wires renderCtx; do not register components until then.
+      // constructed at widget init time. Components ARE registered now (see
+      // src/components/register.ts); this stays safe because every registered
+      // module defines update() with a missing-_ctx guard, so the null ctx is
+      // never read (applyComponentUpdate only falls back to mod.render(data,
+      // ctx) when a module has NO update method). Constraint for new modules
+      // until Task 10 lands: define update() and no-op when el._ctx is unset.
+      // Task 10 must set _ctx during render wiring and swap this cast for the
+      // real ctx.
       if (!upd.data || typeof upd.data !== 'object') return;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       applyComponentUpdate(messagesEl, upd.message_id, upd.component_id, upd.data, null as any);
