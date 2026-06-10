@@ -34,6 +34,7 @@ import { getOrCreateDistinctId } from './utils/distinct-id';
 import { fetchInitConfig, normalizeServerConfig } from './connection/init';
 import { applyTheme } from './ui/theme-vars';
 import { startEmbedConfigListener } from './connection/embed-config-listener';
+import { applyComponentUpdate } from './components/core/message-integration';
 
 declare global {
   interface Window {
@@ -459,6 +460,20 @@ async function init(): Promise<void> {
   function handleWsMessage(data: WsMessageData): void {
     // Only process messages for our room (or broadcasts)
     if (data.room_name && data.room_name !== chatID) return;
+
+    // component_update: patch a rendered component in-place.
+    // Contract: discriminate on message_type (the AppConsumer client-side discriminator);
+    // the channels routing key `type` is NOT sent to clients.
+    if ((data as Record<string, unknown>).message_type === 'component_update') {
+      const upd = data as { message_type: string; message_id: string; component_id: string; data: unknown };
+      // TODO(Task 10): replace the null cast with the real renderCtx once it is
+      // constructed at widget init time. The cast is intentional and safe here
+      // because no renderer is registered yet — applyComponentUpdate will
+      // no-op on a registry miss before ctx is ever read.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      applyComponentUpdate(messagesEl, upd.message_id, upd.component_id, upd.data, null as any);
+      return;
+    }
 
     // Error message
     if (data.message_type === 'error_message') {
