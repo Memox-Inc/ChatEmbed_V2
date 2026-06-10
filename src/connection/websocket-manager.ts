@@ -23,11 +23,6 @@ export interface WsMessageData {
   // Rich components (MMX-468)
   components?: Array<{ id: string; type: string; version: number; data: unknown }>;
   suggestions?: string[];
-  // component_update event discriminator
-  type?: string;
-  component_update_message_id?: string;
-  component_update_component_id?: string;
-  component_update_data?: unknown;
 }
 
 export class WebSocketManager {
