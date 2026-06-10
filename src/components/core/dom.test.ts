@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { el, svg, text } from './dom';
+import { el, svg, text, append } from './dom';
 
 describe('el() builder', () => {
   it('creates an element with the given tag', () => {
@@ -61,6 +61,25 @@ describe('el() builder', () => {
     const d = el('div', { 'aria-label': 'on' });
     expect(d.getAttribute('aria-label')).toBe('on');
   });
+
+  it('allows the bare attribute name "on" (not an event handler prefix)', () => {
+    // "on" alone does not match /^on.+/i — it has no char after "on".
+    const d = el('div', { on: 'x' });
+    expect(d.getAttribute('on')).toBe('x');
+  });
+
+  it('renders mixed children: raw strings interleaved with elements', () => {
+    const span = el('span');
+    const parent = el('div', {}, ['raw string', span]);
+    expect(parent.childNodes[0].textContent).toBe('raw string');
+    expect(parent.childNodes[1]).toBe(span);
+  });
+
+  it('supports nested composition: el wrapping el wrapping text()', () => {
+    const bold = el('strong', {}, [text('bold')]);
+    const para = el('p', {}, [bold]);
+    expect(para.querySelector('strong')?.textContent).toBe('bold');
+  });
 });
 
 describe('svg() builder', () => {
@@ -99,5 +118,16 @@ describe('text() helper', () => {
     const t = text('hello');
     expect(t.nodeType).toBe(Node.TEXT_NODE);
     expect(t.textContent).toBe('hello');
+  });
+});
+
+describe('append() helper', () => {
+  it('appends mixed Node and raw-string children without parsing HTML', () => {
+    const parent = el('div');
+    const span = el('span');
+    append(parent, 'raw <b>text</b>', span);
+    // Raw string becomes a text node (not parsed as markup).
+    expect(parent.childNodes[0].textContent).toBe('raw <b>text</b>');
+    expect(parent.childNodes[1]).toBe(span);
   });
 });

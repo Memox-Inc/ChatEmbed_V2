@@ -18,7 +18,7 @@ type Attrs = Record<string, string>;
  * returned element instead.
  */
 function assertNotEventHandler(name: string): void {
-  if (/^on/i.test(name)) {
+  if (/^on.+/i.test(name)) {
     throw new Error(`Refusing to set event-handler attribute "${name}"; use addEventListener`);
   }
 }
@@ -69,7 +69,11 @@ export function text(content: string): Text {
   return document.createTextNode(content);
 }
 
-/** Append children to an existing element. */
+/**
+ * Append children to an existing element.
+ * Prefer this over native `Element.append` when children may be raw strings that
+ * must be turned into safe text nodes rather than parsed as HTML fragments.
+ */
 export function append(parent: Element, ...children: Array<Node | string>): void {
   for (const child of children) {
     parent.appendChild(typeof child === 'string' ? document.createTextNode(child) : child);
