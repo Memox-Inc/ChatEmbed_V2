@@ -1,15 +1,40 @@
 import type { WireComponent, RenderCtx, ThemeTokens } from './types';
-import { componentRegistry } from './registry';
+import { componentRegistry, type ComponentRegistry } from './registry';
 import { el, text } from './dom';
+
+/**
+ * Escape a value for use inside a double-quoted CSS attribute selector.
+ * Equivalent safety to CSS.escape for this use (quote + backslash are the
+ * only characters that can break out of a quoted attribute string), but
+ * works in jsdom, which does not expose the CSS global.
+ */
+function cssAttrEscape(value: string): string {
+  return value.replace(/[\\"]/g, '\\$&');
+}
+
+function wrapComponent(comp: WireComponent, renderedEl: HTMLElement): HTMLDivElement {
+  const wrapper = el('div', {
+    className: 'mcx-component-wrapper',
+    'data-component-type': comp.type,
+    'data-component-id': comp.id,
+  });
+  wrapper.appendChild(renderedEl);
+  return wrapper;
+}
 
 /**
  * Render all components from a message into a wrapper div.
  * Returns null if no components are renderable.
- * Consecutive shopify_product_card runs are grouped for carousel rendering.
+ * Consecutive shopify_product_card runs (2+) are grouped under a carousel
+ * layout container. The carousel container carries NO component id; each
+ * card keeps its OWN wrapper stamped with its individual data-component-id
+ * so applyComponentUpdate addresses grouped and ungrouped components
+ * uniformly.
  */
 export function renderComponentsBlock(
   components: WireComponent[],
   ctx: RenderCtx,
+  registry: ComponentRegistry = componentRegistry,
 ): HTMLDivElement | null {
   if (!components.length) return null;
   const container = el('div', { className: 'mcx-components-block' });
@@ -24,30 +49,26 @@ export function renderComponentsBlock(
       while (i < components.length && components[i].type === 'shopify_product_card') {
         run.push(components[i++]);
       }
-      const mod = componentRegistry.lookup('shopify_product_card', run[0].version)
-               ?? componentRegistry.lookup('shopify_product_card_carousel');
-      if (mod) {
-        const wrapper = el('div', {
-          className: 'mcx-component-wrapper',
-          'data-component-type': 'shopify_product_card',
-          'data-component-id': run.map((c) => c.id).join(','),
-        });
-        wrapper.appendChild(mod.render(run, ctx));
-        container.appendChild(wrapper);
-        rendered++;
+      const host = run.length > 1
+        ? el('div', { className: 'mcx-components-carousel', 'data-carousel': 'true' })
+        : container;
+      let renderedInRun = 0;
+      for (const card of run) {
+        const mod = registry.lookup(card.type, card.version);
+        if (!mod) continue;
+        host.appendChild(wrapComponent(card, mod.render(card.data, ctx)));
+        renderedInRun++;
+      }
+      if (renderedInRun > 0) {
+        if (host !== container) container.appendChild(host);
+        rendered += renderedInRun;
       }
       continue;
     }
 
-    const mod = componentRegistry.lookup(comp.type, comp.version);
+    const mod = registry.lookup(comp.type, comp.version);
     if (mod) {
-      const wrapper = el('div', {
-        className: 'mcx-component-wrapper',
-        'data-component-type': comp.type,
-        'data-component-id': comp.id,
-      });
-      wrapper.appendChild(mod.render(comp.data, ctx));
-      container.appendChild(wrapper);
+      container.appendChild(wrapComponent(comp, mod.render(comp.data, ctx)));
       rendered++;
     }
     i++;
@@ -86,14 +107,19 @@ export function applyComponentUpdate(
   componentId: string,
   data: unknown,
   ctx: RenderCtx,
+  registry: ComponentRegistry = componentRegistry,
 ): void {
-  const msgWrapper = messagesEl.querySelector(`[data-message-id="${CSS.escape(messageId)}"]`);
+  // No wire-version re-check here by design: updates only target instances
+  // that were version-supported at render time (unsupported versions were
+  // never rendered, so the selector no-ops), and the hub does not bump
+  // schema versions for live instances.
+  const msgWrapper = messagesEl.querySelector(`[data-message-id="${cssAttrEscape(messageId)}"]`);
   if (!msgWrapper) return;
-  const wrapper = msgWrapper.querySelector(`[data-component-id="${CSS.escape(componentId)}"]`);
+  const wrapper = msgWrapper.querySelector(`[data-component-id="${cssAttrEscape(componentId)}"]`);
   if (!wrapper) return;
   const type = wrapper.getAttribute('data-component-type');
   if (!type) return;
-  const mod = componentRegistry.lookup(type);
+  const mod = registry.lookup(type);
   if (!mod) return;
   if (mod.update) {
     const inner = wrapper.firstElementChild as HTMLElement | null;
