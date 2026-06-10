@@ -30,7 +30,7 @@ function loadSchema(name: string): object {
 }
 
 // ---------------------------------------------------------------------------
-// Canonical fixtures — represent real payloads the hub will send.
+// Canonical fixtures - represent real payloads the hub will send.
 // ---------------------------------------------------------------------------
 
 const productCardFixture = {

@@ -19,7 +19,7 @@ function makeCtx(): RenderCtx {
   };
 }
 
-describe('applyComponentUpdate() — direct registry (component-update.test)', () => {
+describe('applyComponentUpdate() - direct registry (component-update.test)', () => {
   it('does nothing when component wrapper is absent', () => {
     const container = document.createElement('div');
     expect(() => applyComponentUpdate(container, 'msg_1', 'cmp_missing', {}, makeCtx())).not.toThrow();
