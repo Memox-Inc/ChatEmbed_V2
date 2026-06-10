@@ -470,6 +470,9 @@ async function init(): Promise<void> {
       // constructed at widget init time. The cast is intentional and safe here
       // because no renderer is registered yet — applyComponentUpdate will
       // no-op on a registry miss before ctx is ever read.
+      // UNSAFE if any component is registered into the default registry before
+      // Task 10 wires renderCtx; do not register components until then.
+      if (!upd.data || typeof upd.data !== 'object') return;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       applyComponentUpdate(messagesEl, upd.message_id, upd.component_id, upd.data, null as any);
       return;
