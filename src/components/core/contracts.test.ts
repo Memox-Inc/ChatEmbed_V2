@@ -8,32 +8,49 @@
  * The hub's Task 10 (JSON Schema export) has not run yet; schemas are authored
  * by hand from the canonical contract shapes in the plan. When Task 10 ships,
  * its CI gate replaces these vendored files, and any drift fails this suite.
+ *
+ * Adding a sixth component type = drop its .v1.schema.json into
+ * test/fixtures/contracts/ and append one entry to CONTRACT_TABLE below.
  */
 import { describe, it, expect } from 'vitest';
-import Ajv from 'ajv';
+import Ajv, { type ValidateFunction } from 'ajv';
+import draft7 from 'ajv/dist/refs/json-schema-draft-07.json';
 import { readFileSync } from 'fs';
-import { resolve } from 'path';
+import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { dirname } from 'path';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const ajv = new Ajv();
+// Deliberate Ajv posture: strict mode ON (all vendored schemas compile clean
+// under it; an unknown keyword is a compile-time error, asserted below). The
+// default Ajv v8 instance silently pre-registers the draft-07 meta-schema; we
+// instead disable bundled metas (meta: false) and register draft-07 explicitly
+// so the dialect each schema file declares via $schema is the one actually
+// enforced. A schema declaring any other dialect fails compilation (asserted
+// below).
+const ajv = new Ajv({ strict: true, meta: false });
+ajv.addMetaSchema(draft7);
 
-function loadSchema(name: string): object {
+function loadSchema(name: string): Record<string, unknown> {
   const schemaPath = resolve(
     __dirname,
     `../../../test/fixtures/contracts/${name}.v1.schema.json`,
   );
-  return JSON.parse(readFileSync(schemaPath, 'utf-8')) as object;
+  return JSON.parse(readFileSync(schemaPath, 'utf-8')) as Record<string, unknown>;
+}
+
+function omit(obj: Record<string, unknown>, key: string): Record<string, unknown> {
+  const copy = { ...obj };
+  delete copy[key];
+  return copy;
 }
 
 // ---------------------------------------------------------------------------
 // Canonical fixtures - represent real payloads the hub will send.
 // ---------------------------------------------------------------------------
 
-const productCardFixture = {
+const productCardFixture: Record<string, unknown> = {
   product_id: 'prod_1',
   handle: '20ft-standard',
   title: '20ft Standard Shipping Container',
@@ -50,26 +67,26 @@ const productCardFixture = {
   badge: 'In Stock',
 };
 
-const cartFixture = {
+const cartLineFixture: Record<string, unknown> = {
+  line_id: 'line_1',
+  variant_id: 'v1',
+  title: '20ft Standard',
+  variant_title: 'New',
+  image_url: 'https://cdn.shopify.com/img.jpg',
+  quantity: 1,
+  line_total: { amount: '3150.00', currency: 'USD' },
+};
+
+const cartFixture: Record<string, unknown> = {
   cart_id: 'cart_abc',
-  lines: [
-    {
-      line_id: 'line_1',
-      variant_id: 'v1',
-      title: '20ft Standard',
-      variant_title: 'New',
-      image_url: 'https://cdn.shopify.com/img.jpg',
-      quantity: 1,
-      line_total: { amount: '3150.00', currency: 'USD' },
-    },
-  ],
+  lines: [cartLineFixture],
   subtotal: { amount: '3150.00', currency: 'USD' },
   total_quantity: 1,
   discount_codes: [{ code: 'SAVE10', applicable: true }],
   checkout_url: 'https://store.example.com/cart/checkout?token=xyz',
 };
 
-const calendarSlotsFixture = {
+const calendarSlotsFixture: Record<string, unknown> = {
   duration_minutes: 30,
   timezone: 'America/New_York',
   days: [
@@ -84,7 +101,7 @@ const calendarSlotsFixture = {
   notice: null,
 };
 
-const bookingConfirmedFixture = {
+const bookingConfirmedFixture: Record<string, unknown> = {
   start_iso: '2026-06-11T14:00:00Z',
   end_iso: '2026-06-11T14:30:00Z',
   timezone: 'America/New_York',
@@ -94,7 +111,7 @@ const bookingConfirmedFixture = {
   ics_url: 'https://hub.memox.io/api/v1/calendar/booking/123/ics/',
 };
 
-const webCallIdleFixture = {
+const webCallIdleFixture: Record<string, unknown> = {
   state: 'idle',
   agent_name: 'ContainerOne Assistant',
   max_duration_seconds: 600,
@@ -103,114 +120,177 @@ const webCallIdleFixture = {
   error: null,
 };
 
+const webCallLiveFixture: Record<string, unknown> = {
+  state: 'live',
+  agent_name: 'ContainerOne Assistant',
+  max_duration_seconds: 600,
+  started_at: '2026-06-11T14:02:00Z',
+  duration_seconds: 42,
+  error: null,
+};
+
+// ---------------------------------------------------------------------------
+// Data-driven contract table. One entry per component type.
+// ---------------------------------------------------------------------------
+
+interface FixtureCase {
+  label: string;
+  fixture: Record<string, unknown>;
+}
+
+interface InvalidCase extends FixtureCase {
+  reason: string;
+}
+
+interface ContractEntry {
+  name: string;
+  validFixtures: FixtureCase[];
+  invalidCases: InvalidCase[];
+}
+
+const CONTRACT_TABLE: ContractEntry[] = [
+  {
+    name: 'shopify_product_card',
+    validFixtures: [
+      { label: 'canonical fixture', fixture: productCardFixture },
+      { label: 'null compare_at_price', fixture: { ...productCardFixture, compare_at_price: null } },
+      { label: 'null badge', fixture: { ...productCardFixture, badge: null } },
+    ],
+    invalidCases: [
+      {
+        label: 'missing title',
+        fixture: omit(productCardFixture, 'title'),
+        reason: 'title is required',
+      },
+      {
+        label: 'non-string price.amount',
+        fixture: { ...productCardFixture, price: { amount: 3150, currency: 'USD' } },
+        reason: 'MoneyV2.amount must be a string',
+      },
+    ],
+  },
+  {
+    name: 'shopify_cart',
+    validFixtures: [
+      { label: 'canonical fixture', fixture: cartFixture },
+    ],
+    invalidCases: [
+      {
+        label: 'missing cart_id',
+        fixture: omit(cartFixture, 'cart_id'),
+        reason: 'cart_id is required',
+      },
+      {
+        label: 'line quantity below minimum',
+        fixture: { ...cartFixture, lines: [{ ...cartLineFixture, quantity: 0 }] },
+        reason: 'quantity has minimum 1',
+      },
+    ],
+  },
+  {
+    name: 'calendar_slots',
+    validFixtures: [
+      { label: 'canonical fixture (null notice)', fixture: calendarSlotsFixture },
+      { label: 'non-null notice', fixture: { ...calendarSlotsFixture, notice: 'Book at least 24h in advance.' } },
+    ],
+    invalidCases: [
+      {
+        label: 'missing requires_contact',
+        fixture: omit(calendarSlotsFixture, 'requires_contact'),
+        reason: 'requires_contact is required',
+      },
+    ],
+  },
+  {
+    name: 'calendar_booking_confirmed',
+    validFixtures: [
+      { label: 'canonical fixture', fixture: bookingConfirmedFixture },
+    ],
+    invalidCases: [
+      {
+        label: 'missing ics_url',
+        fixture: omit(bookingConfirmedFixture, 'ics_url'),
+        reason: 'ics_url is required',
+      },
+    ],
+  },
+  {
+    name: 'web_call',
+    validFixtures: [
+      { label: 'idle fixture', fixture: webCallIdleFixture },
+      { label: 'live fixture (started_at + duration_seconds set)', fixture: webCallLiveFixture },
+    ],
+    invalidCases: [
+      {
+        label: 'invalid state enum',
+        fixture: { ...webCallIdleFixture, state: 'ringing' },
+        reason: 'state must be one of idle|connecting|live|ended|error',
+      },
+      {
+        label: 'missing agent_name',
+        fixture: omit(webCallIdleFixture, 'agent_name'),
+        reason: 'agent_name is required',
+      },
+    ],
+  },
+];
+
+// Compile each schema exactly once, at module scope.
+const schemas = new Map<string, Record<string, unknown>>(
+  CONTRACT_TABLE.map(({ name }) => [name, loadSchema(name)]),
+);
+const validators = new Map<string, ValidateFunction>(
+  CONTRACT_TABLE.map(({ name }) => [name, ajv.compile(schemas.get(name)!)]),
+);
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
 describe('Contract fixture validation (ajv)', () => {
-  // shopify_product_card
-  it('shopify_product_card fixture is valid', () => {
-    const validate = ajv.compile(loadSchema('shopify_product_card'));
-    expect(validate(productCardFixture)).toBe(true);
-  });
+  for (const { name, validFixtures, invalidCases } of CONTRACT_TABLE) {
+    describe(name, () => {
+      const validate = validators.get(name)!;
 
-  it('shopify_product_card with null compare_at_price is valid', () => {
-    const validate = ajv.compile(loadSchema('shopify_product_card'));
-    expect(validate({ ...productCardFixture, compare_at_price: null })).toBe(true);
-  });
+      it.each(validFixtures)('$label is valid', ({ fixture }) => {
+        const ok = validate(fixture);
+        if (!ok) {
+          // Surface ajv's error detail on failure for fast diagnosis.
+          expect.fail(`expected valid, got: ${JSON.stringify(validate.errors)}`);
+        }
+        expect(ok).toBe(true);
+      });
 
-  it('shopify_product_card with null badge is valid', () => {
-    const validate = ajv.compile(loadSchema('shopify_product_card'));
-    expect(validate({ ...productCardFixture, badge: null })).toBe(true);
-  });
+      it.each(invalidCases)('rejects $label ($reason)', ({ fixture }) => {
+        expect(validate(fixture)).toBe(false);
+      });
+    });
+  }
 
-  it('shopify_product_card rejects missing title', () => {
-    const validate = ajv.compile(loadSchema('shopify_product_card'));
-    const { title: _omitted, ...bad } = productCardFixture;
-    expect(validate(bad)).toBe(false);
-  });
+  describe('ajv posture (draft-07 + strict)', () => {
+    it('every vendored schema declares the draft-07 dialect and validates against it', () => {
+      for (const { name } of CONTRACT_TABLE) {
+        const schema = schemas.get(name)!;
+        expect(schema.$schema, name).toBe('http://json-schema.org/draft-07/schema#');
+        expect(ajv.validateSchema(schema), name).toBe(true);
+      }
+    });
 
-  it('shopify_product_card rejects non-string price.amount', () => {
-    const validate = ajv.compile(loadSchema('shopify_product_card'));
-    expect(validate({ ...productCardFixture, price: { amount: 3150, currency: 'USD' } })).toBe(false);
-  });
+    it('strict mode rejects a schema with an unknown keyword at compile time', () => {
+      // Fresh instance so the bad schema never touches the shared cache.
+      const strictAjv = new Ajv({ strict: true, meta: false });
+      strictAjv.addMetaSchema(draft7);
+      expect(() => strictAjv.compile({ type: 'object', unknownKeyword: true }))
+        .toThrowError(/unknown keyword/);
+    });
 
-  // shopify_cart
-  it('shopify_cart fixture is valid', () => {
-    const validate = ajv.compile(loadSchema('shopify_cart'));
-    expect(validate(cartFixture)).toBe(true);
-  });
-
-  it('shopify_cart rejects missing cart_id', () => {
-    const validate = ajv.compile(loadSchema('shopify_cart'));
-    const { cart_id: _omitted, ...bad } = cartFixture;
-    expect(validate(bad)).toBe(false);
-  });
-
-  it('shopify_cart rejects line quantity below minimum', () => {
-    const validate = ajv.compile(loadSchema('shopify_cart'));
-    const bad = {
-      ...cartFixture,
-      lines: [{ ...cartFixture.lines[0], quantity: 0 }],
-    };
-    expect(validate(bad)).toBe(false);
-  });
-
-  // calendar_slots
-  it('calendar_slots fixture is valid', () => {
-    const validate = ajv.compile(loadSchema('calendar_slots'));
-    expect(validate(calendarSlotsFixture)).toBe(true);
-  });
-
-  it('calendar_slots with non-null notice is valid', () => {
-    const validate = ajv.compile(loadSchema('calendar_slots'));
-    expect(validate({ ...calendarSlotsFixture, notice: 'Book at least 24h in advance.' })).toBe(true);
-  });
-
-  it('calendar_slots rejects missing requires_contact', () => {
-    const validate = ajv.compile(loadSchema('calendar_slots'));
-    const { requires_contact: _omitted, ...bad } = calendarSlotsFixture;
-    expect(validate(bad)).toBe(false);
-  });
-
-  // calendar_booking_confirmed
-  it('calendar_booking_confirmed fixture is valid', () => {
-    const validate = ajv.compile(loadSchema('calendar_booking_confirmed'));
-    expect(validate(bookingConfirmedFixture)).toBe(true);
-  });
-
-  it('calendar_booking_confirmed rejects missing ics_url', () => {
-    const validate = ajv.compile(loadSchema('calendar_booking_confirmed'));
-    const { ics_url: _omitted, ...bad } = bookingConfirmedFixture;
-    expect(validate(bad)).toBe(false);
-  });
-
-  // web_call
-  it('web_call idle fixture is valid', () => {
-    const validate = ajv.compile(loadSchema('web_call'));
-    expect(validate(webCallIdleFixture)).toBe(true);
-  });
-
-  it('web_call live fixture (started_at + duration_seconds set) is valid', () => {
-    const validate = ajv.compile(loadSchema('web_call'));
-    expect(validate({
-      state: 'live',
-      agent_name: 'ContainerOne Assistant',
-      max_duration_seconds: 600,
-      started_at: '2026-06-11T14:02:00Z',
-      duration_seconds: 42,
-      error: null,
-    })).toBe(true);
-  });
-
-  it('web_call rejects invalid state enum', () => {
-    const validate = ajv.compile(loadSchema('web_call'));
-    expect(validate({ ...webCallIdleFixture, state: 'ringing' })).toBe(false);
-  });
-
-  it('web_call rejects missing agent_name', () => {
-    const validate = ajv.compile(loadSchema('web_call'));
-    const { agent_name: _omitted, ...bad } = webCallIdleFixture;
-    expect(validate(bad)).toBe(false);
+    it('a schema declaring a non-draft-07 dialect fails compilation', () => {
+      const strictAjv = new Ajv({ strict: true, meta: false });
+      strictAjv.addMetaSchema(draft7);
+      expect(() => strictAjv.compile({
+        $schema: 'https://json-schema.org/draft/2020-12/schema',
+        type: 'object',
+      })).toThrowError(/no schema with key or ref/);
+    });
   });
 });

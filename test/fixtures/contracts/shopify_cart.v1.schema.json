@@ -40,6 +40,7 @@
   },
   "$defs": {
     "money": {
+      "$comment": "Duplicated across vendored schema files intentionally: no cross-file $ref so each file stays self-contained until the hub Task 10 export replaces them.",
       "type": "object",
       "required": ["amount", "currency"],
       "additionalProperties": false,
