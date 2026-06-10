@@ -7,9 +7,12 @@ import { el, text } from './dom';
  * Equivalent safety to CSS.escape for this use (quote + backslash are the
  * only characters that can break out of a quoted attribute string), but
  * works in jsdom, which does not expose the CSS global.
+ * Control characters (U+0000..U+001F) are stripped because they make
+ * querySelector throw a SyntaxError in Chrome/jsdom even inside quotes.
  */
 function cssAttrEscape(value: string): string {
-  return value.replace(/[\\"]/g, '\\$&');
+  // eslint-disable-next-line no-control-regex
+  return value.replace(/[\x00-\x1f]/g, '').replace(/[\\"]/g, '\\$&');
 }
 
 function wrapComponent(comp: WireComponent, renderedEl: HTMLElement): HTMLDivElement {
@@ -113,9 +116,16 @@ export function applyComponentUpdate(
   // that were version-supported at render time (unsupported versions were
   // never rendered, so the selector no-ops), and the hub does not bump
   // schema versions for live instances.
-  const msgWrapper = messagesEl.querySelector(`[data-message-id="${cssAttrEscape(messageId)}"]`);
-  if (!msgWrapper) return;
-  const wrapper = msgWrapper.querySelector(`[data-component-id="${cssAttrEscape(componentId)}"]`);
+  let msgWrapper: Element | null;
+  let wrapper: Element | null;
+  try {
+    msgWrapper = messagesEl.querySelector(`[data-message-id="${cssAttrEscape(messageId)}"]`);
+    if (!msgWrapper) return;
+    wrapper = msgWrapper.querySelector(`[data-component-id="${cssAttrEscape(componentId)}"]`);
+  } catch {
+    // Hostile id that still produces an invalid selector after escaping — no-op.
+    return;
+  }
   if (!wrapper) return;
   const type = wrapper.getAttribute('data-component-type');
   if (!type) return;

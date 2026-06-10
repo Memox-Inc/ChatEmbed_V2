@@ -185,6 +185,30 @@ describe('applyComponentUpdate()', () => {
       applyComponentUpdate(messagesEl, 'msg_1', 'missing_id', {}, ctx, registry);
     }).not.toThrow();
   });
+
+  it('is a graceful no-op when component id contains a newline (hostile id)', () => {
+    const registry = createRegistry();
+    registry.register('shopify_product_card', makeModule());
+    const ctx = makeCtx();
+    const messagesEl = renderIntoMessage([productCard('c1')], ctx, registry);
+
+    // A raw newline in a CSS attribute selector throws SyntaxError in real browsers;
+    // applyComponentUpdate must absorb it silently rather than propagating.
+    expect(() => {
+      applyComponentUpdate(messagesEl, 'msg_1', 'cmp\nmalicious', {}, ctx, registry);
+    }).not.toThrow();
+  });
+
+  it('is a graceful no-op when message id contains a control character', () => {
+    const registry = createRegistry();
+    registry.register('shopify_product_card', makeModule());
+    const ctx = makeCtx();
+    const messagesEl = renderIntoMessage([productCard('c1')], ctx, registry);
+
+    expect(() => {
+      applyComponentUpdate(messagesEl, 'msg\x01bad', 'c1', {}, ctx, registry);
+    }).not.toThrow();
+  });
 });
 
 describe('renderSuggestionPills()', () => {
