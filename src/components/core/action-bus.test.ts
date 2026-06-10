@@ -101,4 +101,40 @@ describe('ActionBus.dispatch()', () => {
     await dispatchPromise;
     expect(bus.isPending()).toBe(false);
   });
+
+  it('remains pending while two concurrent dispatches are in flight and clears only when both settle', async () => {
+    let resolveA!: (v: unknown) => void;
+    let resolveB!: (v: unknown) => void;
+    const deferredA = new Promise((r) => { resolveA = r; });
+    const deferredB = new Promise((r) => { resolveB = r; });
+    fetchFn
+      .mockReturnValueOnce(deferredA.then(() => ({ ok: true, json: async () => okResult })))
+      .mockReturnValueOnce(deferredB.then(() => ({ ok: true, json: async () => okResult })));
+
+    const promiseA = bus.dispatch(makeAction());
+    const promiseB = bus.dispatch(makeAction());
+    expect(bus.isPending()).toBe(true);
+
+    // Settle A first — B still in flight, so still pending
+    resolveA(undefined);
+    await promiseA;
+    expect(bus.isPending()).toBe(true);
+
+    // Settle B — both done, no longer pending
+    resolveB(undefined);
+    await promiseB;
+    expect(bus.isPending()).toBe(false);
+  });
+
+  it('returns a recoverable network error when a 2xx response json() throws', async () => {
+    fetchFn.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => { throw new Error('parse error'); },
+    });
+    const result = await bus.dispatch(makeAction());
+    expect(result.ok).toBe(false);
+    expect(result.error?.code).toBe('NETWORK_ERROR');
+    expect(result.error?.recoverable).toBe(true);
+  });
 });

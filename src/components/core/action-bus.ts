@@ -34,14 +34,20 @@ function isServerErrorEnvelope(body: unknown): body is ActionResult {
 
 export function createActionBus(opts: ActionBusOptions): ActionBus {
   const _fetch = opts.fetch ?? globalThis.fetch.bind(globalThis);
-  let _pending = false;
+  let _inFlight = 0;
   const url = `${opts.baseUrl.replace(/\/$/, '')}/embed/components/action/`;
 
   return {
-    isPending() { return _pending; },
+    /**
+     * Returns true when one or more dispatches are currently in flight on this
+     * bus instance. A fast-settling request cannot clear the flag while another
+     * concurrent dispatch is still pending because the counter is incremented
+     * before the fetch and decremented only in the finally block.
+     */
+    isPending() { return _inFlight > 0; },
 
     async dispatch(action: Action): Promise<ActionResult> {
-      _pending = true;
+      _inFlight++;
       try {
         let resp: Response;
         try {
@@ -72,7 +78,7 @@ export function createActionBus(opts: ActionBusOptions): ActionBus {
           return networkErrorResult(true);
         }
       } finally {
-        _pending = false;
+        _inFlight--;
       }
     },
   };
