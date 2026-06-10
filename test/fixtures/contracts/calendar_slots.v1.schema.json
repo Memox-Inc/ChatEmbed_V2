@@ -1,0 +1,35 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["duration_minutes", "timezone", "days", "requires_contact"],
+  "additionalProperties": true,
+  "properties": {
+    "duration_minutes": { "type": "integer" },
+    "timezone": { "type": "string" },
+    "days": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["date", "slots"],
+        "additionalProperties": true,
+        "properties": {
+          "date": { "type": "string" },
+          "slots": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["start_iso", "end_iso"],
+              "additionalProperties": true,
+              "properties": {
+                "start_iso": { "type": "string" },
+                "end_iso": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "requires_contact": { "type": "boolean" },
+    "notice": { "oneOf": [{ "type": "string" }, { "type": "null" }] }
+  }
+}
