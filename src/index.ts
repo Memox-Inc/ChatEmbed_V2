@@ -35,6 +35,7 @@ import { fetchInitConfig, normalizeServerConfig } from './connection/init';
 import { applyTheme } from './ui/theme-vars';
 import { startEmbedConfigListener } from './connection/embed-config-listener';
 import { applyComponentUpdate } from './components/core/message-integration';
+import './components/register';
 
 declare global {
   interface Window {
