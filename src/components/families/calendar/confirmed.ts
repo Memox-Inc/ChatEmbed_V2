@@ -233,16 +233,10 @@ export const CalendarBookingConfirmedModule: ComponentModule = {
     return renderConfirmed(data as CalendarBookingConfirmedData, ctx);
   },
 
-  /**
-   * DEAD UNTIL TASK 10: component_update events are currently a NO-OP for
-   * this component. Nothing sets _ctx on the rendered element yet, so the
-   * guard below always returns early. And because this module DEFINES
-   * update(), applyComponentUpdate's re-render fallback never fires either.
-   * Task 10 must set _ctx during render wiring to bring live updates to
-   * life. Grep for "DEAD UNTIL TASK 10" to find every module with this
-   * constraint.
-   */
   update(el: HTMLElement, data: unknown): void {
+    // _ctx is stamped by renderComponentsBlock (message-integration.ts) at
+    // render time. Missing _ctx means the element was not rendered through
+    // the standard pipeline -- no-op.
     const ctx = (el as HTMLElement & { _ctx?: RenderCtx })._ctx;
     if (!ctx) return;
     const rendered = renderConfirmed(data as CalendarBookingConfirmedData, ctx);

@@ -221,9 +221,10 @@ function renderSlots(data: CalendarSlotsData, ctx: RenderCtx): HTMLElement {
           action_type: 'calendar.book',
           payload: { start_iso: slot.start_iso, end_iso: slot.end_iso },
         }).then((result) => {
-          // TODO(Task 10): consume result.components: a slot-conflict
-          // response carries fresh slots that should re-render this component;
-          // nothing handles them yet (known deferral, they are dropped here).
+          // result.components is handled by the dispatch wrapper in index.ts:
+          // it applies each updated component to the live DOM via
+          // applyComponentUpdate, so slot-conflict fresh slots re-render
+          // this component automatically without extra code here.
           if (result.ok) {
             bookBtn.textContent = 'Booked!';
           } else {
@@ -296,8 +297,7 @@ function renderSlots(data: CalendarSlotsData, ctx: RenderCtx): HTMLElement {
           action_type: 'calendar.book',
           payload: { start_iso: slot.start_iso, end_iso: slot.end_iso, name, email },
         }).then((result) => {
-          // TODO(Task 10): consume result.components: see the no-contact
-          // book path above; slot-conflict re-render payloads are dropped.
+          // result.components handled by the dispatch wrapper in index.ts.
           if (result.ok) {
             bookBtn.textContent = 'Booked!';
           } else {
@@ -502,16 +502,10 @@ export const CalendarSlotsModule: ComponentModule = {
     return renderSlots(data as CalendarSlotsData, ctx);
   },
 
-  /**
-   * DEAD UNTIL TASK 10: component_update events are currently a NO-OP for
-   * this component. Nothing sets _ctx on the rendered element yet, so the
-   * guard below always returns early. And because this module DEFINES
-   * update(), applyComponentUpdate's re-render fallback never fires either.
-   * Task 10 must set _ctx during render wiring to bring live updates to
-   * life. Grep for "DEAD UNTIL TASK 10" to find every module with this
-   * constraint.
-   */
   update(el: HTMLElement, data: unknown): void {
+    // _ctx is stamped by renderComponentsBlock (message-integration.ts) at
+    // render time. Missing _ctx means the element was not rendered through
+    // the standard pipeline (e.g. bare unit test without a wrapper) -- no-op.
     const ctx = (el as HTMLElement & { _ctx?: RenderCtx })._ctx;
     if (!ctx) return;
     const rendered = renderSlots(data as CalendarSlotsData, ctx);

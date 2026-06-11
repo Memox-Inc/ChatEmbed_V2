@@ -23,12 +23,6 @@
  *
  * All colors from ctx.theme. Zero hex literals.
  * All DOM via el()/svg()/text() from core/dom.ts. No innerHTML with data.
- *
- * DEAD UNTIL TASK 10: component_update events are currently a NO-OP for
- * this component. Nothing sets _ctx on the rendered element yet, so the
- * guard in update() returns early. Task 10 must set _ctx during render
- * wiring to bring live updates to life. Grep for "DEAD UNTIL TASK 10"
- * to find every module with this constraint.
  */
 
 import type { ComponentModule, RenderCtx, WebCallData } from '../../core/types';
@@ -672,16 +666,9 @@ export const WebCallCardModule: ComponentModule = {
     return renderWebCall(data as WebCallData, ctx);
   },
 
-  /**
-   * DEAD UNTIL TASK 10: component_update events are currently a NO-OP for
-   * this component once _ctx wiring is in place. Before Task 10, this
-   * module uses its own ctxMap WeakMap so that update() works in tests and
-   * from the dispatcher without requiring _ctx to be stamped. Task 10 must
-   * set _ctx during render wiring if other modules rely on that convention.
-   * Grep for "DEAD UNTIL TASK 10" to find every module with this constraint.
-   */
   update(rootEl: HTMLElement, data: unknown): void {
-    // Prefer ctxMap (populated at render time), fall back to _ctx convention.
+    // Prefer ctxMap (populated at render time via renderWebCall), fall back to
+    // the _ctx convention stamped by renderComponentsBlock (message-integration).
     const ctx = ctxMap.get(rootEl) ?? (rootEl as HTMLElement & { _ctx?: RenderCtx })._ctx;
     if (!ctx) return;
 

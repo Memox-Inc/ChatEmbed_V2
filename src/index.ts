@@ -35,6 +35,8 @@ import { fetchInitConfig, normalizeServerConfig } from './connection/init';
 import { applyTheme } from './ui/theme-vars';
 import { startEmbedConfigListener } from './connection/embed-config-listener';
 import { applyComponentUpdate } from './components/core/message-integration';
+import { createActionBus } from './components/core/action-bus';
+import type { RenderCtx, ComponentsEnabled, ThemeTokens } from './components/core/types';
 import {
   createCartChip,
   updateCartChip,
@@ -101,6 +103,86 @@ async function init(): Promise<void> {
     typeof leadCaptureRaw === 'boolean' ? leadCaptureRaw :
     leadCaptureRaw === undefined ? true :
     !!(leadCaptureRaw as { enabled?: boolean }).enabled;
+
+  // --- RenderCtx construction ---
+  // Build once at init time and share across the widget lifetime. The ctx
+  // is passed into every rich-component render so renderers dispatch actions,
+  // format dates/times, and read theme tokens without coupling to index.ts
+  // internals. The dispatch wrapper applies result.components updates back
+  // to the live DOM so callers (e.g. calendar.book slot-conflict, cart
+  // add_to_cart response) get updated components without a full re-render.
+
+  // Auth header: mirrors api-client.ts buildHeaders pattern.
+  const authHeader = config.sessionToken
+    ? `EmbedToken ${config.sessionToken}`
+    : `Token ${config.token ?? ''}`;
+
+  const actionBus = createActionBus({
+    baseUrl: config.baseUrl ?? '',
+    authHeader,
+  });
+
+  const enabledRaw = config.componentsEnabled ?? {};
+  const enabled: ComponentsEnabled = {
+    shopify: enabledRaw.shopify ?? false,
+    calendar: enabledRaw.calendar ?? false,
+    web_call: enabledRaw.web_call ?? false,
+  };
+
+  const themeTokens: ThemeTokens = {
+    primary: theme.primary ?? '#8349ff',
+    primaryLight: '#f0ebff',
+    text: theme.text ?? '#072032',
+    textMuted: theme.timestampColor ?? '#5b6b7a',
+    border: theme.border ?? '#e5e7eb',
+    surface: theme.background ?? '#ffffff',
+    surfaceSubtle: '#f9fafb',
+    error: '#ef4444',
+    errorSubtle: '#fee2e2',
+    success: '#22c55e',
+    successSubtle: '#dcfce7',
+    warning: '#d97706',
+    warningSubtle: '#fffbeb',
+  };
+
+  const visitorTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+  // renderCtx is declared here; messagesEl is wired in after DOM setup below.
+  // The dispatch wrapper captures the messagesEl reference via closure once
+  // DOM is set up (messagesEl is assigned before any WS message can arrive).
+  let messagesElRef: HTMLElement | null = null;
+
+  const renderCtx: RenderCtx = {
+    dispatch: async (action) => {
+      const result = await actionBus.dispatch(action);
+      // Apply any updated components the server returned in the envelope.
+      // Covers slot-conflict re-render (calendar.book) and add_to_cart
+      // cart refresh (shopify.add_to_cart). Each component in the array is
+      // patched in the live DOM exactly like a component_update WS event.
+      if (result.ok && result.components?.length && messagesElRef) {
+        for (const comp of result.components) {
+          applyComponentUpdate(messagesElRef, action.message_id, comp.id, comp.data, renderCtx);
+        }
+      }
+      return result;
+    },
+    theme: themeTokens,
+    visitorTimezone,
+    distinctId: getOrCreateDistinctId(),
+    enabled,
+    formatTime: (iso) => new Date(iso).toLocaleTimeString(undefined, {
+      hour: '2-digit', minute: '2-digit', timeZone: visitorTimezone,
+    }),
+    formatDate: (d) => {
+      // Parse as local date (avoid UTC midnight-shift by appending T00:00:00
+      // without a timezone offset, which makes Date parse in local time).
+      const dt = new Date(d + 'T00:00:00');
+      return {
+        weekday: dt.toLocaleDateString(undefined, { weekday: 'short' }),
+        day: String(dt.getDate()),
+      };
+    },
+  };
 
   // State
   let visitorInfo: VisitorInfo | null = null;
@@ -188,6 +270,10 @@ async function init(): Promise<void> {
   // --- Create UI ---
   const widget = createWidgetContainer(config);
   const { messagesEl, scrollToBottom, forceScrollToBottom, checkScrollPosition, scrollBtn } = createMessageList();
+  // Wire the messagesEl reference into renderCtx.dispatch so result.components
+  // updates can be applied to the live DOM. This must happen before any WS
+  // message can arrive (ws.connect() is called later in maybeShowLeadCapture).
+  messagesElRef = messagesEl;
   const streamingRenderer = new StreamingRenderer(messagesEl, theme.botText);
 
   const inputBar = createInputBar(handleSend);
@@ -414,6 +500,16 @@ async function init(): Promise<void> {
         config,
         isLast,
         welcomeMessageStyle,
+        // Pass rich components, suggestion pills, and the render context so
+        // bot messages render their attached components and suggestion chips.
+        // Only bot/ai messages carry components; user/sales_rep messages won't
+        // have them so the options object is safe to pass for all senders.
+        {
+          components: msg.components as Array<{ id: string; type: string; version: number; data: unknown }> | undefined,
+          suggestions: msg.suggestions,
+          ctx: renderCtx,
+          onSuggestionSelect: (text: string) => { handleSend(text); },
+        },
       );
       messagesEl.appendChild(container);
       renderedCount++;
@@ -502,22 +598,12 @@ async function init(): Promise<void> {
     // the channels routing key `type` is NOT sent to clients.
     if ((data as Record<string, unknown>).message_type === 'component_update') {
       const upd = data as { message_type: string; message_id: string; component_id: string; data: unknown };
-      // TODO(Task 10): replace the null cast with the real renderCtx once it is
-      // constructed at widget init time. Components ARE registered now (see
-      // src/components/register.ts); this stays safe because every registered
-      // module defines update() with a missing-_ctx guard, so the null ctx is
-      // never read (applyComponentUpdate only falls back to mod.render(data,
-      // ctx) when a module has NO update method). Constraint for new modules
-      // until Task 10 lands: define update() and no-op when el._ctx is unset.
-      // Task 10 must set _ctx during render wiring and swap this cast for the
-      // real ctx.
       if (!upd.data || typeof upd.data !== 'object') return;
       // Chip sync is type-gated on the rendered wrapper's
       // data-component-type (same wrapper lookup applyComponentUpdate
       // uses). No wrapper or non-cart wrapper means no sync.
       syncCartChipOnComponentUpdate(messagesEl, upd.message_id, upd.component_id, upd.data, setCartChipCount);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      applyComponentUpdate(messagesEl, upd.message_id, upd.component_id, upd.data, null as any);
+      applyComponentUpdate(messagesEl, upd.message_id, upd.component_id, upd.data, renderCtx);
       return;
     }
 
@@ -596,14 +682,32 @@ async function init(): Promise<void> {
       // Deduplicate
       if (streamingRenderer.isDuplicateChunk(content)) return;
 
-      // Completion signal — just mark as done, no re-render needed
+      // Completion signal — mark as done and attach components/suggestions.
       if (data.is_complete === true && content === '') {
         if (lastMessage?.isStreaming) {
           lastMessage.isStreaming = false;
+          // Attach rich components and suggestion pills from the completion
+          // frame to the finished message so loadMessages() (and session
+          // restore) can render them alongside the text.
+          if (data.components?.length) lastMessage.components = data.components;
+          if (data.suggestions?.length) lastMessage.suggestions = data.suggestions;
           msgs[msgs.length - 1] = lastMessage;
           sessionStore.setMessages(msgs);
           streamingRenderer.reset();
-          // No loadMessages() — the streamed text is already in the DOM
+          // Re-render only the last message to mount the rich components
+          // block. If no components were attached, the streamed text is
+          // already in the DOM and no re-render is needed.
+          if (data.components?.length || data.suggestions?.length) {
+            // Replace only the last rendered bubble (avoid full re-render
+            // which would re-mount the typing indicator or flicker history).
+            const groups = messagesEl.querySelectorAll('.mcx-msg-group');
+            const lastGroup = groups[groups.length - 1];
+            if (lastGroup) {
+              lastGroup.remove();
+              renderedCount = Math.max(0, renderedCount - 1);
+            }
+            loadMessages();
+          }
         }
         setBotResponding(false);
         return;

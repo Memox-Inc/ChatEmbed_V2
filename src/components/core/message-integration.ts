@@ -74,7 +74,13 @@ export function renderComponentsBlock(
       for (const card of run) {
         const mod = registry.lookup(card.type, card.version);
         if (!mod) continue;
-        host.appendChild(wrapComponent(card, mod.render(card.data, perComponentCtx(ctx, card, messageId))));
+        const cardCtx = perComponentCtx(ctx, card, messageId);
+        const inner = mod.render(card.data, cardCtx);
+        // Stamp _ctx so module.update() can re-render with the original ctx
+        // (see CalendarSlotsModule.update, CalendarBookingConfirmedModule.update,
+        // WebCallCardModule.update — all guard on el._ctx being set).
+        (inner as HTMLElement & { _ctx?: RenderCtx })._ctx = cardCtx;
+        host.appendChild(wrapComponent(card, inner));
         renderedInRun++;
       }
       if (renderedInRun > 0) {
@@ -86,7 +92,11 @@ export function renderComponentsBlock(
 
     const mod = registry.lookup(comp.type, comp.version);
     if (mod) {
-      container.appendChild(wrapComponent(comp, mod.render(comp.data, perComponentCtx(ctx, comp, messageId))));
+      const compCtx = perComponentCtx(ctx, comp, messageId);
+      const inner = mod.render(comp.data, compCtx);
+      // Stamp _ctx so module.update() can re-render with the original ctx.
+      (inner as HTMLElement & { _ctx?: RenderCtx })._ctx = compCtx;
+      container.appendChild(wrapComponent(comp, inner));
       rendered++;
     }
     i++;
@@ -165,6 +175,10 @@ export function applyComponentUpdate(
   } else {
     // Re-render path: rebuild a per-component ctx so dispatches from the
     // fresh render keep carrying the real message/component ids.
-    wrapper.replaceChildren(mod.render(data, { ...ctx, messageId, componentId }));
+    const freshCtx = { ...ctx, messageId, componentId };
+    const freshEl = mod.render(data, freshCtx);
+    // Stamp _ctx on the fresh element so a future update() call can read it.
+    (freshEl as HTMLElement & { _ctx?: RenderCtx })._ctx = freshCtx;
+    wrapper.replaceChildren(freshEl);
   }
 }
