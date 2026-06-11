@@ -1,12 +1,12 @@
 /**
- * Cart chip — header badge widget (MMX-468, Task 7).
+ * Cart chip: header badge widget (MMX-468, Task 7).
  *
  * createCartChip() produces a pill-shaped button with a shopping-bag SVG icon
  * and a count display. The caller (index.ts) owns the chip lifecycle and calls
  * updateCartChip() whenever the cart's total_quantity changes.
  *
  * All DOM created via core/dom.ts el()/svg()/text() helpers.
- * No hex literals — colors supplied as parameters from ctx.theme at call site.
+ * No hex literals; colors supplied as parameters from theme tokens at call site.
  */
 
 import { el, svg, text } from '../../core/dom';
@@ -66,7 +66,7 @@ export function createCartChip(
 
   if (count > 0) {
     const badge = el('span', { 'data-part': 'chip-badge' }, [text(String(count))]);
-    applyBadgeStyles(badge, primaryColor);
+    applyBadgeStyles(badge, primaryColor, primaryLightColor);
     chip.appendChild(badge);
   }
 
@@ -95,10 +95,10 @@ export function updateCartChip(chip: HTMLDivElement, count: number): void {
   if (count > 0) {
     if (!badge) {
       badge = el('span', { 'data-part': 'chip-badge' });
-      // Reuse color from the chip's CSS variable via currentColor fallback:
-      // read primaryColor back from the chip's color property.
-      const primary = chip.style.color;
-      applyBadgeStyles(badge, primary);
+      // Recover the token colors from the chip's own inline styles
+      // (set from theme tokens in createCartChip): color = primary,
+      // backgroundColor = primaryLight. No hex literals needed here.
+      applyBadgeStyles(badge, chip.style.color, chip.style.backgroundColor);
       chip.appendChild(badge);
     }
     badge.textContent = String(count);
@@ -132,7 +132,7 @@ function applyCountStyles(el: HTMLElement, primaryColor: string): void {
   ].join(';');
 }
 
-function applyBadgeStyles(el: HTMLElement, primaryColor: string): void {
+function applyBadgeStyles(el: HTMLElement, primaryColor: string, onPrimaryColor: string): void {
   el.style.cssText = [
     'position:absolute',
     'top:-4px',
@@ -141,7 +141,7 @@ function applyBadgeStyles(el: HTMLElement, primaryColor: string): void {
     'height:16px',
     'border-radius:8px',
     `background:${primaryColor}`,
-    'color:#fff',
+    `color:${onPrimaryColor}`,
     'font-size:10px',
     'font-weight:700',
     'display:flex',

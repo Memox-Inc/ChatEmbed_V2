@@ -6,6 +6,10 @@ export interface HeaderRefs {
   clearSessionBtn: HTMLButtonElement;
   closeBtn: HTMLButtonElement;
   setButtonsDisabled: (disabled: boolean) => void;
+  /** Cart chip element once mounted via setCartChip (MMX-468 Task 7d). */
+  cartChipEl?: HTMLElement;
+  /** Mount (or replace) the cart chip, inserted before the actions div. */
+  setCartChip: (chipEl: HTMLElement) => void;
 }
 
 export function createHeader(
@@ -96,7 +100,17 @@ export function createHeader(
     clearSessionBtn.classList.toggle('mcx-header-btn--disabled', disabled);
   }
 
-  return { header, refreshBtn, clearSessionBtn, closeBtn, setButtonsDisabled };
+  const refs: HeaderRefs = { header, refreshBtn, clearSessionBtn, closeBtn, setButtonsDisabled, setCartChip };
+
+  function setCartChip(chipEl: HTMLElement): void {
+    if (refs.cartChipEl && refs.cartChipEl.parentElement === header) {
+      refs.cartChipEl.remove();
+    }
+    header.insertBefore(chipEl, actions);
+    refs.cartChipEl = chipEl;
+  }
+
+  return refs;
 }
 
 function createHeaderBtn(svgHtml: string, title: string): HTMLButtonElement {

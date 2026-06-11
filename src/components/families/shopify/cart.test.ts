@@ -80,6 +80,25 @@ describe('ShopifyCartModule', () => {
     }));
   });
 
+  it('renders an inline checkout link when the popup is blocked', async () => {
+    const dispatch = vi.fn().mockResolvedValue({
+      ok: true, checkout_url: 'https://store.example.com/cart/checkout?token=abc',
+    });
+    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
+    const el = ShopifyCartModule.render(cartFixture, makeCtx({ dispatch }));
+    const checkoutBtn = el.querySelector('[data-part="checkout-btn"]') as HTMLButtonElement;
+    checkoutBtn.click();
+    await new Promise((r) => setTimeout(r, 10));
+    const link = el.querySelector('[data-part="checkout-fallback-link"]') as HTMLAnchorElement;
+    expect(link).toBeTruthy();
+    expect(link.href).toContain('checkout');
+    expect(link.target).toBe('_blank');
+    expect(link.rel).toContain('noopener');
+    expect(link.rel).toContain('noreferrer');
+    expect(link.textContent).toContain('Open checkout');
+    openSpy.mockRestore();
+  });
+
   it('shows inline error when dispatch returns ok:false', async () => {
     const dispatch = vi.fn().mockResolvedValue({
       ok: false, error: { code: 'DISCOUNT_INVALID', message: 'Code not valid', recoverable: true },

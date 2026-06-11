@@ -35,6 +35,8 @@ import { fetchInitConfig, normalizeServerConfig } from './connection/init';
 import { applyTheme } from './ui/theme-vars';
 import { startEmbedConfigListener } from './connection/embed-config-listener';
 import { applyComponentUpdate } from './components/core/message-integration';
+import { createCartChip, updateCartChip } from './components/families/shopify/cart-chip';
+import { withAlpha } from './utils/format';
 import './components/register';
 
 declare global {
@@ -201,6 +203,40 @@ async function init(): Promise<void> {
     handleClearSession,
     handleClose,
   );
+
+  // --- Cart-chip state layer (MMX-468 Task 7d) ---
+  // The header count badge is driven by shopify_cart component state seen
+  // on the wire: rich message payloads carrying a shopify_cart component,
+  // and component_update frames patching one. The chip is created lazily on
+  // the first cart sighting and updated in place afterwards.
+  let cartChipEl: HTMLDivElement | null = null;
+
+  function scrollToLatestCart(): void {
+    const carts = messagesEl.querySelectorAll('[data-component-type="shopify_cart"]');
+    const last = carts[carts.length - 1];
+    if (last) last.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  function setCartChipCount(totalQuantity: number): void {
+    if (!cartChipEl) {
+      // theme.primary is always set post-merge with defaults. The light
+      // tint is token-derived via an alpha suffix (no new color literal).
+      const primary = theme.primary || '';
+      cartChipEl = createCartChip(totalQuantity, scrollToLatestCart, primary, withAlpha(primary, '1f'));
+      headerRefs.setCartChip(cartChipEl);
+    } else {
+      updateCartChip(cartChipEl, totalQuantity);
+    }
+  }
+
+  /** Narrow an unknown component data payload to cart shape and sync the chip. */
+  function maybeSyncCartChip(componentData: unknown): void {
+    if (!componentData || typeof componentData !== 'object') return;
+    const d = componentData as { cart_id?: unknown; total_quantity?: unknown; lines?: unknown };
+    if (typeof d.cart_id === 'string' && typeof d.total_quantity === 'number' && Array.isArray(d.lines)) {
+      setCartChipCount(d.total_quantity);
+    }
+  }
 
   // Powered by footer
   const poweredBy = document.createElement('div');
@@ -477,9 +513,18 @@ async function init(): Promise<void> {
       // Task 10 must set _ctx during render wiring and swap this cast for the
       // real ctx.
       if (!upd.data || typeof upd.data !== 'object') return;
+      maybeSyncCartChip(upd.data);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       applyComponentUpdate(messagesEl, upd.message_id, upd.component_id, upd.data, null as any);
       return;
+    }
+
+    // Cart chip sync: any rich message payload carrying a shopify_cart
+    // component drives the header count badge (MMX-468 Task 7d).
+    if (Array.isArray(data.components)) {
+      for (const comp of data.components) {
+        if (comp.type === 'shopify_cart') maybeSyncCartChip(comp.data);
+      }
     }
 
     // Error message

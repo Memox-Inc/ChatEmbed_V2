@@ -240,12 +240,32 @@ function renderCart(data: ShopifyCartData, ctx: RenderCtx): HTMLElement {
       const url = (result.checkout_url ?? data.checkout_url) as string | null | undefined;
 
       if (result.ok && url && isSafeHttpsUrl(url)) {
-        window.open(url, '_blank', 'noopener,noreferrer');
-        // Fire PostHog conversion event
+        const opened = window.open(url, '_blank', 'noopener,noreferrer');
+        // Fire PostHog conversion event (the checkout URL was minted
+        // server-side whether or not the popup opened).
         capture('shopify_checkout_started', {
           distinct_id: ctx.distinctId,
           cart_id: data.cart_id,
         });
+        if (!opened) {
+          // Popup blocked: window.open fires after an awaited dispatch
+          // (async context), which Safari and strict blockers kill.
+          // Render the safe URL as an inline anchor so the user always
+          // has an actionable path. url passed isSafeHttpsUrl above.
+          let fallback = checkoutWrap.querySelector('[data-part="checkout-fallback-link"]') as HTMLAnchorElement | null;
+          if (!fallback) {
+            fallback = el('a', {
+              'data-part': 'checkout-fallback-link',
+              href: url,
+              target: '_blank',
+              rel: 'noopener noreferrer',
+            }, [text('Open checkout')]);
+            applyFallbackLinkStyles(fallback, t);
+            checkoutWrap.appendChild(fallback);
+          } else {
+            fallback.setAttribute('href', url);
+          }
+        }
         checkoutBtn.textContent = 'Checkout';
         checkoutBtn.disabled = false;
         applyCheckoutBtnStyles(checkoutBtn, false, t);
@@ -689,6 +709,19 @@ function applyCheckoutBtnStyles(btn: HTMLButtonElement, disabled: boolean, t: Re
     'font-weight:600',
     disabled ? 'cursor:not-allowed' : 'cursor:pointer',
     disabled ? 'opacity:0.7' : 'opacity:1',
+  ].join(';');
+}
+
+function applyFallbackLinkStyles(a: HTMLAnchorElement, t: RenderCtx['theme']): void {
+  a.style.cssText = [
+    'display:block',
+    'text-align:center',
+    'margin-top:6px',
+    'font-size:13px',
+    'font-weight:600',
+    `color:${t.primary}`,
+    'text-decoration:underline',
+    'cursor:pointer',
   ].join(';');
 }
 
