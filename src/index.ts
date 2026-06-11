@@ -36,7 +36,6 @@ import { applyTheme } from './ui/theme-vars';
 import { startEmbedConfigListener } from './connection/embed-config-listener';
 import { applyComponentUpdate } from './components/core/message-integration';
 import { createCartChip, updateCartChip } from './components/families/shopify/cart-chip';
-import { withAlpha } from './utils/format';
 import './components/register';
 
 declare global {
@@ -220,9 +219,13 @@ async function init(): Promise<void> {
   function setCartChipCount(totalQuantity: number): void {
     if (!cartChipEl) {
       // theme.primary is always set post-merge with defaults. The light
-      // tint is token-derived via an alpha suffix (no new color literal).
+      // counterpart must be a genuinely LIGHT surface token: the badge
+      // renders its count in this color over a solid-primary background
+      // (the same white-on-primary pairing the send button uses in
+      // widget.css). An alpha tint of primary would be near-invisible.
       const primary = theme.primary || '';
-      cartChipEl = createCartChip(totalQuantity, scrollToLatestCart, primary, withAlpha(primary, '1f'));
+      const lightSurface = theme.background || theme.containerBg || '';
+      cartChipEl = createCartChip(totalQuantity, scrollToLatestCart, primary, lightSurface);
       headerRefs.setCartChip(cartChipEl);
     } else {
       updateCartChip(cartChipEl, totalQuantity);
