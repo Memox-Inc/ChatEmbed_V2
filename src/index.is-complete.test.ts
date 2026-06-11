@@ -2,17 +2,23 @@
  * is_complete re-render — data-message-id targeted bubble removal.
  *
  * Regression: the original code removed the last `.mcx-msg-group` in the DOM
- * (positional) when a streaming message finished. If a second message was
- * interleaved in the DOM, the wrong group was removed.
+ * (positional) when a streaming message finished. If a second group was
+ * interleaved in the DOM after the streaming bubble, the wrong group was
+ * removed.
  *
  * The fix targets the specific message group by [data-message-id] so only the
  * finished message's bubble is replaced by loadMessages().
  *
  * This test:
- *   1. Seeds two bot message groups in the DOM: an older "decoy" group and the
- *      streaming target, both bearing distinct data-message-id attributes.
+ *   1. Seeds the streaming message as the LAST store entry (the completion
+ *      handler only fires when msgs[msgs.length - 1].isStreaming), then appends
+ *      a "decoy" group AFTER the streaming target in the DOM, so the decoy is
+ *      the last .mcx-msg-group in DOM order. Positional last-group removal
+ *      would delete the decoy instead of the streaming target.
  *   2. Fires an is_complete=true WS frame referencing the streaming target id.
- *   3. Asserts the decoy group is NOT removed and the target group IS replaced.
+ *   3. Asserts the decoy group survives and msg_streaming is not duplicated.
+ *      Both assertions verified RED against the positional bug: the decoy is
+ *      removed AND msg_streaming is duplicated by the loadMessages() re-render.
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -82,9 +88,15 @@ describe('is_complete re-render — data-message-id targeted removal', () => {
     vi.useFakeTimers();
     capturedOnMessage = null;
 
-    // Seed a session with a streaming bot message (messageId = 'msg_streaming').
-    // A second non-streaming earlier message ('msg_decoy') is also present so
-    // we can verify the positional-last removal bug does not regress.
+    // Seed a session where the streaming bot message is the LAST store entry:
+    // the completion handler gates on msgs[msgs.length - 1].isStreaming. An
+    // older first message keeps renderedCount above zero after the targeted
+    // removal decrement, so loadMessages() takes the incremental path (the
+    // renderedCount === 0 branch wipes messagesEl.innerHTML, which would
+    // delete the decoy regardless of implementation). The decoy itself is
+    // appended directly to the DOM in the test body, AFTER the streaming
+    // group, so the decoy is the last .mcx-msg-group in DOM order while the
+    // streaming message stays last in the store.
     localStorage.setItem(
       'simple-chat-session',
       JSON.stringify({
@@ -97,10 +109,10 @@ describe('is_complete re-render — data-message-id targeted removal', () => {
       'simple-chat-messages',
       JSON.stringify([
         {
-          text: 'Earlier bot response (decoy)',
+          text: 'Earlier bot response',
           sender: 'bot',
           isWelcomeMessage: false,
-          messageId: 'msg_decoy',
+          messageId: 'msg_first',
           created_at: '12:00',
         },
         {
@@ -139,9 +151,24 @@ describe('is_complete re-render — data-message-id targeted removal', () => {
     await vi.advanceTimersByTimeAsync(0);
     await Promise.resolve();
 
-    // Both message groups should be rendered initially.
     const messagesEl = root.querySelector('.mcx-messages') as HTMLElement | null;
     expect(messagesEl, 'messages container should exist').toBeTruthy();
+    if (!messagesEl) return;
+
+    // The streaming group must be rendered before we plant the decoy.
+    expect(
+      messagesEl.querySelector('[data-message-id="msg_streaming"]'),
+      'streaming group should be rendered initially',
+    ).toBeTruthy();
+
+    // Plant the decoy: a message group appended AFTER the streaming target in
+    // DOM order (e.g. an interleaved group rendered between chunk and
+    // completion). Positional last-group removal would delete THIS element.
+    const decoy = document.createElement('div');
+    decoy.className = 'mcx-msg-group';
+    decoy.setAttribute('data-message-id', 'msg_decoy');
+    decoy.textContent = 'Interleaved group (decoy)';
+    messagesEl.appendChild(decoy);
 
     // Send is_complete with a component attached — this triggers the targeted
     // group replacement path in index.ts.
@@ -158,17 +185,20 @@ describe('is_complete re-render — data-message-id targeted removal', () => {
     await vi.advanceTimersByTimeAsync(0);
     await Promise.resolve();
 
-    if (!messagesEl) return;
-
-    // The decoy group must still be present.
+    // The decoy group must still be present. Under positional last-group
+    // removal the decoy (last in DOM) is deleted and this fails.
     const decoyEl = messagesEl.querySelector('[data-message-id="msg_decoy"]');
     expect(decoyEl, 'decoy group must survive the is_complete re-render').toBeTruthy();
 
-    // The streaming group was replaced by loadMessages() so it should now
-    // appear as a non-streaming bubble (the isStreaming flag was cleared before
-    // re-render). If loadMessages() re-renders it, the element will exist in
-    // the DOM with the same data-message-id; the key check is that the decoy
-    // was NOT removed.
+    // The streaming group must be replaced, not duplicated. Under positional
+    // removal the original streaming bubble is never removed, so the
+    // loadMessages() re-render produces a second msg_streaming group.
+    const streamingGroups = messagesEl.querySelectorAll('[data-message-id="msg_streaming"]');
+    expect(
+      streamingGroups.length,
+      'exactly one msg_streaming group after targeted replacement',
+    ).toBe(1);
+
     void indexModule;
   });
 });
