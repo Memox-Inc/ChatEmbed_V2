@@ -47,6 +47,12 @@ describe('assertSecureWsUrl', () => {
     expect(() => assertSecureWsUrl('ws://evil.example/ws/voice/')).toThrow(/wss/);
   });
 
+  it('rejects ws://localhost.evil.com (not a real localhost)', () => {
+    // "localhost.evil.com" is NOT localhost; the guard checks hostname
+    // equality, not suffix matching, so this must be rejected.
+    expect(() => assertSecureWsUrl('ws://localhost.evil.com/ws/voice/')).toThrow(/wss/);
+  });
+
   it('rejects unparseable URLs', () => {
     expect(() => assertSecureWsUrl('not a url')).toThrow();
   });
@@ -152,6 +158,27 @@ describe('initCallController happy path (all browser APIs mocked)', () => {
     try {
       const controller = await initCallController(makeOpts('ws://localhost:8000/ws/voice/browser/'));
       expect(typeof controller.end).toBe('function');
+    } finally {
+      cleanup();
+    }
+  });
+
+  it('end() is idempotent -- onStateChange("ended") fires exactly once even when called twice', async () => {
+    const cleanup = installBrowserMocks();
+    try {
+      const stateChanges: string[] = [];
+      const controller = await initCallController({
+        wsUrl: 'wss://api.memox.io/ws/voice/browser/',
+        sessionToken: 'tok-idempotent',
+        onTranscript: () => {},
+        onStateChange: (state) => { stateChanges.push(state); },
+      });
+
+      controller.end();
+      controller.end(); // second call must be a no-op
+
+      // Only one 'ended' transition may be emitted.
+      expect(stateChanges.filter((s) => s === 'ended')).toHaveLength(1);
     } finally {
       cleanup();
     }

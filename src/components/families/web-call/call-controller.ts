@@ -178,6 +178,7 @@ export async function initCallController(opts: CallControllerOptions): Promise<C
       bufSource.buffer = audioBuffer;
       bufSource.connect(playbackCtx.destination);
       bufSource.start();
+      // TODO(v2): schedule bufSource.start(nextPlayAt) for gapless playback
     } else if (msg.type === 'transcript') {
       opts.onTranscript(msg.speaker, msg.text);
     } else if (msg.type === 'error') {
@@ -193,6 +194,11 @@ export async function initCallController(opts: CallControllerOptions): Promise<C
   // 7. Return controller
   return {
     end(): void {
+      // Idempotent: hard-stop fires ctrl.end() which may race ws.onclose
+      // (which also calls end() via the card's onStateChange handler).
+      // Without this guard, onStateChange('ended') fires twice and the
+      // card renders the ended section twice.
+      if (ended) return;
       ended = true;
       if (ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ type: 'end' }));
