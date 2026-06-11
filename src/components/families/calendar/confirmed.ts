@@ -44,6 +44,23 @@ function downloadIcon(): SVGSVGElement {
 
 // ---- renderer ----------------------------------------------------------------
 
+/**
+ * Full date label ("Thu, Jun 11") in the VISITOR's timezone. ctx.formatDate
+ * returns only { weekday, day } (no month), which reads ambiguously on this
+ * standalone card, so the month comes from Intl directly. Using the iso
+ * instant + visitor timezone (not the UTC date part) keeps the date correct
+ * for bookings that cross midnight in the visitor's timezone.
+ */
+function formatFullDate(iso: string, visitorTimezone: string): string {
+  const opts: Intl.DateTimeFormatOptions = { weekday: 'short', month: 'short', day: 'numeric' };
+  try {
+    return new Date(iso).toLocaleDateString('en-US', { ...opts, timeZone: visitorTimezone });
+  } catch {
+    // Invalid/hostile timezone string: fall back to the environment default.
+    return new Date(iso).toLocaleDateString('en-US', opts);
+  }
+}
+
 function renderConfirmed(data: CalendarBookingConfirmedData, ctx: RenderCtx): HTMLElement {
   const t = ctx.theme;
 
@@ -70,11 +87,11 @@ function renderConfirmed(data: CalendarBookingConfirmedData, ctx: RenderCtx): HT
   const details = el('div', { 'data-part': 'confirmed-details' });
   applyDetailsStyles(details, t);
 
-  // Date / time line
-  const { weekday, day: dayNum } = ctx.formatDate(data.start_iso.slice(0, 10));
+  // Date / time line: "Thu, Jun 11, 10:00 AM to 10:30 AM"
+  const dateLabel = formatFullDate(data.start_iso, ctx.visitorTimezone);
   const startTime = ctx.formatTime(data.start_iso);
   const endTime = ctx.formatTime(data.end_iso);
-  const dateTimeStr = `${weekday}, ${dayNum}, ${startTime} to ${endTime}`;
+  const dateTimeStr = `${dateLabel}, ${startTime} to ${endTime}`;
 
   const dateTimeEl = el('div', { 'data-part': 'confirmed-datetime' }, [text(dateTimeStr)]);
   applyDetailLineStyles(dateTimeEl, t, true);
@@ -216,6 +233,15 @@ export const CalendarBookingConfirmedModule: ComponentModule = {
     return renderConfirmed(data as CalendarBookingConfirmedData, ctx);
   },
 
+  /**
+   * DEAD UNTIL TASK 10: component_update events are currently a NO-OP for
+   * this component. Nothing sets _ctx on the rendered element yet, so the
+   * guard below always returns early. And because this module DEFINES
+   * update(), applyComponentUpdate's re-render fallback never fires either.
+   * Task 10 must set _ctx during render wiring to bring live updates to
+   * life. Grep for "DEAD UNTIL TASK 10" to find every module with this
+   * constraint.
+   */
   update(el: HTMLElement, data: unknown): void {
     const ctx = (el as HTMLElement & { _ctx?: RenderCtx })._ctx;
     if (!ctx) return;

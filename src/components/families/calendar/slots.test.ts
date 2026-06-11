@@ -92,11 +92,67 @@ describe('CalendarSlotsModule', () => {
     }));
   });
 
+  it('does not dispatch and flags the email field when the email fails the light regex', async () => {
+    const dispatch = vi.fn().mockResolvedValue({ ok: true });
+    const contactFixture = { ...slotsFixture, requires_contact: true };
+    const el = CalendarSlotsModule.render(contactFixture, makeCtx({ dispatch }));
+    (el.querySelector('[data-part="time-pill"]') as HTMLElement).click();
+    (el.querySelector('[data-part="contact-name"]') as HTMLInputElement).value = 'Alice';
+    const emailInput = el.querySelector('[data-part="contact-email"]') as HTMLInputElement;
+    emailInput.value = 'a@';
+    (el.querySelector('[data-part="book-btn"]') as HTMLButtonElement).click();
+    await new Promise((r) => setTimeout(r, 10));
+    expect(dispatch).not.toHaveBeenCalled();
+    expect(emailInput.style.borderColor).not.toBe('');
+  });
+
   it('shows amber notice when notice field is set', () => {
     const withNotice = { ...slotsFixture, notice: 'All times are tentative.' };
     const el = CalendarSlotsModule.render(withNotice, makeCtx());
     const notice = el.querySelector('[data-part="slots-notice"]');
     expect(notice?.textContent).toContain('All times are tentative.');
+  });
+
+  it('disables the book button and shows a pending label while dispatch is in flight', async () => {
+    let resolveDispatch!: (r: { ok: boolean }) => void;
+    const dispatch = vi.fn().mockImplementation(
+      () => new Promise((resolve) => { resolveDispatch = resolve; }),
+    );
+    const el = CalendarSlotsModule.render(slotsFixture, makeCtx({ dispatch }));
+    (el.querySelector('[data-part="time-pill"]') as HTMLElement).click();
+    const btn = el.querySelector('[data-part="book-btn"]') as HTMLButtonElement;
+    btn.click();
+    expect(btn.disabled).toBe(true);
+    expect(btn.textContent).toBe('Booking...');
+    resolveDispatch({ ok: true });
+    await new Promise((r) => setTimeout(r, 0));
+    expect(btn.textContent).toBe('Booked!');
+  });
+
+  it('renders the error envelope message and re-enables the button on ok:false', async () => {
+    const dispatch = vi.fn().mockResolvedValue({
+      ok: false,
+      error: { code: 'SLOT_TAKEN', message: 'That time was just booked.', recoverable: true },
+    });
+    const el = CalendarSlotsModule.render(slotsFixture, makeCtx({ dispatch }));
+    (el.querySelector('[data-part="time-pill"]') as HTMLElement).click();
+    const btn = el.querySelector('[data-part="book-btn"]') as HTMLButtonElement;
+    btn.click();
+    await new Promise((r) => setTimeout(r, 10));
+    const err = el.querySelector('[data-part="action-error"]') as HTMLElement;
+    expect(err.style.display).not.toBe('none');
+    expect(err.textContent).toBe('That time was just booked.');
+    expect(btn.disabled).toBe(false);
+  });
+
+  it('toggles aria-pressed on date pills when switching days', () => {
+    const el = CalendarSlotsModule.render(slotsFixture, makeCtx());
+    const pills = el.querySelectorAll('[data-part="date-pill"]');
+    expect(pills[0].getAttribute('aria-pressed')).toBe('true');
+    expect(pills[1].getAttribute('aria-pressed')).toBe('false');
+    (pills[1] as HTMLElement).click();
+    expect(pills[0].getAttribute('aria-pressed')).toBe('false');
+    expect(pills[1].getAttribute('aria-pressed')).toBe('true');
   });
 
   it('dispatches calendar.book with the real component id and message id from the rendered wrapper', async () => {

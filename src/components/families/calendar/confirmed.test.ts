@@ -49,4 +49,20 @@ describe('CalendarBookingConfirmedModule', () => {
     const ics = el.querySelector('[data-part="ics-link"]') as HTMLAnchorElement | null;
     expect(ics?.href).toContain('/ics/');
   });
+
+  it('renders the full date with month in the visitor timezone', () => {
+    // 2026-06-11T14:00:00Z in America/New_York is Thursday, June 11.
+    const el = CalendarBookingConfirmedModule.render(fixture, makeCtx());
+    const line = el.querySelector('[data-part="confirmed-datetime"]');
+    expect(line?.textContent).toContain('Jun 11');
+    expect(line?.textContent).toContain('Thu');
+  });
+
+  it('uses the visitor timezone for the date when the instant crosses midnight UTC', () => {
+    // 02:00Z on Jun 12 is still 10:00 PM Jun 11 in America/New_York.
+    const crossing = { ...fixture, start_iso: '2026-06-12T02:00:00Z', end_iso: '2026-06-12T02:30:00Z' };
+    const el = CalendarBookingConfirmedModule.render(crossing, makeCtx());
+    const line = el.querySelector('[data-part="confirmed-datetime"]');
+    expect(line?.textContent).toContain('Jun 11');
+  });
 });

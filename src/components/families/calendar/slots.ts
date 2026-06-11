@@ -26,6 +26,12 @@
 import type { ComponentModule, RenderCtx, CalendarSlotsData, CalendarSlot } from '../../core/types';
 import { el, svg, text } from '../../core/dom';
 
+/**
+ * Light client-side email shape check (something@something.tld, no spaces).
+ * Deliberately permissive; the server is authoritative and re-validates.
+ */
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 // ---- SVG icons ---------------------------------------------------------------
 
 function calendarIcon(): SVGSVGElement {
@@ -275,7 +281,7 @@ function renderSlots(data: CalendarSlotsData, ctx: RenderCtx): HTMLElement {
           nameInput.focus();
           return;
         }
-        if (!email) {
+        if (!EMAIL_RE.test(email)) {
           emailInput.style.borderColor = t.error;
           emailInput.focus();
           return;
@@ -496,6 +502,15 @@ export const CalendarSlotsModule: ComponentModule = {
     return renderSlots(data as CalendarSlotsData, ctx);
   },
 
+  /**
+   * DEAD UNTIL TASK 10: component_update events are currently a NO-OP for
+   * this component. Nothing sets _ctx on the rendered element yet, so the
+   * guard below always returns early. And because this module DEFINES
+   * update(), applyComponentUpdate's re-render fallback never fires either.
+   * Task 10 must set _ctx during render wiring to bring live updates to
+   * life. Grep for "DEAD UNTIL TASK 10" to find every module with this
+   * constraint.
+   */
   update(el: HTMLElement, data: unknown): void {
     const ctx = (el as HTMLElement & { _ctx?: RenderCtx })._ctx;
     if (!ctx) return;
