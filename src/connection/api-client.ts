@@ -1,4 +1,5 @@
 import type { ChatEmbedConfig, VisitorInfo } from '../config/types';
+import { getOrCreateDistinctId } from '../utils/distinct-id';
 import { collectBrowserMetadata, createAnonymousEmail } from './browser-metadata';
 
 function buildHeaders(config: ChatEmbedConfig): Record<string, string> {
@@ -103,7 +104,7 @@ export async function createVisitor(
       if (customFields && Object.keys(customFields).length > 0) {
         Object.assign(metadata, customFields);
       }
-      const visitorPayload = {
+      const visitorPayload: Record<string, unknown> = {
         name: visitorName,
         email: visitorEmail,
         phone_number: phone || '',
@@ -111,6 +112,16 @@ export async function createVisitor(
         organization: config.org_id,
         metadata,
       };
+
+      // MMX-562: carry the visitor's distinct_id so the backend bandit
+      // conversion hook (_enqueue_bandit_conversions) can mark the matching
+      // ExperimentAssignment converted. Without this, the assignment created at
+      // /embed/init never gets converted_at set and Memox Optimize counts every
+      // experiment's conversions as zero. Mirror the /embed/init opt-out: when
+      // experiments are disabled the visitor was never bucketed, so omit it.
+      if (!config.disableExperiments) {
+        visitorPayload.distinct_id = getOrCreateDistinctId();
+      }
 
       const postResponse = await fetch(`${baseUrl}visitors/`, {
         method: 'POST',

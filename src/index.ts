@@ -62,7 +62,11 @@ async function init(): Promise<void> {
   // Dev: hub-dev.memox.io). Without this default a customer pasting only
   // ``embedId`` would silently fail DNS on every init request.
   const apiBase = localConfig.apiBase || localConfig.apiUrl || 'https://hub.memox.io';
-  const serverConfig = await fetchInitConfig(localConfig.embedId ?? null, apiBase);
+  const serverConfig = await fetchInitConfig(
+    localConfig.embedId ?? null,
+    apiBase,
+    localConfig.disableExperiments,
+  );
   const config = mergeConfig(localConfig, serverConfig as Partial<ChatEmbedConfig>);
   // Scope localStorage to this embed instance — must run before any
   // sessionStore reads/writes so multiple widgets on the same origin
@@ -80,6 +84,20 @@ async function init(): Promise<void> {
     agentId: config.agent_id ?? null,
     attractorVariant: (serverConfig as Record<string, unknown>).attractor_variant as string | null | undefined,
   });
+  // Tag every PostHog event with the experiment assignment from /embed/init
+  // so PostHog funnel analysis can group events by variant. This is OPTIONAL
+  // telemetry only: Memox Optimize counts impressions/conversions in-platform
+  // from ExperimentAssignment rows, not from these tags. Must run BEFORE the
+  // first capture() (chat_widget_loaded) below. Skipped when disableExperiments
+  // is true so uncontested visitors are never bucketed or tagged.
+  if (!config.disableExperiments) {
+    const experiments = (serverConfig as Record<string, unknown>).experiments;
+    if (Array.isArray(experiments) && experiments.length > 0) {
+      analytics.setExperimentTags(
+        experiments as import('./analytics/posthog').ExperimentAssignment[],
+      );
+    }
+  }
   const theme = config.theme || {};
   const welcomeMessage = config.welcomeMessage || null;
   const welcomeMessageStyle = config.welcomeMessageStyle as WelcomeMessageStyle | undefined;
@@ -878,6 +896,20 @@ async function init(): Promise<void> {
           distinctId: getOrCreateDistinctId(),
           visitorId: typeof visitorInfo?.id === 'number' ? visitorInfo.id : null,
         });
+
+        // PostHog identify + group — links the anonymous visitor to their
+        // identified profile and associates them with the org.
+        // Guarded by disableExperiments: when consent is withheld, skip
+        // all identity-linking calls.
+        if (!config.disableExperiments) {
+          const identityProps: Record<string, unknown> = {};
+          if (lead.email) identityProps.email = lead.email;
+          if (lead.name) identityProps.name = lead.name;
+          analytics.identify(getOrCreateDistinctId(), identityProps);
+          if (config.org_id != null) {
+            analytics.group('organization', String(config.org_id), {});
+          }
+        }
       }
 
       // Show input but keep disabled until WS connects

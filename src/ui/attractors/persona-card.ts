@@ -14,6 +14,7 @@
 import type { ChatEmbedConfig } from '../../config/types';
 import type { AttractorHandle } from './types';
 import { isSafeImageUrl } from '../../utils/url';
+import { sanitizeText } from '../sanitize';
 
 export interface PersonaHandlers {
   onOpen?: () => void;
@@ -49,6 +50,10 @@ export function mountPersonaCard(
   const row = document.createElement('div');
   row.className = 'mcx-persona-row';
 
+  // Sanitize the persona name once and reuse it for both the initials fallback
+  // and the displayed name, so the two never diverge on adversarial config.
+  const safeName = sanitizeText(persona.name);
+
   if (isSafeImageUrl(photoUrl)) {
     const img = document.createElement('img');
     img.className = 'mcx-persona-photo';
@@ -58,7 +63,7 @@ export function mountPersonaCard(
   } else {
     const ini = document.createElement('div');
     ini.className = 'mcx-persona-initials';
-    ini.textContent = initialsOf(persona.name);
+    ini.textContent = initialsOf(safeName);
     row.appendChild(ini);
   }
 
@@ -67,11 +72,11 @@ export function mountPersonaCard(
 
   const nameEl = document.createElement('div');
   nameEl.className = 'mcx-persona-name';
-  nameEl.textContent = persona.name;
+  nameEl.textContent = safeName;
 
   const msgEl = document.createElement('div');
   msgEl.className = 'mcx-persona-msg';
-  msgEl.textContent = persona.message;
+  msgEl.textContent = sanitizeText(persona.message);
 
   text.appendChild(nameEl);
   text.appendChild(msgEl);
@@ -85,7 +90,7 @@ export function mountPersonaCard(
       const chip = document.createElement('button');
       chip.type = 'button';
       chip.className = 'mcx-persona-chip';
-      chip.textContent = label;
+      chip.textContent = sanitizeText(label);
       chip.addEventListener('click', () => {
         handlers.onChipClick?.(label);
         handlers.onOpen?.();

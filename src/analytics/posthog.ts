@@ -33,6 +33,17 @@ import { getOrCreateDistinctId } from '../utils/distinct-id';
 
 const DEFAULT_HOST = 'https://us.i.posthog.com';
 const UTM_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'] as const;
+
+/**
+ * One entry from the /embed/init ``experiments`` array.
+ * ``variant_label`` is NEW and may be absent on older backends — code
+ * defensively and skip any entry that lacks it.
+ */
+export interface ExperimentAssignment {
+  experiment: string;
+  variant: string;
+  variant_label?: string;
+}
 // Baseline variant string. When the server doesn't return an
 // attractor_variant (older embed without launcher config, OSS deploy
 // without a Memox backend), we still want every event tagged so funnel
@@ -59,6 +70,13 @@ interface State {
   distinctId: string | null;
   utmProps: Record<string, string>;
   attractorVariant: string | null;
+  /** JSON array of experiment public_ids the visitor is assigned to. */
+  memoxExperiments: string[] | null;
+  /**
+   * Scalar tag "<exp_public_id>:<variant_label>" for the single active
+   * experiment. Omitted from events when null (no experiments active).
+   */
+  memoxVariants: string | null;
 }
 
 const state: State = {
@@ -69,6 +87,8 @@ const state: State = {
   distinctId: null,
   utmProps: {},
   attractorVariant: DEFAULT_ATTRACTOR_VARIANT,
+  memoxExperiments: null,
+  memoxVariants: null,
 };
 
 function readUtmFromUrl(): Record<string, string> {
@@ -97,6 +117,38 @@ export function init(opts: PostHogInitOptions): void {
   state.utmProps = readUtmFromUrl();
 }
 
+/**
+ * Record the visitor's experiment assignments so every subsequent
+ * ``capture()`` call is tagged with ``memox_experiments`` and
+ * ``memox_variants``. Call this once, after init(), before the first
+ * ``capture()`` so the ``chat_widget_loaded`` impression event is tagged.
+ *
+ * Entries that lack a ``variant_label`` are silently skipped (defensive
+ * coding — older backends may not include the field yet).
+ *
+ * No-op when called with an empty array.
+ */
+export function setExperimentTags(experiments: ExperimentAssignment[]): void {
+  try {
+    // Only count entries that have a variant_label — required for the
+    // scalar memox_variants tag format "<exp>:<label>".
+    const valid = experiments.filter((e) => typeof e.variant_label === 'string' && e.variant_label);
+
+    if (valid.length === 0) {
+      state.memoxExperiments = null;
+      state.memoxVariants = null;
+      return;
+    }
+
+    state.memoxExperiments = valid.map((e) => e.experiment);
+    // v1: at most one experiment per visitor — use first valid entry.
+    const first = valid[0];
+    state.memoxVariants = `${first.experiment}:${first.variant_label as string}`;
+  } catch {
+    // swallow — analytics must never break the widget
+  }
+}
+
 export function capture(eventName: string, additionalProps?: Record<string, unknown>): void {
   if (!state.apiKey) return; // not configured → no-op
 
@@ -110,6 +162,15 @@ export function capture(eventName: string, additionalProps?: Record<string, unkn
       referrer: document.referrer || null,
     };
     props.attractor_variant = state.attractorVariant;
+    // Merge experiment assignment tags when present. Omit both keys
+    // entirely when there are no active experiments so PostHog queries
+    // can distinguish "no experiment" from "experiment assigned".
+    if (state.memoxExperiments !== null) {
+      props.memox_experiments = state.memoxExperiments;
+    }
+    if (state.memoxVariants !== null) {
+      props.memox_variants = state.memoxVariants;
+    }
     Object.assign(props, state.utmProps);
     if (additionalProps) Object.assign(props, additionalProps);
 
@@ -140,6 +201,81 @@ export function capture(eventName: string, additionalProps?: Record<string, unkn
   }
 }
 
+/**
+ * Link an anonymous visitor to their identified profile in PostHog.
+ * Fires a ``$identify`` event which stitches the anonymous ``distinct_id``
+ * to the identified person (email, name, etc.).
+ * No-op when analytics has not been initialized or has no apiKey.
+ */
+export function identify(distinctId: string, setProps: Record<string, unknown>): void {
+  if (!state.apiKey) return;
+
+  try {
+    const body = JSON.stringify({
+      api_key: state.apiKey,
+      event: '$identify',
+      distinct_id: distinctId,
+      properties: {
+        $set: setProps,
+      },
+      timestamp: new Date().toISOString(),
+    });
+
+    const url = `${state.host.replace(/\/$/, '')}/capture/`;
+    void fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body,
+      keepalive: true,
+      mode: 'no-cors',
+    }).catch(() => {
+      // swallow — analytics must never break the widget
+    });
+  } catch {
+    // swallow — analytics must never break the widget
+  }
+}
+
+/**
+ * Associate the current visitor with a PostHog group (e.g. organization).
+ * Fires a ``$groupidentify`` event.
+ * No-op when analytics has not been initialized or has no apiKey.
+ */
+export function group(
+  groupType: string,
+  groupKey: string,
+  setProps: Record<string, unknown> = {},
+): void {
+  if (!state.apiKey) return;
+
+  try {
+    const body = JSON.stringify({
+      api_key: state.apiKey,
+      event: '$groupidentify',
+      distinct_id: state.distinctId,
+      properties: {
+        $group_type: groupType,
+        $group_key: groupKey,
+        $group_set: setProps,
+      },
+      timestamp: new Date().toISOString(),
+    });
+
+    const url = `${state.host.replace(/\/$/, '')}/capture/`;
+    void fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body,
+      keepalive: true,
+      mode: 'no-cors',
+    }).catch(() => {
+      // swallow — analytics must never break the widget
+    });
+  } catch {
+    // swallow — analytics must never break the widget
+  }
+}
+
 // Test-only helper. Resets module-level state so vitest can run multiple
 // init/capture sequences in the same process. Not exported through any
 // public barrel; safe to call from tests via direct import.
@@ -151,4 +287,6 @@ export function __resetForTesting(): void {
   state.distinctId = null;
   state.utmProps = {};
   state.attractorVariant = DEFAULT_ATTRACTOR_VARIANT;
+  state.memoxExperiments = null;
+  state.memoxVariants = null;
 }

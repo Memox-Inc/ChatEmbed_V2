@@ -343,6 +343,19 @@ export interface ChatEmbedConfig {
   /** Optional override of PostHog ingest host (e.g. EU region). Defaults to https://us.i.posthog.com. */
   memoxPosthogHost?: string;
   /**
+   * Consent/CMP hook (L4). When set to ``true`` by the site owner's embed
+   * snippet, the widget:
+   *   - Omits ``distinct_id`` from the ``/embed/init`` POST body so the
+   *     backend skips bandit resolution and the visitor is not bucketed.
+   *   - Sends ``disable_experiments: true`` in the init body to let the
+   *     server know no A/B variant should be assigned.
+   *   - Skips the PostHog ``identify`` and ``group`` calls after lead capture.
+   * Regular ``capture()`` calls (anonymous usage events) are unaffected —
+   * only the identity-linking / experiment-bucketing paths are gated.
+   * Default (absent/false): normal behaviour.
+   */
+  disableExperiments?: boolean;
+  /**
    * Launcher form-factor + attractor system. Snake_case matches the
    * /embed/init wire format so server-fetched values can be merged in
    * without translation. See ``LauncherConfig`` for fields.
