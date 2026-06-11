@@ -77,16 +77,30 @@ export async function createVisitor(
       throw new Error('Missing required configuration: baseUrl and (sessionToken or token)');
     }
 
-    const isAnonymous = !email;
     const browserMetadata = collectBrowserMetadata();
 
-    let visitorEmail = email;
-    let visitorName = name;
+    // MMX-804: "anonymous" means the visitor submitted NO lead data at all —
+    // not merely "no email". Previously this keyed off `!email`, so a name-only
+    // lead form (email/phone/zip disabled) was treated as anonymous and the
+    // submitted name was overwritten with 'Anonymous Visitor' (and the visitor
+    // was never personalized). Determine anonymity from the full payload.
+    const hasLeadData = !!(
+      name ||
+      email ||
+      phone ||
+      zip ||
+      (customFields && Object.keys(customFields).length > 0)
+    );
+    const isAnonymous = !hasLeadData;
 
-    if (isAnonymous) {
-      visitorEmail = createAnonymousEmail(browserMetadata);
-      visitorName = 'Anonymous Visitor';
-    }
+    // Email is the backend's required, per-org-unique visitor identity key
+    // (visitors.email is non-null with a unique (email, organization)
+    // constraint). When the lead form doesn't collect an email, synthesize a
+    // deterministic per-browser address so the visitor can still be looked up /
+    // deduped — but keep whatever name (and other fields) the visitor actually
+    // submitted. Only fall back to the placeholder name when none was given.
+    const visitorEmail = email || createAnonymousEmail(browserMetadata);
+    const visitorName = name || 'Anonymous Visitor';
 
     const headers = buildHeaders(config);
 
@@ -136,9 +150,38 @@ export async function createVisitor(
       const visitorData = await postResponse.json();
       return { id: visitorData.id, name: visitorData.name };
     } else {
+      const existing = getJson.results[0];
+
+      // MMX-804: the synthetic anonymous email is a deterministic per-browser
+      // fingerprint, so a returning visitor who previously submitted nothing
+      // (or whom we'd mislabeled) resolves to the same record. If we now have a
+      // real submitted name but the stored one is still a placeholder, patch it
+      // so the name the visitor just gave is persisted. Best-effort: a failed
+      // PATCH must not break the chat flow.
+      const existingName = String(existing.name ?? '').trim().toLowerCase();
+      const isPlaceholderName =
+        !existingName ||
+        existingName === 'anonymous visitor' ||
+        existingName === 'anonymous user';
+      if (name && isPlaceholderName) {
+        try {
+          const patchResponse = await fetch(`${baseUrl}visitors/${existing.id}/`, {
+            method: 'PATCH',
+            headers,
+            body: JSON.stringify({ name }),
+          });
+          if (patchResponse.ok) {
+            const patched = await patchResponse.json();
+            return { id: patched.id, name: patched.name };
+          }
+        } catch (patchError) {
+          console.error('Error updating existing visitor name:', patchError);
+        }
+      }
+
       return {
-        id: getJson.results[0].id,
-        name: getJson.results[0].name,
+        id: existing.id,
+        name: existing.name,
       };
     }
   } catch (error) {
