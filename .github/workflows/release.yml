@@ -38,9 +38,14 @@ jobs:
         run: |
           RAW=$(stat -c%s dist/chat-embed.js)
           GZIP=$(gzip -c dist/chat-embed.js | wc -c)
-          echo "📦 Raw: $(( RAW / 1024 ))KB | Gzip: $(( GZIP / 1024 ))KB"
+          echo "📦 core  Raw: $(( RAW / 1024 ))KB | Gzip: $(( GZIP / 1024 ))KB"
+          VRAW=$(stat -c%s dist/chat-voice.js)
+          VGZIP=$(gzip -c dist/chat-voice.js | wc -c)
+          echo "📦 voice Raw: $(( VRAW / 1024 ))KB | Gzip: $(( VGZIP / 1024 ))KB"
           echo "bundle_raw=${RAW}" >> $GITHUB_OUTPUT
           echo "bundle_gzip=${GZIP}" >> $GITHUB_OUTPUT
+          echo "voice_raw=${VRAW}" >> $GITHUB_OUTPUT
+          echo "voice_gzip=${VGZIP}" >> $GITHUB_OUTPUT
         id: size
 
       - name: Update active version
@@ -52,7 +57,11 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add -f dist/chat-embed.js package.json latest.json
+          # chat-voice.js is the lazily-loaded web-call bundle (MMX-468).
+          # card.ts derives its URL from the embed script src by replacing
+          # chat-embed.js -> chat-voice.js, so it MUST ship in the same tag
+          # or the CDN request 404s and web-call cards show the error state.
+          git add -f dist/chat-embed.js dist/chat-voice.js package.json latest.json
           git commit -m "release: v${{ inputs.version }}"
           git tag "v${{ inputs.version }}"
           git push
@@ -93,6 +102,11 @@ jobs:
           # 2d) The just-released specific URL. Usually cold, but on first hit
           #     it can 404 if step 1 was skipped — see commit message.
           curl -fsSL "https://purge.jsdelivr.net/gh/Memox-Inc/ChatEmbed_V2@v${{ inputs.version }}/dist/chat-embed.js" | head -c 300; echo
+          # 2e) Voice bundle (MMX-468) — same pins as the core bundle, because
+          #     card.ts requests it from the same tag as the embed script.
+          curl -fsSL "https://purge.jsdelivr.net/gh/Memox-Inc/ChatEmbed_V2@v3/dist/chat-voice.js" | head -c 300; echo
+          curl -fsSL "https://purge.jsdelivr.net/gh/Memox-Inc/ChatEmbed_V2@latest/dist/chat-voice.js" | head -c 300; echo
+          curl -fsSL "https://purge.jsdelivr.net/gh/Memox-Inc/ChatEmbed_V2@v${{ inputs.version }}/dist/chat-voice.js" | head -c 300; echo
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -121,5 +135,8 @@ jobs:
             <script src="https://cdn.jsdelivr.net/gh/Memox-Inc/ChatEmbed_V2@v${{ inputs.version }}/dist/chat-embed.js" async></script>
             ```
 
-            **Bundle size:** ${{ steps.size.outputs.bundle_raw }} bytes raw / ${{ steps.size.outputs.bundle_gzip }} bytes gzip
-          files: dist/chat-embed.js
+            **Bundle size (core):** ${{ steps.size.outputs.bundle_raw }} bytes raw / ${{ steps.size.outputs.bundle_gzip }} bytes gzip
+            **Bundle size (voice):** ${{ steps.size.outputs.voice_raw }} bytes raw / ${{ steps.size.outputs.voice_gzip }} bytes gzip
+          files: |
+            dist/chat-embed.js
+            dist/chat-voice.js
