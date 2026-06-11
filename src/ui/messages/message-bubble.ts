@@ -2,7 +2,8 @@ import type { ChatEmbedConfig, StoredMessage, WelcomeMessageStyle } from '../../
 import { markdownToHtml } from './markdown-renderer';
 import { escapeHtml } from '../../utils/dom';
 import { isSafeImageUrl } from '../../utils/url';
-import { renderComponentsBlock, renderSuggestionPills } from '../../components/core/message-integration';
+import { renderSuggestionPills } from '../../components/core/message-integration';
+import { getComponentsFacade } from '../../components/loader';
 import type { WireComponent, RenderCtx } from '../../components/core/types';
 
 export interface BubbleRefs {
@@ -175,7 +176,10 @@ export function createMessageBubble(
   if (options?.components?.length && options.ctx) {
     // Thread the owning message id so each component's dispatch carries the
     // real ids (renderComponentsBlock builds a per-component ctx from it).
-    const block = renderComponentsBlock(options.components, options.ctx, undefined, msg.messageId);
+    // renderComponentsBlock lives in the lazy components bundle; access via
+    // the loader facade (populated before WS connects, so always available
+    // when this code runs for incoming messages).
+    const block = getComponentsFacade().renderComponentsBlock(options.components, options.ctx, undefined, msg.messageId);
     if (block) bubble.appendChild(block);
   }
   if (options?.suggestions?.length && options.onSuggestionSelect && options.ctx) {

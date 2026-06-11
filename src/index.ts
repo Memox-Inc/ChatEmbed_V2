@@ -35,16 +35,8 @@ import { getOrCreateDistinctId } from './utils/distinct-id';
 import { fetchInitConfig, normalizeServerConfig } from './connection/init';
 import { applyTheme } from './ui/theme-vars';
 import { startEmbedConfigListener } from './connection/embed-config-listener';
-import { applyComponentUpdate, applyActionResultComponents } from './components/core/message-integration';
-import { createActionBus } from './components/core/action-bus';
 import type { RenderCtx, ComponentsEnabled, ThemeTokens } from './components/core/types';
-import {
-  createCartChip,
-  updateCartChip,
-  readCartQuantity,
-  syncCartChipOnComponentUpdate,
-} from './components/families/shopify/cart-chip';
-import './components/register';
+import { loadComponentsBundle, getComponentsFacade } from './components/loader';
 
 declare global {
   interface Window {
@@ -118,7 +110,12 @@ async function init(): Promise<void> {
     ? `EmbedToken ${config.sessionToken}`
     : `Token ${config.token ?? ''}`;
 
-  const actionBus = createActionBus({
+  // createActionBus lives in the components bundle; access via facade.
+  // The facade is populated before WS connects (see loadComponentsBundle below).
+  // During the pre-load window (before bundle arrives) use a placeholder that
+  // will be replaced once the bundle resolves. The actionBus variable is
+  // reassigned after loadComponentsBundle() settles.
+  let actionBus = getComponentsFacade().createActionBus({
     baseUrl: config.baseUrl ?? '',
     authHeader,
   });
@@ -129,6 +126,21 @@ async function init(): Promise<void> {
     calendar: enabledRaw.calendar ?? false,
     web_call: enabledRaw.web_call ?? false,
   };
+
+  // Eagerly load the components bundle when any family is enabled.
+  // Awaited here so the facade is fully populated before the first WS
+  // message can arrive (maybeShowLeadCapture -> connectWebSocket runs
+  // after this point). Chat-only embeds (all families false) skip the
+  // fetch entirely — zero bytes.
+  await loadComponentsBundle(enabled);
+
+  // Reassign actionBus now that the bundle (and its createActionBus) is loaded.
+  // If the bundle failed to load, getComponentsFacade() returns the no-op
+  // facade whose createActionBus produces a graceful error-returning bus.
+  actionBus = getComponentsFacade().createActionBus({
+    baseUrl: config.baseUrl ?? '',
+    authHeader,
+  });
 
   // Resolve the primary color first so derived tokens can reference it.
   // allowlist:hex-literal -- customer-overridable default; theme.primary takes precedence
@@ -176,8 +188,9 @@ async function init(): Promise<void> {
       // syncCartChipOnComponentUpdate; no-ops for non-cart components).
       if (result.ok && result.components?.length && messagesElRef) {
         const mEl = messagesElRef;
-        applyActionResultComponents(mEl, action.message_id, result.components, renderCtx, (comp) => {
-          syncCartChipOnComponentUpdate(mEl, action.message_id, comp.id, comp.data, setCartChipCount);
+        const facade = getComponentsFacade();
+        facade.applyActionResultComponents(mEl, action.message_id, result.components, renderCtx, (comp) => {
+          facade.syncCartChipOnComponentUpdate(mEl, action.message_id, comp.id, comp.data, setCartChipCount);
         });
       }
       return result;
@@ -324,6 +337,7 @@ async function init(): Promise<void> {
   }
 
   function setCartChipCount(totalQuantity: number): void {
+    const facade = getComponentsFacade();
     if (!cartChipEl) {
       // theme.primary is always set post-merge with defaults. The light
       // counterpart must be a genuinely LIGHT surface token: the badge
@@ -332,10 +346,10 @@ async function init(): Promise<void> {
       // widget.css). An alpha tint of primary would be near-invisible.
       const primary = theme.primary || '';
       const lightSurface = theme.background || theme.containerBg || '';
-      cartChipEl = createCartChip(totalQuantity, scrollToLatestCart, primary, lightSurface);
+      cartChipEl = facade.createCartChip(totalQuantity, scrollToLatestCart, primary, lightSurface);
       headerRefs.setCartChip(cartChipEl);
     } else {
-      updateCartChip(cartChipEl, totalQuantity);
+      facade.updateCartChip(cartChipEl, totalQuantity);
     }
   }
 
@@ -618,8 +632,9 @@ async function init(): Promise<void> {
       // Chip sync is type-gated on the rendered wrapper's
       // data-component-type (same wrapper lookup applyComponentUpdate
       // uses). No wrapper or non-cart wrapper means no sync.
-      syncCartChipOnComponentUpdate(messagesEl, upd.message_id, upd.component_id, upd.data, setCartChipCount);
-      applyComponentUpdate(messagesEl, upd.message_id, upd.component_id, upd.data, renderCtx);
+      const facade = getComponentsFacade();
+      facade.syncCartChipOnComponentUpdate(messagesEl, upd.message_id, upd.component_id, upd.data, setCartChipCount);
+      facade.applyComponentUpdate(messagesEl, upd.message_id, upd.component_id, upd.data, renderCtx);
       return;
     }
 
@@ -627,9 +642,10 @@ async function init(): Promise<void> {
     // component (per the wire envelope type) drives the header count
     // badge (MMX-468 Task 7d).
     if (Array.isArray(data.components)) {
+      const facade = getComponentsFacade();
       for (const comp of data.components) {
         if (comp.type !== 'shopify_cart') continue;
-        const qty = readCartQuantity(comp.data);
+        const qty = facade.readCartQuantity(comp.data);
         if (qty !== null) setCartChipCount(qty);
       }
     }
