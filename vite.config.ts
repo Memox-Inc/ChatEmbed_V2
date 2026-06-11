@@ -26,7 +26,11 @@ export default defineConfig({
     outDir: 'dist',
     minify: 'terser',
     terserOptions: {
-      compress: { drop_console: false },
+      // passes: 2 reclaims a few KB on the core bundle; the CI raw gate
+      // (150KB) had <1KB headroom at the pre-MMX-468 baseline, so every
+      // KB matters here. drop_console stays false (widget logs degrade
+      // signals like the components-bundle load failure).
+      compress: { drop_console: false, passes: 2 },
     },
     cssCodeSplit: false,
     rollupOptions: {
