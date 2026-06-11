@@ -1,6 +1,6 @@
-import type { WireComponent, RenderCtx, ThemeTokens, ComponentsEnabled } from './types';
+import type { WireComponent, RenderCtx, ComponentsEnabled } from './types';
 import { componentRegistry, type ComponentRegistry } from './registry';
-import { el, text } from './dom';
+import { el } from './dom';
 
 /**
  * Map a wire component type to its componentsEnabled family (plan addendum).
@@ -124,25 +124,6 @@ export function renderComponentsBlock(
   }
 
   return rendered > 0 ? container : null;
-}
-
-/**
- * Render suggestion pills below a message.
- * Uses .mcx-qr pill class consistent with quick-questions.ts.
- */
-export function renderSuggestionPills(
-  suggestions: string[],
-  onSelect: (s: string) => void,
-  _theme: ThemeTokens,
-): HTMLDivElement | null {
-  if (!suggestions.length) return null;
-  const container = el('div', { className: 'mcx-suggestions' });
-  for (const s of suggestions) {
-    const btn = el('button', { className: 'mcx-qr mcx-suggestion-pill', type: 'button' }, [text(s)]);
-    btn.addEventListener('click', () => onSelect(s));
-    container.appendChild(btn);
-  }
-  return container;
 }
 
 /**

@@ -3,76 +3,50 @@
  *
  * This bundle is loaded lazily by the core embed (via loader.ts) when any
  * componentsEnabled family is true. It registers all component families and
- * exposes the ComponentsFacade object on window.MemoxChatComponents so the
- * dynamic import in loader.ts can read it.
+ * exposes the ComponentsFacade object on window.MemoxChatComponents.
  *
- * Kept intentionally thin: no analytics, no config, no WebSocket. Pure
- * rendering + action dispatch.
+ * NOTE on the window assignment: loader.ts dynamically import()s this file,
+ * which executes it in MODULE context. Rollup's IIFE `var MemoxChatComponents`
+ * stays module-scoped there (top-level var only becomes a window global in
+ * classic-script context), so the explicit window assignment below is the
+ * contract loader.ts relies on. Keep it.
+ *
+ * Kept intentionally thin: no analytics, no config fetch, no chat WebSocket.
+ * Pure rendering + action dispatch.
  */
 
 // Register all families into the singleton registry (side-effect import).
 import './register';
 
-// Re-export the full facade surface for the IIFE global.
-export {
-  renderComponentsBlock,
-  renderSuggestionPills,
-  applyComponentUpdate,
-  applyActionResultComponents,
-  familyOf,
-  findComponentWrapper,
-} from './core/message-integration';
-
-export { createActionBus } from './core/action-bus';
-export type { ActionBus, ActionBusOptions } from './core/action-bus';
-
-export {
-  createCartChip,
-  updateCartChip,
-  readCartQuantity,
-  syncCartChipOnComponentUpdate,
-} from './families/shopify/cart-chip';
-
-export { componentRegistry, createRegistry } from './core/registry';
-
-import type { ComponentsEnabled } from './core/types';
 import {
   renderComponentsBlock,
   applyComponentUpdate,
-  applyActionResultComponents,
-  familyOf,
 } from './core/message-integration';
-import { createActionBus } from './core/action-bus';
 import {
   createCartChip,
   updateCartChip,
   readCartQuantity,
   syncCartChipOnComponentUpdate,
 } from './families/shopify/cart-chip';
-import { componentRegistry } from './core/registry';
+import { createRenderCtx } from './render-ctx';
 import type { ComponentsFacade } from './loader';
 
 /**
- * The facade object exposed as the IIFE return value and on window.MemoxChatComponents.
- * loader.ts reads `mod.MemoxChatComponents` after dynamic import.
+ * The facade object loader.ts reads from window.MemoxChatComponents after
+ * dynamic import. Exactly the surface core consumes (ComponentsFacade).
  */
 const MemoxChatComponents: ComponentsFacade = {
+  createRenderCtx,
   renderComponentsBlock,
   applyComponentUpdate,
-  applyActionResultComponents,
-  createActionBus,
   createCartChip,
   updateCartChip,
   readCartQuantity,
   syncCartChipOnComponentUpdate,
-  componentRegistry,
-  familyOf: (type: string): keyof ComponentsEnabled | null => familyOf(type),
 };
 
 export { MemoxChatComponents };
 
-// Make accessible on window for the IIFE wrapper and for loader.ts
-// (`mod.MemoxChatComponents` after dynamic import).
 if (typeof window !== 'undefined') {
   (window as unknown as Record<string, unknown>).MemoxChatComponents = MemoxChatComponents;
 }

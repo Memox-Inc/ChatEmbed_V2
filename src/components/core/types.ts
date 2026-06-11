@@ -160,6 +160,31 @@ export interface RenderCtx {
   componentId?: string;
 }
 
+/**
+ * Raw inputs core passes to ComponentsFacade.createRenderCtx() (MMX-468
+ * split). The heavyweight ctx construction (theme tokens, action bus,
+ * dispatch wrapper, formatters) lives in the lazy components bundle; core
+ * only supplies these primitives and closures.
+ */
+export interface RenderCtxOptions {
+  baseUrl: string;
+  authHeader: string;
+  /** Raw config theme; tokens are derived inside the bundle. */
+  theme: {
+    primary?: string;
+    text?: string;
+    timestampColor?: string;
+    border?: string;
+    background?: string;
+  };
+  enabled: ComponentsEnabled;
+  distinctId: string;
+  /** Live messages element (assigned by core after DOM setup). */
+  getMessagesEl(): HTMLElement | null;
+  /** Cart-chip count sync (core owns the header chip lifecycle). */
+  onCartCount(totalQuantity: number): void;
+}
+
 // Module interface
 export interface ComponentModule {
   /** Maximum version this module understands. Wire version > this -> skip. */

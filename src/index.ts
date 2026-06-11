@@ -4,7 +4,6 @@ import { mergeConfig } from './config/merge';
 import { generateChatId } from './utils/uuid';
 import { formatTimeStamp } from './utils/timestamp';
 import { sanitizeInput } from './utils/dom';
-import { mixWithWhite } from './utils/format';
 import { sessionStore } from './session/session-store';
 import { validateSession, createVisitor } from './connection/api-client';
 import { WebSocketManager, type WsMessageData } from './connection/websocket-manager';
@@ -35,7 +34,7 @@ import { getOrCreateDistinctId } from './utils/distinct-id';
 import { fetchInitConfig, normalizeServerConfig } from './connection/init';
 import { applyTheme } from './ui/theme-vars';
 import { startEmbedConfigListener } from './connection/embed-config-listener';
-import type { RenderCtx, ComponentsEnabled, ThemeTokens } from './components/core/types';
+import type { ComponentsEnabled } from './components/core/types';
 import { loadComponentsBundle, getComponentsFacade } from './components/loader';
 
 declare global {
@@ -110,16 +109,6 @@ async function init(): Promise<void> {
     ? `EmbedToken ${config.sessionToken}`
     : `Token ${config.token ?? ''}`;
 
-  // createActionBus lives in the components bundle; access via facade.
-  // The facade is populated before WS connects (see loadComponentsBundle below).
-  // During the pre-load window (before bundle arrives) use a placeholder that
-  // will be replaced once the bundle resolves. The actionBus variable is
-  // reassigned after loadComponentsBundle() settles.
-  let actionBus = getComponentsFacade().createActionBus({
-    baseUrl: config.baseUrl ?? '',
-    authHeader,
-  });
-
   const enabledRaw = config.componentsEnabled ?? {};
   const enabled: ComponentsEnabled = {
     shopify: enabledRaw.shopify ?? false,
@@ -131,87 +120,27 @@ async function init(): Promise<void> {
   // Awaited here so the facade is fully populated before the first WS
   // message can arrive (maybeShowLeadCapture -> connectWebSocket runs
   // after this point). Chat-only embeds (all families false) skip the
-  // fetch entirely — zero bytes.
+  // fetch entirely (zero bytes). Load failure resolves to the no-op facade,
+  // so chat startup is never blocked.
   await loadComponentsBundle(enabled);
 
-  // Reassign actionBus now that the bundle (and its createActionBus) is loaded.
-  // If the bundle failed to load, getComponentsFacade() returns the no-op
-  // facade whose createActionBus produces a graceful error-returning bus.
-  actionBus = getComponentsFacade().createActionBus({
-    baseUrl: config.baseUrl ?? '',
-    authHeader,
-  });
-
-  // Resolve the primary color first so derived tokens can reference it.
-  // allowlist:hex-literal -- customer-overridable default; theme.primary takes precedence
-  const primaryColor = theme.primary ?? '#8349ff';
-  const themeTokens: ThemeTokens = {
-    primary: primaryColor,
-    // Derived: 90% blend of primary toward white so it scales with any
-    // white-label primary override instead of hardcoding a Memox-purple hex.
-    // Falls back gracefully for non-6-digit values (mixWithWhite returns base
-    // unchanged, which is a valid CSS color even if not tinted).
-    primaryLight: mixWithWhite(primaryColor, 0.9),
-    text: theme.text ?? '#072032', // allowlist:hex-literal -- customer-overridable default
-    textMuted: theme.timestampColor ?? '#5b6b7a', // allowlist:hex-literal -- customer-overridable default
-    border: theme.border ?? '#e5e7eb', // allowlist:hex-literal -- customer-overridable default
-    surface: theme.background ?? '#ffffff', // allowlist:hex-literal -- customer-overridable default
-    // Brand-independent neutral: Tailwind gray-50. Not derived from primary
-    // because a very light/very dark primary would produce a distracting
-    // tinted surface; neutral gray is the safer universal default.
-    surfaceSubtle: '#f9fafb', // allowlist:hex-literal -- brand-independent neutral gray
-    // Semantic status colors below are brand-independent (red/green/amber).
-    // They intentionally do not derive from theme.primary.
-    error: '#ef4444', // allowlist:hex-literal -- brand-independent semantic status color
-    errorSubtle: '#fee2e2', // allowlist:hex-literal -- brand-independent semantic status color
-    success: '#22c55e', // allowlist:hex-literal -- brand-independent semantic status color
-    successSubtle: '#dcfce7', // allowlist:hex-literal -- brand-independent semantic status color
-    warning: '#d97706', // allowlist:hex-literal -- brand-independent semantic status color
-    warningSubtle: '#fffbeb', // allowlist:hex-literal -- brand-independent semantic status color
-  };
-
-  const visitorTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-
-  // renderCtx is declared here; messagesEl is wired in after DOM setup below.
-  // The dispatch wrapper captures the messagesEl reference via closure once
-  // DOM is set up (messagesEl is assigned before any WS message can arrive).
+  // renderCtx is built INSIDE the lazy components bundle (theme tokens,
+  // action bus, dispatch wrapper, formatters all live there; none of it
+  // ships in core). messagesEl is wired in after DOM setup below via the
+  // getMessagesEl closure (messagesElRef is assigned before any WS message
+  // can arrive). Null when the bundle is absent (chat-only embeds or load
+  // failure): components then render nothing, suggestions still work.
   let messagesElRef: HTMLElement | null = null;
 
-  const renderCtx: RenderCtx = {
-    dispatch: async (action) => {
-      const result = await actionBus.dispatch(action);
-      // Apply any updated components the server returned in the envelope.
-      // Covers slot-conflict re-render (calendar.book) and add_to_cart
-      // cart refresh (shopify.add_to_cart). Each component in the array is
-      // patched in the live DOM exactly like a component_update WS event,
-      // and the cart chip is synced per component (type-gated inside
-      // syncCartChipOnComponentUpdate; no-ops for non-cart components).
-      if (result.ok && result.components?.length && messagesElRef) {
-        const mEl = messagesElRef;
-        const facade = getComponentsFacade();
-        facade.applyActionResultComponents(mEl, action.message_id, result.components, renderCtx, (comp) => {
-          facade.syncCartChipOnComponentUpdate(mEl, action.message_id, comp.id, comp.data, setCartChipCount);
-        });
-      }
-      return result;
-    },
-    theme: themeTokens,
-    visitorTimezone,
-    distinctId: getOrCreateDistinctId(),
+  const renderCtx = getComponentsFacade().createRenderCtx({
+    baseUrl: config.baseUrl ?? '',
+    authHeader,
+    theme,
     enabled,
-    formatTime: (iso) => new Date(iso).toLocaleTimeString(undefined, {
-      hour: '2-digit', minute: '2-digit', timeZone: visitorTimezone,
-    }),
-    formatDate: (d) => {
-      // Parse as local date (avoid UTC midnight-shift by appending T00:00:00
-      // without a timezone offset, which makes Date parse in local time).
-      const dt = new Date(d + 'T00:00:00');
-      return {
-        weekday: dt.toLocaleDateString(undefined, { weekday: 'short' }),
-        day: String(dt.getDate()),
-      };
-    },
-  };
+    distinctId: getOrCreateDistinctId(),
+    getMessagesEl: () => messagesElRef,
+    onCartCount: (n) => { setCartChipCount(n); },
+  });
 
   // State
   let visitorInfo: VisitorInfo | null = null;
@@ -537,7 +466,7 @@ async function init(): Promise<void> {
         {
           components: msg.components as Array<{ id: string; type: string; version: number; data: unknown }> | undefined,
           suggestions: msg.suggestions,
-          ctx: renderCtx,
+          ctx: renderCtx ?? undefined,
           onSuggestionSelect: (text: string) => { handleSend(text); },
         },
       );
@@ -631,10 +560,13 @@ async function init(): Promise<void> {
       if (!upd.data || typeof upd.data !== 'object') return;
       // Chip sync is type-gated on the rendered wrapper's
       // data-component-type (same wrapper lookup applyComponentUpdate
-      // uses). No wrapper or non-cart wrapper means no sync.
-      const facade = getComponentsFacade();
-      facade.syncCartChipOnComponentUpdate(messagesEl, upd.message_id, upd.component_id, upd.data, setCartChipCount);
-      facade.applyComponentUpdate(messagesEl, upd.message_id, upd.component_id, upd.data, renderCtx);
+      // uses). No wrapper or non-cart wrapper means no sync. Without a
+      // renderCtx (bundle absent) nothing was rendered, so skip entirely.
+      if (renderCtx) {
+        const facade = getComponentsFacade();
+        facade.syncCartChipOnComponentUpdate(messagesEl, upd.message_id, upd.component_id, upd.data, setCartChipCount);
+        facade.applyComponentUpdate(messagesEl, upd.message_id, upd.component_id, upd.data, renderCtx);
+      }
       return;
     }
 

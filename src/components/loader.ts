@@ -14,15 +14,22 @@
 import type {
   WireComponent,
   RenderCtx,
+  RenderCtxOptions,
   ComponentsEnabled,
-  ThemeTokens,
 } from './core/types';
 import type { ComponentRegistry } from './core/registry';
 
 // ---- Public facade interface -------------------------------------------------
 
-/** The subset of chat-components.js exports that index.ts consumes. */
+/**
+ * Exactly the chat-components.js surface that core (index.ts +
+ * message-bubble.ts) consumes. The heavyweight RenderCtx construction
+ * (theme tokens, action bus, dispatch wrapper, formatters) lives in the
+ * bundle behind createRenderCtx so none of it ships in chat-embed.js.
+ */
 export interface ComponentsFacade {
+  /** Returns null from the no-op facade (bundle missing / load failed). */
+  createRenderCtx(opts: RenderCtxOptions): RenderCtx | null;
   renderComponentsBlock(
     components: WireComponent[],
     ctx: RenderCtx,
@@ -35,20 +42,7 @@ export interface ComponentsFacade {
     componentId: string,
     data: unknown,
     ctx: RenderCtx,
-    registry?: ComponentRegistry,
   ): void;
-  applyActionResultComponents(
-    messagesEl: HTMLElement,
-    messageId: string,
-    components: WireComponent[],
-    ctx: RenderCtx,
-    onComponentApplied?: (comp: WireComponent) => void,
-    registry?: ComponentRegistry,
-  ): void;
-  createActionBus(opts: { baseUrl: string; authHeader: string }): {
-    dispatch(action: import('./core/types').Action): Promise<import('./core/types').ActionResult>;
-    isPending(): boolean;
-  };
   createCartChip(
     count: number,
     onClick: () => void,
@@ -64,33 +58,21 @@ export interface ComponentsFacade {
     data: unknown,
     setCount: (n: number) => void,
   ): void;
-  componentRegistry: ComponentRegistry;
-  familyOf(type: string): keyof ComponentsEnabled | null;
 }
 
 // ---- No-op fallbacks (used until bundle loads, or on failure) ----------------
 
+const noop = (): undefined => undefined;
+const nul = (): null => null;
+
 const noopFacade: ComponentsFacade = {
-  renderComponentsBlock: () => null,
-  applyComponentUpdate: () => undefined,
-  applyActionResultComponents: () => undefined,
-  createActionBus: (opts) => {
-    // Minimal action bus that always returns a network error.
-    return {
-      dispatch: () => Promise.resolve({ ok: false as const, error: { code: 'COMPONENTS_NOT_LOADED', message: 'Components bundle not loaded.', recoverable: false } }),
-      isPending: () => false,
-    };
-  },
-  createCartChip: () => document.createElement('div') as HTMLDivElement,
-  updateCartChip: () => undefined,
-  readCartQuantity: () => null,
-  syncCartChipOnComponentUpdate: () => undefined,
-  componentRegistry: {
-    register: () => undefined,
-    lookup: () => undefined,
-    list: () => new Map(),
-  },
-  familyOf: () => null,
+  createRenderCtx: nul,
+  renderComponentsBlock: nul,
+  applyComponentUpdate: noop,
+  createCartChip: () => document.createElement('div'),
+  updateCartChip: noop,
+  readCartQuantity: nul,
+  syncCartChipOnComponentUpdate: noop,
 };
 
 // ---- URL derivation ----------------------------------------------------------
@@ -110,7 +92,7 @@ export function getSiblingBundleUrl(name: string): string {
     if (embedScript) {
       return (embedScript as HTMLScriptElement).src.replace('chat-embed.js', name);
     }
-  } catch { /* ignore — SSR / non-browser context */ }
+  } catch { /* ignore: SSR / non-browser context */ }
   return `/dist/${name}`;
 }
 
@@ -151,16 +133,17 @@ export function loadComponentsBundle(
 
   _loadPromise = (async () => {
     try {
-      // @vite-ignore — dynamic URL resolved at runtime from the embed script src
+      // @vite-ignore: dynamic URL resolved at runtime from the embed script src
       const mod = await import(/* @vite-ignore */ url) as { MemoxChatComponents?: ComponentsFacade };
-      const exported = mod.MemoxChatComponents;
+      const exported = mod.MemoxChatComponents
+        ?? (window as unknown as { MemoxChatComponents?: ComponentsFacade }).MemoxChatComponents;
       if (!exported || typeof exported.renderComponentsBlock !== 'function') {
         throw new Error('chat-components.js did not export MemoxChatComponents facade');
       }
       _facade = exported;
       return exported;
     } catch (err) {
-      console.warn('[Memox] Failed to load chat-components bundle — chat only mode:', err);
+      console.warn('[Memox] Failed to load chat-components bundle, chat-only mode:', err);
       _facade = noopFacade;
       return noopFacade;
     }

@@ -1,11 +1,11 @@
 import { describe, it, expect, vi } from 'vitest';
 import {
   renderComponentsBlock,
-  renderSuggestionPills,
   applyComponentUpdate,
   applyActionResultComponents,
   familyOf,
 } from './message-integration';
+import { renderSuggestionPills } from '../suggestion-pills';
 import type { WireComponent, RenderCtx, ThemeTokens, ComponentModule, ShopifyProductCardData } from './types';
 import { createRegistry } from './registry';
 import { ShopifyProductCardModule } from '../families/shopify/product-card';
@@ -461,11 +461,11 @@ describe('applyActionResultComponents()', () => {
 
 describe('renderSuggestionPills()', () => {
   it('returns null for an empty array', () => {
-    expect(renderSuggestionPills([], vi.fn(), theme)).toBeNull();
+    expect(renderSuggestionPills([], vi.fn())).toBeNull();
   });
 
   it('renders one pill per suggestion', () => {
-    const container = renderSuggestionPills(['Option A', 'Option B'], vi.fn(), theme);
+    const container = renderSuggestionPills(['Option A', 'Option B'], vi.fn());
     expect(container).not.toBeNull();
     const pills = container!.querySelectorAll('button');
     expect(pills).toHaveLength(2);
@@ -475,7 +475,7 @@ describe('renderSuggestionPills()', () => {
 
   it('calls onSelect with the clicked suggestion text', () => {
     const onSelect = vi.fn();
-    const container = renderSuggestionPills(['Ask me anything'], onSelect, theme);
+    const container = renderSuggestionPills(['Ask me anything'], onSelect);
     (container!.querySelector('button') as HTMLButtonElement).click();
     expect(onSelect).toHaveBeenCalledWith('Ask me anything');
   });

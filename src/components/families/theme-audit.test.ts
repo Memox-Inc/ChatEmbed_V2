@@ -5,7 +5,8 @@
  * All colors must come from ctx.theme tokens so they respond to the per-embed
  * theme config (white-label support).
  *
- * Also scans the renderCtx themeTokens block in src/index.ts: any new hardcoded
+ * Also scans the renderCtx themeTokens block in src/components/render-ctx.ts
+ * (moved out of src/index.ts by the MMX-468 bundle split): any new hardcoded
  * brand hex added there must carry an explicit "allowlist:hex-literal" comment on
  * the same line, or this test fails CI.
  *
@@ -42,7 +43,8 @@ function collectSourceFiles(dir: string): string[] {
 }
 
 const FAMILIES_DIR = resolve(__dirname, './');
-const INDEX_TS = resolve(__dirname, '../../index.ts');
+// themeTokens construction lives in the components bundle (render-ctx.ts).
+const RENDER_CTX_TS = resolve(__dirname, '../render-ctx.ts');
 
 // ── Hex-literal detection ─────────────────────────────────────────────────────
 
@@ -81,7 +83,7 @@ function findViolations(filePath: string, content: string): string[] {
 // ── Index.ts theme block extraction ──────────────────────────────────────────
 
 /**
- * Extracts only the themeTokens block from src/index.ts so the audit does
+ * Extracts only the themeTokens block from render-ctx.ts so the audit does
  * not flag hex literals in comments, test helpers, or unrelated code outside
  * the RenderCtx construction area. The block spans from the `themeTokens`
  * declaration to the closing brace of the object literal.
@@ -142,15 +144,15 @@ describe('Theme token enforcement', () => {
     expect(violations).toHaveLength(0);
   });
 
-  it('src/index.ts themeTokens block: no unallowlisted brand hex literals', () => {
-    const content = readFileSync(INDEX_TS, 'utf-8');
+  it('render-ctx.ts themeTokens block: no unallowlisted brand hex literals', () => {
+    const content = readFileSync(RENDER_CTX_TS, 'utf-8');
     const { block, lineOffset } = extractThemeBlock(content);
 
     // The block must contain at least the primaryColor line as a sanity check
     // that we actually found it (guards against silent extraction failures).
     expect(block, 'themeTokens block must be found and non-trivial').toMatch(/primaryColor/);
 
-    const rawViolations = findViolations(INDEX_TS, block);
+    const rawViolations = findViolations(RENDER_CTX_TS, block);
     // Adjust line numbers back to file-relative for readability.
     const violations = rawViolations.map((v) => {
       // Pattern: "path:LINE  ...", rebase the line number.
@@ -159,7 +161,7 @@ describe('Theme token enforcement', () => {
 
     if (violations.length > 0) {
       console.error(
-        '\nUnallowlisted hex literals in src/index.ts themeTokens block:\n' +
+        '\nUnallowlisted hex literals in render-ctx.ts themeTokens block:\n' +
           violations.join('\n') +
           '\n\nIf this is a brand-independent constant or customer-overridable default,' +
           ' mark it with "// allowlist:hex-literal -- <reason>".' +
