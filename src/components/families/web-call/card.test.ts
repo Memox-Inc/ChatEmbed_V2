@@ -85,3 +85,56 @@ describe('WebCallCardModule', () => {
     expect(el.textContent).toContain('Microphone unavailable');
   });
 });
+
+describe('WebCallCardModule client-side hard stop', () => {
+  it('hard-stops a live call after max_duration_seconds + 10s grace', () => {
+    vi.useFakeTimers();
+    try {
+      const el = WebCallCardModule.render(liveData, makeCtx());
+      expect(el.querySelector('[data-part="live-card"]')).not.toBeNull();
+      vi.advanceTimersByTime((liveData.max_duration_seconds + 10) * 1000 + 1000);
+      expect(el.querySelector('[data-part="call-ended"]')).not.toBeNull();
+      expect(el.querySelector('[data-part="live-card"]')).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('does not fire the hard stop before the cap', () => {
+    vi.useFakeTimers();
+    try {
+      const el = WebCallCardModule.render(liveData, makeCtx());
+      vi.advanceTimersByTime(liveData.max_duration_seconds * 1000);
+      expect(el.querySelector('[data-part="live-card"]')).not.toBeNull();
+      expect(el.querySelector('[data-part="call-ended"]')).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('clears the hard stop on a server-pushed terminal update', () => {
+    vi.useFakeTimers();
+    try {
+      const el = WebCallCardModule.render(liveData, makeCtx());
+      WebCallCardModule.update!(el, endedData);
+      // Both the elapsed-timer interval and the hard-stop timeout must be gone.
+      expect(vi.getTimerCount()).toBe(0);
+      vi.advanceTimersByTime((liveData.max_duration_seconds + 10) * 1000 + 1000);
+      expect(el.querySelector('[data-part="call-ended"]')).not.toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('re-arms the hard stop when a server-pushed update enters live', () => {
+    vi.useFakeTimers();
+    try {
+      const el = WebCallCardModule.render(idleData, makeCtx());
+      WebCallCardModule.update!(el, liveData);
+      vi.advanceTimersByTime((liveData.max_duration_seconds + 10) * 1000 + 1000);
+      expect(el.querySelector('[data-part="call-ended"]')).not.toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});

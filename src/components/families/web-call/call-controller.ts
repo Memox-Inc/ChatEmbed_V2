@@ -38,6 +38,30 @@ export interface CallController {
 }
 
 /**
+ * Scheme guard (plan addendum): mic audio must never stream to an
+ * arbitrary-scheme endpoint. Only wss:// is allowed in production;
+ * ws://localhost and ws://127.0.0.1 are permitted for local development.
+ * Throws with a clear message for anything else (including http(s):// and
+ * unparseable URLs). Called BEFORE the WebSocket is constructed.
+ */
+export function assertSecureWsUrl(wsUrl: string): void {
+  let parsed: URL;
+  try {
+    parsed = new URL(wsUrl);
+  } catch {
+    throw new Error(`Invalid voice WebSocket URL: "${wsUrl}". Voice calls require a wss:// URL.`);
+  }
+  if (parsed.protocol === 'wss:') return;
+  if (parsed.protocol === 'ws:' && (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1')) {
+    return;
+  }
+  throw new Error(
+    `Refusing to stream microphone audio over insecure transport to "${wsUrl}". ` +
+    'Voice calls require wss:// (ws://localhost and ws://127.0.0.1 are allowed for development).',
+  );
+}
+
+/**
  * PCMFramer AudioWorklet source, inlined as a string and loaded via blob URL.
  * Mirrors repos/mmx-unified-chat public/audio-worklets/pcm-downsampler.js.
  *
@@ -78,6 +102,9 @@ registerProcessor('pcm-framer', PCMFramer);
 `;
 
 export async function initCallController(opts: CallControllerOptions): Promise<CallController> {
+  // 0. Scheme guard: refuse insecure endpoints BEFORE constructing the socket.
+  assertSecureWsUrl(opts.wsUrl);
+
   // 1. Open WebSocket to wsUrl?token=sessionToken
   const url = `${opts.wsUrl}${opts.wsUrl.includes('?') ? '&' : '?'}token=${encodeURIComponent(opts.sessionToken)}`;
   const ws = new WebSocket(url);

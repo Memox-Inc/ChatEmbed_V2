@@ -67,6 +67,13 @@ const controllerMap = new WeakMap<HTMLElement, { end(): void; toggleMute(): bool
 // re-render without needing _ctx to be wired by Task 10 (tests also benefit).
 const ctxMap = new WeakMap<HTMLElement, RenderCtx>();
 
+// Stores the client-side hard-stop setTimeout ref, keyed by root element
+// (plan addendum): a lossy network must never leave the UI live forever, so
+// every live entry arms a timeout at (max_duration_seconds + 10s grace) that
+// force-ends the call if the card is still live. Cleared on every terminal
+// transition (ended / error / server-pushed update).
+const hardStopMap = new WeakMap<HTMLElement, ReturnType<typeof setTimeout>>();
+
 // ---- SVG icons ---------------------------------------------------------------
 
 function phoneIcon(): SVGSVGElement {
@@ -210,14 +217,17 @@ function buildIdleSection(data: WebCallData, ctx: RenderCtx, root: HTMLElement):
               const liveSection = buildLiveSection(liveStateData, ctx, root);
               replaceSection(root, liveSection);
               startTimer(root, liveStateData);
+              armHardStop(root, liveStateData, ctx);
             } else if (state === 'ended') {
               stopTimer(root);
+              clearHardStop(root);
               const ctrl = controllerMap.get(root);
               const endedStateData: WebCallData = { ...data, state: 'ended', duration_seconds: 0 };
               replaceSection(root, buildEndedSection(endedStateData, ctx, root));
               if (ctrl) controllerMap.delete(root);
             } else if (state === 'error') {
               stopTimer(root);
+              clearHardStop(root);
               replaceSection(root, buildErrorSection(detail ?? 'Call error.', ctx));
               controllerMap.delete(root);
             }
@@ -371,18 +381,11 @@ function buildLiveSection(data: WebCallData, ctx: RenderCtx, root: HTMLElement):
       ctrl.end();
       controllerMap.delete(root);
     }
+    // Compute elapsed from the timer text content if available (best-effort),
+    // BEFORE stopping the timer and replacing the section.
+    const durationSec = readElapsedSeconds(root) ?? data.duration_seconds ?? 0;
     stopTimer(root);
-    // Compute elapsed from the timer text content if available (best-effort)
-    const timerEl = root.querySelector('[data-part="live-timer"]') as HTMLElement | null;
-    let durationSec = data.duration_seconds ?? 0;
-    if (timerEl && timerEl.textContent) {
-      const parts = timerEl.textContent.split(':');
-      if (parts.length === 2) {
-        const m = parseInt(parts[0], 10);
-        const s = parseInt(parts[1], 10);
-        if (!isNaN(m) && !isNaN(s)) durationSec = m * 60 + s;
-      }
-    }
+    clearHardStop(root);
     const endedStateData: WebCallData = { ...data, state: 'ended', duration_seconds: durationSec };
     replaceSection(root, buildEndedSection(endedStateData, ctx, root));
   });
@@ -476,6 +479,62 @@ function stopTimer(root: HTMLElement): void {
   if (handle !== undefined) {
     clearInterval(handle);
     timerMap.delete(root);
+  }
+}
+
+/**
+ * Best-effort read of the elapsed call seconds from the live timer element.
+ * Returns null if the timer is absent or unparseable.
+ */
+function readElapsedSeconds(root: HTMLElement): number | null {
+  const timerEl = root.querySelector('[data-part="live-timer"]');
+  const txt = timerEl?.textContent ?? '';
+  const parts = txt.split(':');
+  if (parts.length !== 2) return null;
+  const m = parseInt(parts[0], 10);
+  const s = parseInt(parts[1], 10);
+  if (isNaN(m) || isNaN(s)) return null;
+  return m * 60 + s;
+}
+
+// ---- Client-side hard stop (plan addendum) ------------------------------------
+
+/**
+ * Arm a hard stop at (max_duration_seconds + 10s grace). The server enforces
+ * the real cap; this client-side stop exists because a lossy network can drop
+ * the server's terminal component_update or WS close, which must not leave
+ * the UI live forever. When it fires and the card is still live:
+ *   - with an active controller: controller.end() (drives onStateChange('ended')
+ *     which transitions the UI and clears state), or
+ *   - without a controller (server-driven live render): transition the UI to
+ *     ended directly.
+ * Re-arming always clears any previous hard stop first.
+ */
+function armHardStop(root: HTMLElement, data: WebCallData, ctx: RenderCtx): void {
+  clearHardStop(root);
+  const handle = setTimeout(() => {
+    hardStopMap.delete(root);
+    // Only act if the card is still showing the live state.
+    if (!root.querySelector('[data-part="live-card"]')) return;
+    const ctrl = controllerMap.get(root);
+    if (ctrl) {
+      controllerMap.delete(root);
+      ctrl.end();
+      return;
+    }
+    const durationSec = readElapsedSeconds(root) ?? data.max_duration_seconds;
+    stopTimer(root);
+    const endedStateData: WebCallData = { ...data, state: 'ended', duration_seconds: durationSec };
+    replaceSection(root, buildEndedSection(endedStateData, ctx, root));
+  }, (data.max_duration_seconds + 10) * 1000);
+  hardStopMap.set(root, handle);
+}
+
+function clearHardStop(root: HTMLElement): void {
+  const handle = hardStopMap.get(root);
+  if (handle !== undefined) {
+    clearTimeout(handle);
+    hardStopMap.delete(root);
   }
 }
 
@@ -590,6 +649,7 @@ function renderWebCall(data: WebCallData, ctx: RenderCtx): HTMLElement {
     case 'live':
       contentSection = buildLiveSection(data, ctx, root);
       startTimer(root, data);
+      armHardStop(root, data, ctx);
       break;
     case 'ended':
       contentSection = buildEndedSection(data, ctx, root);
@@ -627,6 +687,7 @@ export const WebCallCardModule: ComponentModule = {
 
     const wcd = data as WebCallData;
     stopTimer(rootEl);
+    clearHardStop(rootEl);
     controllerMap.delete(rootEl);
 
     const newSection = (() => {
@@ -639,7 +700,10 @@ export const WebCallCardModule: ComponentModule = {
       }
     })();
     replaceSection(rootEl, newSection);
-    if (wcd.state === 'live') startTimer(rootEl, wcd);
+    if (wcd.state === 'live') {
+      startTimer(rootEl, wcd);
+      armHardStop(rootEl, wcd, ctx);
+    }
     // Update ctxMap entry so subsequent update() calls remain live.
     ctxMap.set(rootEl, ctx);
     // Mirror Task 10 convention.
