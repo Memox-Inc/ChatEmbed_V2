@@ -10,6 +10,7 @@
  */
 
 import { el, svg, text } from '../../core/dom';
+import { findComponentWrapper } from '../../core/message-integration';
 
 // ---- SVG icon ----------------------------------------------------------------
 
@@ -48,6 +49,10 @@ export function createCartChip(
 ): HTMLDivElement {
   const chip = el('div', {
     'data-part': 'cart-chip',
+    // Token colors stored at create time so updateCartChip can style a
+    // newly created badge without recovering colors from style properties.
+    'data-primary': primaryColor,
+    'data-primary-light': primaryLightColor,
     role: 'button',
     tabindex: '0',
     'aria-label': `View cart, ${count} item${count === 1 ? '' : 's'}`,
@@ -95,16 +100,48 @@ export function updateCartChip(chip: HTMLDivElement, count: number): void {
   if (count > 0) {
     if (!badge) {
       badge = el('span', { 'data-part': 'chip-badge' });
-      // Recover the token colors from the chip's own inline styles
-      // (set from theme tokens in createCartChip): color = primary,
-      // backgroundColor = primaryLight. No hex literals needed here.
-      applyBadgeStyles(badge, chip.style.color, chip.style.backgroundColor);
+      // Token colors stamped on the chip root by createCartChip.
+      applyBadgeStyles(
+        badge,
+        chip.getAttribute('data-primary') ?? '',
+        chip.getAttribute('data-primary-light') ?? '',
+      );
       chip.appendChild(badge);
     }
     badge.textContent = String(count);
   } else if (badge) {
     badge.remove();
   }
+}
+
+/**
+ * Read total_quantity from an unknown cart component data payload.
+ * Returns null when the field is absent or not a number.
+ */
+export function readCartQuantity(data: unknown): number | null {
+  if (!data || typeof data !== 'object') return null;
+  const q = (data as { total_quantity?: unknown }).total_quantity;
+  return typeof q === 'number' ? q : null;
+}
+
+/**
+ * Sync the cart chip from a component_update WS frame. Type-gated on the
+ * rendered wrapper: the frame's ids are resolved with the SAME lookup
+ * applyComponentUpdate uses, and setCount fires only when that wrapper is
+ * stamped data-component-type="shopify_cart". No wrapper, no sync; no
+ * payload shape sniffing.
+ */
+export function syncCartChipOnComponentUpdate(
+  messagesEl: HTMLElement,
+  messageId: string,
+  componentId: string,
+  data: unknown,
+  setCount: (totalQuantity: number) => void,
+): void {
+  const wrapper = findComponentWrapper(messagesEl, messageId, componentId);
+  if (!wrapper || wrapper.getAttribute('data-component-type') !== 'shopify_cart') return;
+  const qty = readCartQuantity(data);
+  if (qty !== null) setCount(qty);
 }
 
 // ---- style helpers -----------------------------------------------------------

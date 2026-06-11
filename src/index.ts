@@ -35,7 +35,12 @@ import { fetchInitConfig, normalizeServerConfig } from './connection/init';
 import { applyTheme } from './ui/theme-vars';
 import { startEmbedConfigListener } from './connection/embed-config-listener';
 import { applyComponentUpdate } from './components/core/message-integration';
-import { createCartChip, updateCartChip } from './components/families/shopify/cart-chip';
+import {
+  createCartChip,
+  updateCartChip,
+  readCartQuantity,
+  syncCartChipOnComponentUpdate,
+} from './components/families/shopify/cart-chip';
 import './components/register';
 
 declare global {
@@ -229,15 +234,6 @@ async function init(): Promise<void> {
       headerRefs.setCartChip(cartChipEl);
     } else {
       updateCartChip(cartChipEl, totalQuantity);
-    }
-  }
-
-  /** Narrow an unknown component data payload to cart shape and sync the chip. */
-  function maybeSyncCartChip(componentData: unknown): void {
-    if (!componentData || typeof componentData !== 'object') return;
-    const d = componentData as { cart_id?: unknown; total_quantity?: unknown; lines?: unknown };
-    if (typeof d.cart_id === 'string' && typeof d.total_quantity === 'number' && Array.isArray(d.lines)) {
-      setCartChipCount(d.total_quantity);
     }
   }
 
@@ -516,17 +512,23 @@ async function init(): Promise<void> {
       // Task 10 must set _ctx during render wiring and swap this cast for the
       // real ctx.
       if (!upd.data || typeof upd.data !== 'object') return;
-      maybeSyncCartChip(upd.data);
+      // Chip sync is type-gated on the rendered wrapper's
+      // data-component-type (same wrapper lookup applyComponentUpdate
+      // uses). No wrapper or non-cart wrapper means no sync.
+      syncCartChipOnComponentUpdate(messagesEl, upd.message_id, upd.component_id, upd.data, setCartChipCount);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       applyComponentUpdate(messagesEl, upd.message_id, upd.component_id, upd.data, null as any);
       return;
     }
 
     // Cart chip sync: any rich message payload carrying a shopify_cart
-    // component drives the header count badge (MMX-468 Task 7d).
+    // component (per the wire envelope type) drives the header count
+    // badge (MMX-468 Task 7d).
     if (Array.isArray(data.components)) {
       for (const comp of data.components) {
-        if (comp.type === 'shopify_cart') maybeSyncCartChip(comp.data);
+        if (comp.type !== 'shopify_cart') continue;
+        const qty = readCartQuantity(comp.data);
+        if (qty !== null) setCartChipCount(qty);
       }
     }
 

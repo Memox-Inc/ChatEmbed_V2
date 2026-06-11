@@ -92,7 +92,7 @@ function renderCart(data: ShopifyCartData, ctx: RenderCtx): HTMLElement {
 
   // ---- line items ----
   const linesList = el('div', { 'data-part': 'cart-lines' });
-  applyLinesListStyles(linesList, t);
+  applyLinesListStyles(linesList);
 
   for (const line of data.lines) {
     linesList.appendChild(renderLine(line, ctx, errorDiv));
@@ -217,6 +217,12 @@ function renderCart(data: ShopifyCartData, ctx: RenderCtx): HTMLElement {
   root.appendChild(subtotalRow);
 
   // ---- checkout button ----
+  // checkoutWrap is declared before checkoutBtn because the click handler
+  // below closes over it (fallback-link insertion); declaring it first
+  // keeps the reference ahead of any use, no TDZ reliance.
+  const checkoutWrap = el('div', { 'data-part': 'checkout-wrap' });
+  checkoutWrap.style.cssText = 'padding:10px 12px 12px;';
+
   const checkoutBtn = el('button', {
     'data-part': 'checkout-btn',
     type: 'button',
@@ -293,8 +299,6 @@ function renderCart(data: ShopifyCartData, ctx: RenderCtx): HTMLElement {
     });
   });
 
-  const checkoutWrap = el('div', { 'data-part': 'checkout-wrap' });
-  checkoutWrap.style.cssText = 'padding:10px 12px 12px;';
   checkoutWrap.appendChild(checkoutBtn);
   root.appendChild(checkoutWrap);
 
@@ -522,13 +526,12 @@ function applyEmptyStyles(el: HTMLElement, t: RenderCtx['theme']): void {
   ].join(';');
 }
 
-function applyLinesListStyles(el: HTMLElement, t: RenderCtx['theme']): void {
+function applyLinesListStyles(el: HTMLElement): void {
   el.style.cssText = [
     'display:flex',
     'flex-direction:column',
-    `gap:0`,
+    'gap:0',
   ].join(';');
-  void t; // used in child renders
 }
 
 function applyLineStyles(el: HTMLElement, t: RenderCtx['theme']): void {

@@ -100,6 +100,28 @@ export function renderSuggestionPills(
 }
 
 /**
+ * Locate a rendered component wrapper by [data-message-id] then
+ * [data-component-id]. The single lookup used by applyComponentUpdate and
+ * any other component_update consumer (e.g. the cart-chip sync) so they
+ * can never disagree about which element a frame targets.
+ * Returns null when either id has no match or produces a hostile selector.
+ */
+export function findComponentWrapper(
+  messagesEl: HTMLElement,
+  messageId: string,
+  componentId: string,
+): Element | null {
+  try {
+    const msgWrapper = messagesEl.querySelector(`[data-message-id="${cssAttrEscape(messageId)}"]`);
+    if (!msgWrapper) return null;
+    return msgWrapper.querySelector(`[data-component-id="${cssAttrEscape(componentId)}"]`);
+  } catch {
+    // Hostile id that still produces an invalid selector after escaping.
+    return null;
+  }
+}
+
+/**
  * Patch a rendered component in place when a component_update WS event arrives.
  * Finds the wrapper by [data-message-id] + [data-component-id], then calls
  * module.update() if present, or re-renders the inner element otherwise.
@@ -116,16 +138,7 @@ export function applyComponentUpdate(
   // that were version-supported at render time (unsupported versions were
   // never rendered, so the selector no-ops), and the hub does not bump
   // schema versions for live instances.
-  let msgWrapper: Element | null;
-  let wrapper: Element | null;
-  try {
-    msgWrapper = messagesEl.querySelector(`[data-message-id="${cssAttrEscape(messageId)}"]`);
-    if (!msgWrapper) return;
-    wrapper = msgWrapper.querySelector(`[data-component-id="${cssAttrEscape(componentId)}"]`);
-  } catch {
-    // Hostile id that still produces an invalid selector after escaping — no-op.
-    return;
-  }
+  const wrapper = findComponentWrapper(messagesEl, messageId, componentId);
   if (!wrapper) return;
   const type = wrapper.getAttribute('data-component-type');
   if (!type) return;
