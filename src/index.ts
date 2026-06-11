@@ -131,6 +131,7 @@ async function init(): Promise<void> {
   };
 
   // Resolve the primary color first so derived tokens can reference it.
+  // allowlist:hex-literal -- customer-overridable default; theme.primary takes precedence
   const primaryColor = theme.primary ?? '#8349ff';
   const themeTokens: ThemeTokens = {
     primary: primaryColor,
@@ -139,24 +140,22 @@ async function init(): Promise<void> {
     // Falls back gracefully for non-6-digit values (mixWithWhite returns base
     // unchanged, which is a valid CSS color even if not tinted).
     primaryLight: mixWithWhite(primaryColor, 0.9),
-    text: theme.text ?? '#072032',
-    textMuted: theme.timestampColor ?? '#5b6b7a',
-    border: theme.border ?? '#e5e7eb',
-    surface: theme.background ?? '#ffffff',
-    // Brand-independent neutral: Tailwind gray-50 (#f9fafb). Not derived from
-    // primary because a very light/very dark primary would produce a
-    // distracting tinted surface; neutral gray is the safer universal default.
-    // allowlist:hex-literal -- brand-independent neutral gray (not a brand color)
-    surfaceSubtle: '#f9fafb',
+    text: theme.text ?? '#072032', // allowlist:hex-literal -- customer-overridable default
+    textMuted: theme.timestampColor ?? '#5b6b7a', // allowlist:hex-literal -- customer-overridable default
+    border: theme.border ?? '#e5e7eb', // allowlist:hex-literal -- customer-overridable default
+    surface: theme.background ?? '#ffffff', // allowlist:hex-literal -- customer-overridable default
+    // Brand-independent neutral: Tailwind gray-50. Not derived from primary
+    // because a very light/very dark primary would produce a distracting
+    // tinted surface; neutral gray is the safer universal default.
+    surfaceSubtle: '#f9fafb', // allowlist:hex-literal -- brand-independent neutral gray
     // Semantic status colors below are brand-independent (red/green/amber).
     // They intentionally do not derive from theme.primary.
-    // allowlist:hex-literal -- brand-independent semantic status colors
-    error: '#ef4444',
-    errorSubtle: '#fee2e2',
-    success: '#22c55e',
-    successSubtle: '#dcfce7',
-    warning: '#d97706',
-    warningSubtle: '#fffbeb',
+    error: '#ef4444', // allowlist:hex-literal -- brand-independent semantic status color
+    errorSubtle: '#fee2e2', // allowlist:hex-literal -- brand-independent semantic status color
+    success: '#22c55e', // allowlist:hex-literal -- brand-independent semantic status color
+    successSubtle: '#dcfce7', // allowlist:hex-literal -- brand-independent semantic status color
+    warning: '#d97706', // allowlist:hex-literal -- brand-independent semantic status color
+    warningSubtle: '#fffbeb', // allowlist:hex-literal -- brand-independent semantic status color
   };
 
   const visitorTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
