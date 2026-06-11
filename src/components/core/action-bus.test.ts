@@ -115,12 +115,12 @@ describe('ActionBus.dispatch()', () => {
     const promiseB = bus.dispatch(makeAction());
     expect(bus.isPending()).toBe(true);
 
-    // Settle A first — B still in flight, so still pending
+    // Settle A first, B still in flight, so still pending
     resolveA(undefined);
     await promiseA;
     expect(bus.isPending()).toBe(true);
 
-    // Settle B — both done, no longer pending
+    // Settle B, both done, no longer pending
     resolveB(undefined);
     await promiseB;
     expect(bus.isPending()).toBe(false);

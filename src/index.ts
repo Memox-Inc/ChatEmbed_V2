@@ -698,7 +698,7 @@ async function init(): Promise<void> {
       // Deduplicate
       if (streamingRenderer.isDuplicateChunk(content)) return;
 
-      // Completion signal — mark as done and attach components/suggestions.
+      // Completion signal: mark as done and attach components/suggestions.
       if (data.is_complete === true && content === '') {
         if (lastMessage?.isStreaming) {
           lastMessage.isStreaming = false;
@@ -719,7 +719,7 @@ async function init(): Promise<void> {
             // the DOM (e.g. when a second message streams in before the first
             // completion fires, or during testing where DOM order differs).
             // Escape backslash and double-quote to produce a safe CSS attr
-            // selector — same approach as cssAttrEscape in message-integration.ts.
+            // selector, same approach as cssAttrEscape in message-integration.ts.
             const msgId = lastMessage.messageId;
             const escapedId = msgId ? msgId.replace(/\\/g, '\\\\').replace(/"/g, '\\"') : null;
             const targetGroup = escapedId

@@ -1,5 +1,5 @@
 /**
- * is_complete re-render — data-message-id targeted bubble removal.
+ * is_complete re-render: data-message-id targeted bubble removal.
  *
  * Regression: the original code removed the last `.mcx-msg-group` in the DOM
  * (positional) when a streaming message finished. If a second group was
@@ -83,7 +83,7 @@ window.MemoxChatConfig = {
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
-describe('is_complete re-render — data-message-id targeted removal', () => {
+describe('is_complete re-render: data-message-id targeted removal', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     capturedOnMessage = null;
@@ -170,7 +170,7 @@ describe('is_complete re-render — data-message-id targeted removal', () => {
     decoy.textContent = 'Interleaved group (decoy)';
     messagesEl.appendChild(decoy);
 
-    // Send is_complete with a component attached — this triggers the targeted
+    // Send is_complete with a component attached, this triggers the targeted
     // group replacement path in index.ts.
     capturedOnMessage({
       message_type: 'message',

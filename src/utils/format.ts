@@ -40,7 +40,7 @@ export function withAlpha(color: string, alphaHex: string): string {
  * hardcoding a Memox-purple-specific hex.
  *
  * Non-hex inputs (rgb(), hsl(), etc.) are returned unchanged so callers
- * never receive an invalid CSS value — the caller should fall back to a
+ * never receive an invalid CSS value, the caller should fall back to a
  * brand-neutral default in that case.
  *
  * @param base    A 6-digit hex color, e.g. "#8349ff".

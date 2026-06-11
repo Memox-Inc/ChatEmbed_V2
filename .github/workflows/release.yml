@@ -102,7 +102,7 @@ jobs:
           # 2d) The just-released specific URL. Usually cold, but on first hit
           #     it can 404 if step 1 was skipped — see commit message.
           curl -fsSL "https://purge.jsdelivr.net/gh/Memox-Inc/ChatEmbed_V2@v${{ inputs.version }}/dist/chat-embed.js" | head -c 300; echo
-          # 2e) Voice bundle (MMX-468) — same pins as the core bundle, because
+          # 2e) Voice bundle (MMX-468), same pins as the core bundle, because
           #     card.ts requests it from the same tag as the embed script.
           curl -fsSL "https://purge.jsdelivr.net/gh/Memox-Inc/ChatEmbed_V2@v3/dist/chat-voice.js" | head -c 300; echo
           curl -fsSL "https://purge.jsdelivr.net/gh/Memox-Inc/ChatEmbed_V2@latest/dist/chat-voice.js" | head -c 300; echo

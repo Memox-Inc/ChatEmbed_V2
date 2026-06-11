@@ -142,7 +142,7 @@ describe('Theme token enforcement', () => {
     expect(violations).toHaveLength(0);
   });
 
-  it('src/index.ts themeTokens block — no unallowlisted brand hex literals', () => {
+  it('src/index.ts themeTokens block: no unallowlisted brand hex literals', () => {
     const content = readFileSync(INDEX_TS, 'utf-8');
     const { block, lineOffset } = extractThemeBlock(content);
 
@@ -153,7 +153,7 @@ describe('Theme token enforcement', () => {
     const rawViolations = findViolations(INDEX_TS, block);
     // Adjust line numbers back to file-relative for readability.
     const violations = rawViolations.map((v) => {
-      // Pattern: "path:LINE  ..." — rebase the line number.
+      // Pattern: "path:LINE  ...", rebase the line number.
       return v.replace(/:(\d+)\s/, (_, n) => `:${parseInt(n) + lineOffset}  `);
     });
 

@@ -99,7 +99,7 @@ export function renderComponentsBlock(
         const inner = mod.render(card.data, cardCtx);
         // Stamp _ctx so module.update() can re-render with the original ctx
         // (see CalendarSlotsModule.update, CalendarBookingConfirmedModule.update,
-        // WebCallCardModule.update — all guard on el._ctx being set).
+        // WebCallCardModule.update, all guard on el._ctx being set).
         (inner as HTMLElement & { _ctx?: RenderCtx })._ctx = cardCtx;
         host.appendChild(wrapComponent(card, inner));
         renderedInRun++;

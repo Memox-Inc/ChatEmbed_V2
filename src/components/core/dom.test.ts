@@ -63,7 +63,7 @@ describe('el() builder', () => {
   });
 
   it('allows the bare attribute name "on" (not an event handler prefix)', () => {
-    // "on" alone does not match /^on.+/i — it has no char after "on".
+    // "on" alone does not match /^on.+/i, it has no char after "on".
     const d = el('div', { on: 'x' });
     expect(d.getAttribute('on')).toBe('x');
   });
