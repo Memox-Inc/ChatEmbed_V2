@@ -230,12 +230,12 @@ function renderCard(data: ShopifyProductCardData, ctx: RenderCtx): HTMLElement {
     addToCartBtn.textContent = 'Adding...';
     errorDiv.style.display = 'none';
 
-    // message_id / component_id are filled by the per-component dispatch
-    // wrapper Task 10 builds into RenderCtx (the renderer only receives raw
-    // payload data, never the WireComponent envelope ids).
+    // Real wire ids come from the per-component ctx renderComponentsBlock
+    // builds (the hub 403s actions whose component_id does not belong to
+    // the claimed message). Blank fallback only in bare module-level tests.
     ctx.dispatch({
-      message_id: '',
-      component_id: '',
+      message_id: ctx.messageId ?? '',
+      component_id: ctx.componentId ?? '',
       action_type: 'shopify.add_to_cart',
       payload: { variant_id: state.selectedVariantId, quantity: state.qty },
     }).then((result) => {

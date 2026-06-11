@@ -1,5 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { ShopifyCartModule } from './cart';
+import { renderComponentsBlock } from '../../core/message-integration';
+import { createRegistry } from '../../core/registry';
 import type { ShopifyCartData, RenderCtx, ThemeTokens } from '../../core/types';
 
 const theme: ThemeTokens = {
@@ -109,5 +111,25 @@ describe('ShopifyCartModule', () => {
     await new Promise((r) => setTimeout(r, 10));
     const errorEl = el.querySelector('[data-part="action-error"]');
     expect(errorEl?.textContent).toContain('Code not valid');
+  });
+
+  it('dispatches with the real component id and message id from the rendered wrapper', async () => {
+    const dispatch = vi.fn().mockResolvedValue({ ok: true, components: [] });
+    const registry = createRegistry();
+    registry.register('shopify_cart', ShopifyCartModule);
+    const block = renderComponentsBlock(
+      [{ id: 'cmp_cart_1', type: 'shopify_cart', version: 1, data: cartFixture }],
+      makeCtx({ dispatch }),
+      registry,
+      'msg_88',
+    );
+    expect(block!.querySelector('[data-component-id="cmp_cart_1"]')).not.toBeNull();
+    (block!.querySelector('[data-part="remove-line-btn"]') as HTMLButtonElement).click();
+    await Promise.resolve();
+    expect(dispatch).toHaveBeenCalledWith(expect.objectContaining({
+      action_type: 'shopify.remove_line',
+      message_id: 'msg_88',
+      component_id: 'cmp_cart_1',
+    }));
   });
 });

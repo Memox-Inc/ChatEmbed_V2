@@ -148,6 +148,16 @@ export interface RenderCtx {
   enabled: ComponentsEnabled;
   formatTime(isoString: string): string;
   formatDate(dateString: string): { weekday: string; day: string };
+  /**
+   * Per-component identity, stamped by renderComponentsBlock (and the
+   * applyComponentUpdate re-render path) so every dispatch carries the real
+   * wire ids. The hub ownership policy 403s any action whose component_id
+   * does not belong to the claimed message, so renderers must send
+   * ctx.messageId / ctx.componentId, never blanks. Optional because bare
+   * module-level tests may render without the wrapper pipeline.
+   */
+  messageId?: string;
+  componentId?: string;
 }
 
 // Module interface

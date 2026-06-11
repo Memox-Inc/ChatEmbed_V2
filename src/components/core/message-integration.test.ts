@@ -128,6 +128,28 @@ describe('renderComponentsBlock()', () => {
     expect(titles).toEqual(['First Product', 'Second Product']);
   });
 
+  it('passes each renderer a per-component ctx carrying its own componentId and the messageId', () => {
+    const seen: Array<{ componentId?: string; messageId?: string }> = [];
+    const probeRender = (_d: unknown, ctx: RenderCtx): HTMLElement => {
+      seen.push({ componentId: ctx.componentId, messageId: ctx.messageId });
+      return document.createElement('div');
+    };
+    const registry = createRegistry();
+    registry.register('shopify_product_card', makeModule({ render: probeRender }));
+    registry.register('ctx_probe', makeModule({ render: probeRender }));
+    renderComponentsBlock(
+      [productCard('c1'), productCard('c2'), { id: 'p1', type: 'ctx_probe', version: 1, data: {} }],
+      makeCtx(),
+      registry,
+      'msg_7',
+    );
+    expect(seen).toEqual([
+      { componentId: 'c1', messageId: 'msg_7' },
+      { componentId: 'c2', messageId: 'msg_7' },
+      { componentId: 'p1', messageId: 'msg_7' },
+    ]);
+  });
+
   it('does not merge non-consecutive product cards into one carousel', () => {
     const registry = createRegistry();
     registry.register('shopify_product_card', makeModule());
@@ -201,6 +223,28 @@ describe('applyComponentUpdate()', () => {
 
     const wrapper = messagesEl.querySelector('[data-component-id="c1"]')!;
     expect(wrapper.textContent).toBe('after');
+  });
+
+  it('re-render path passes a per-component ctx carrying the message and component ids', () => {
+    const seen: Array<{ componentId?: string; messageId?: string }> = [];
+    const registry = createRegistry();
+    registry.register('rerender_widget', makeModule({
+      render: (_d, ctx) => {
+        seen.push({ componentId: ctx.componentId, messageId: ctx.messageId });
+        return document.createElement('div');
+      },
+    }));
+    const ctx = makeCtx();
+    const messagesEl = renderIntoMessage(
+      [{ id: 'c1', type: 'rerender_widget', version: 1, data: {} }],
+      ctx,
+      registry,
+    );
+    seen.length = 0;
+
+    applyComponentUpdate(messagesEl, 'msg_1', 'c1', {}, ctx, registry);
+
+    expect(seen).toEqual([{ componentId: 'c1', messageId: 'msg_1' }]);
   });
 
   it('is a graceful no-op when the component id is not in the DOM', () => {

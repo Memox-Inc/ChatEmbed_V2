@@ -1,5 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { CalendarSlotsModule } from './slots';
+import { renderComponentsBlock } from '../../core/message-integration';
+import { createRegistry } from '../../core/registry';
 import type { CalendarSlotsData, RenderCtx, ThemeTokens } from '../../core/types';
 
 const theme: ThemeTokens = {
@@ -95,5 +97,27 @@ describe('CalendarSlotsModule', () => {
     const el = CalendarSlotsModule.render(withNotice, makeCtx());
     const notice = el.querySelector('[data-part="slots-notice"]');
     expect(notice?.textContent).toContain('All times are tentative.');
+  });
+
+  it('dispatches calendar.book with the real component id and message id from the rendered wrapper', async () => {
+    const dispatch = vi.fn().mockResolvedValue({ ok: true });
+    const registry = createRegistry();
+    registry.register('calendar_slots', CalendarSlotsModule);
+    const block = renderComponentsBlock(
+      [{ id: 'cmp_cal_1', type: 'calendar_slots', version: 1, data: slotsFixture }],
+      makeCtx({ dispatch }),
+      registry,
+      'msg_42',
+    );
+    expect(block).not.toBeNull();
+    expect(block!.querySelector('[data-component-id="cmp_cal_1"]')).not.toBeNull();
+    (block!.querySelector('[data-part="time-pill"]') as HTMLElement).click();
+    (block!.querySelector('[data-part="book-btn"]') as HTMLButtonElement).click();
+    await new Promise((r) => setTimeout(r, 10));
+    expect(dispatch).toHaveBeenCalledWith(expect.objectContaining({
+      action_type: 'calendar.book',
+      message_id: 'msg_42',
+      component_id: 'cmp_cal_1',
+    }));
   });
 });

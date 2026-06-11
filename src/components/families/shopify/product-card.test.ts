@@ -1,5 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { ShopifyProductCardModule } from './product-card';
+import { renderComponentsBlock } from '../../core/message-integration';
+import { createRegistry } from '../../core/registry';
 import type { ShopifyProductCardData, RenderCtx, ThemeTokens } from '../../core/types';
 
 const theme: ThemeTokens = {
@@ -156,5 +158,25 @@ describe('ShopifyProductCardModule', () => {
     const insecure = { ...baseProduct, url: 'http://store.example.com/products/20ft-standard' };
     const el = ShopifyProductCardModule.render(insecure, makeCtx());
     expect(el.querySelector('[data-part="view-on-store"]')).toBeNull();
+  });
+
+  it('dispatches with the real component id and message id from the rendered wrapper', async () => {
+    const dispatch = vi.fn().mockResolvedValue({ ok: true, components: [] });
+    const registry = createRegistry();
+    registry.register('shopify_product_card', ShopifyProductCardModule);
+    const block = renderComponentsBlock(
+      [{ id: 'cmp_card_1', type: 'shopify_product_card', version: 1, data: baseProduct }],
+      makeCtx({ dispatch }),
+      registry,
+      'msg_77',
+    );
+    expect(block!.querySelector('[data-component-id="cmp_card_1"]')).not.toBeNull();
+    (block!.querySelector('[data-part="add-to-cart-btn"]') as HTMLButtonElement).click();
+    await new Promise((r) => setTimeout(r, 0));
+    expect(dispatch).toHaveBeenCalledWith(expect.objectContaining({
+      action_type: 'shopify.add_to_cart',
+      message_id: 'msg_77',
+      component_id: 'cmp_card_1',
+    }));
   });
 });

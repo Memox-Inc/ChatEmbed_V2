@@ -173,7 +173,9 @@ export function createMessageBubble(
   bubble.appendChild(msgDiv);
 
   if (options?.components?.length && options.ctx) {
-    const block = renderComponentsBlock(options.components, options.ctx);
+    // Thread the owning message id so each component's dispatch carries the
+    // real ids (renderComponentsBlock builds a per-component ctx from it).
+    const block = renderComponentsBlock(options.components, options.ctx, undefined, msg.messageId);
     if (block) bubble.appendChild(block);
   }
   if (options?.suggestions?.length && options.onSuggestionSelect && options.ctx) {

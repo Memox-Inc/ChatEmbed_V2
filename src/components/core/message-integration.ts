@@ -26,6 +26,16 @@ function wrapComponent(comp: WireComponent, renderedEl: HTMLElement): HTMLDivEle
 }
 
 /**
+ * Build the per-component RenderCtx a renderer dispatches with. Stamps the
+ * component's own wire id plus the owning message id so calendar.book /
+ * shopify.* actions carry real ids (the hub ownership policy 403s any action
+ * whose component_id does not belong to the claimed message).
+ */
+function perComponentCtx(ctx: RenderCtx, comp: WireComponent, messageId?: string): RenderCtx {
+  return { ...ctx, componentId: comp.id, messageId: messageId ?? ctx.messageId };
+}
+
+/**
  * Render all components from a message into a wrapper div.
  * Returns null if no components are renderable.
  * Consecutive shopify_product_card runs (2+) are grouped under a carousel
@@ -33,11 +43,16 @@ function wrapComponent(comp: WireComponent, renderedEl: HTMLElement): HTMLDivEle
  * card keeps its OWN wrapper stamped with its individual data-component-id
  * so applyComponentUpdate addresses grouped and ungrouped components
  * uniformly.
+ *
+ * `messageId` is the owning message's id (threaded from message-bubble.ts);
+ * each renderer receives a per-component ctx carrying it plus its own
+ * component id. If omitted, a `messageId` already present on ctx is kept.
  */
 export function renderComponentsBlock(
   components: WireComponent[],
   ctx: RenderCtx,
   registry: ComponentRegistry = componentRegistry,
+  messageId?: string,
 ): HTMLDivElement | null {
   if (!components.length) return null;
   const container = el('div', { className: 'mcx-components-block' });
@@ -59,7 +74,7 @@ export function renderComponentsBlock(
       for (const card of run) {
         const mod = registry.lookup(card.type, card.version);
         if (!mod) continue;
-        host.appendChild(wrapComponent(card, mod.render(card.data, ctx)));
+        host.appendChild(wrapComponent(card, mod.render(card.data, perComponentCtx(ctx, card, messageId))));
         renderedInRun++;
       }
       if (renderedInRun > 0) {
@@ -71,7 +86,7 @@ export function renderComponentsBlock(
 
     const mod = registry.lookup(comp.type, comp.version);
     if (mod) {
-      container.appendChild(wrapComponent(comp, mod.render(comp.data, ctx)));
+      container.appendChild(wrapComponent(comp, mod.render(comp.data, perComponentCtx(ctx, comp, messageId))));
       rendered++;
     }
     i++;
@@ -148,6 +163,8 @@ export function applyComponentUpdate(
     const inner = wrapper.firstElementChild as HTMLElement | null;
     if (inner) mod.update(inner, data);
   } else {
-    wrapper.replaceChildren(mod.render(data, ctx));
+    // Re-render path: rebuild a per-component ctx so dispatches from the
+    // fresh render keep carrying the real message/component ids.
+    wrapper.replaceChildren(mod.render(data, { ...ctx, messageId, componentId }));
   }
 }

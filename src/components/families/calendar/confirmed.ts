@@ -4,7 +4,7 @@
  * render(data, ctx) takes ONE raw CalendarBookingConfirmedData payload,
  * exactly as message-integration.ts calls it.
  *
- * No actions dispatched — this is a read-only confirmation card.
+ * No actions dispatched; this is a read-only confirmation card.
  *
  * All colors from ctx.theme. Zero hex literals.
  * All DOM via el()/svg()/text() from core/dom.ts. No innerHTML with data.
@@ -74,7 +74,7 @@ function renderConfirmed(data: CalendarBookingConfirmedData, ctx: RenderCtx): HT
   const { weekday, day: dayNum } = ctx.formatDate(data.start_iso.slice(0, 10));
   const startTime = ctx.formatTime(data.start_iso);
   const endTime = ctx.formatTime(data.end_iso);
-  const dateTimeStr = `${weekday}, ${dayNum} — ${startTime} to ${endTime}`;
+  const dateTimeStr = `${weekday}, ${dayNum}, ${startTime} to ${endTime}`;
 
   const dateTimeEl = el('div', { 'data-part': 'confirmed-datetime' }, [text(dateTimeStr)]);
   applyDetailLineStyles(dateTimeEl, t, true);

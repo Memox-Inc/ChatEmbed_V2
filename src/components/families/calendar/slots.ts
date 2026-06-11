@@ -117,7 +117,7 @@ function renderSlots(data: CalendarSlotsData, ctx: RenderCtx): HTMLElement {
 
   root.appendChild(dateStrip);
 
-  // ---- time grid (container — rebuilt when day changes) ----
+  // ---- time grid (container, rebuilt when day changes) ----
   const timeGridWrap = el('div', { 'data-part': 'time-grid-wrap' });
   root.appendChild(timeGridWrap);
 
@@ -210,11 +210,14 @@ function renderSlots(data: CalendarSlotsData, ctx: RenderCtx): HTMLElement {
         bookBtn.textContent = 'Booking...';
 
         ctx.dispatch({
-          message_id: '',
-          component_id: '',
+          message_id: ctx.messageId ?? '',
+          component_id: ctx.componentId ?? '',
           action_type: 'calendar.book',
           payload: { start_iso: slot.start_iso, end_iso: slot.end_iso },
         }).then((result) => {
+          // TODO(Task 10): consume result.components: a slot-conflict
+          // response carries fresh slots that should re-render this component;
+          // nothing handles them yet (known deferral, they are dropped here).
           if (result.ok) {
             bookBtn.textContent = 'Booked!';
           } else {
@@ -282,11 +285,13 @@ function renderSlots(data: CalendarSlotsData, ctx: RenderCtx): HTMLElement {
         bookBtn.textContent = 'Booking...';
 
         ctx.dispatch({
-          message_id: '',
-          component_id: '',
+          message_id: ctx.messageId ?? '',
+          component_id: ctx.componentId ?? '',
           action_type: 'calendar.book',
           payload: { start_iso: slot.start_iso, end_iso: slot.end_iso, name, email },
         }).then((result) => {
+          // TODO(Task 10): consume result.components: see the no-contact
+          // book path above; slot-conflict re-render payloads are dropped.
           if (result.ok) {
             bookBtn.textContent = 'Booked!';
           } else {
@@ -499,6 +504,3 @@ export const CalendarSlotsModule: ComponentModule = {
     el.replaceWith(rendered);
   },
 };
-
-// Re-export types used by tests (avoids a separate import path)
-export type { ComponentModule };

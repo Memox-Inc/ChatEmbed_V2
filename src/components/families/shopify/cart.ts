@@ -154,8 +154,8 @@ function renderCart(data: ShopifyCartData, ctx: RenderCtx): HTMLElement {
     errorDiv.style.display = 'none';
 
     ctx.dispatch({
-      message_id: '',
-      component_id: '',
+      message_id: ctx.messageId ?? '',
+      component_id: ctx.componentId ?? '',
       action_type: 'shopify.apply_discount',
       payload: { code },
     }).then((result) => {
@@ -236,8 +236,8 @@ function renderCart(data: ShopifyCartData, ctx: RenderCtx): HTMLElement {
     checkoutBtn.textContent = 'Opening...';
 
     ctx.dispatch({
-      message_id: '',
-      component_id: '',
+      message_id: ctx.messageId ?? '',
+      component_id: ctx.componentId ?? '',
       action_type: 'shopify.checkout',
       payload: {},
     }).then((result) => {
@@ -381,8 +381,8 @@ function renderLine(line: CartLine, ctx: RenderCtx, errorDiv: HTMLElement): HTML
     decBtn.disabled = true;
     incBtn.disabled = true;
     ctx.dispatch({
-      message_id: '',
-      component_id: '',
+      message_id: ctx.messageId ?? '',
+      component_id: ctx.componentId ?? '',
       action_type: 'shopify.update_line',
       payload: { line_id: line.line_id, quantity: newQty },
     }).then((result) => {
@@ -439,8 +439,8 @@ function renderLine(line: CartLine, ctx: RenderCtx, errorDiv: HTMLElement): HTML
     errorDiv.style.display = 'none';
 
     ctx.dispatch({
-      message_id: '',
-      component_id: '',
+      message_id: ctx.messageId ?? '',
+      component_id: ctx.componentId ?? '',
       action_type: 'shopify.remove_line',
       payload: { line_id: line.line_id },
     }).then((result) => {
