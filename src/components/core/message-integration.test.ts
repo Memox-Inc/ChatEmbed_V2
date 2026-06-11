@@ -1,8 +1,15 @@
 import { describe, it, expect, vi } from 'vitest';
-import { renderComponentsBlock, renderSuggestionPills, applyComponentUpdate } from './message-integration';
+import {
+  renderComponentsBlock,
+  renderSuggestionPills,
+  applyComponentUpdate,
+  applyActionResultComponents,
+  familyOf,
+} from './message-integration';
 import type { WireComponent, RenderCtx, ThemeTokens, ComponentModule, ShopifyProductCardData } from './types';
 import { createRegistry } from './registry';
 import { ShopifyProductCardModule } from '../families/shopify/product-card';
+import { createCartChip, updateCartChip, syncCartChipOnComponentUpdate } from '../families/shopify/cart-chip';
 
 const theme: ThemeTokens = {
   primary: '#8349ff', primaryLight: '#f0ebff', text: '#072032',
@@ -280,6 +287,175 @@ describe('applyComponentUpdate()', () => {
     expect(() => {
       applyComponentUpdate(messagesEl, 'msg\x01bad', 'c1', {}, ctx, registry);
     }).not.toThrow();
+  });
+});
+
+describe('familyOf()', () => {
+  it('maps shopify_* types to shopify', () => {
+    expect(familyOf('shopify_product_card')).toBe('shopify');
+    expect(familyOf('shopify_cart')).toBe('shopify');
+  });
+
+  it('maps calendar_* types to calendar', () => {
+    expect(familyOf('calendar_slots')).toBe('calendar');
+    expect(familyOf('calendar_booking_confirmed')).toBe('calendar');
+  });
+
+  it('maps web_call to web_call', () => {
+    expect(familyOf('web_call')).toBe('web_call');
+  });
+
+  it('returns null for unknown family types (ungated)', () => {
+    expect(familyOf('unknown_future_type_99')).toBeNull();
+    expect(familyOf('test_widget')).toBeNull();
+  });
+});
+
+describe('renderComponentsBlock() componentsEnabled gate', () => {
+  it('renders nothing for a disabled shopify family (returns null)', () => {
+    const registry = createRegistry();
+    registry.register('shopify_product_card', makeModule());
+    const ctx = makeCtx({ enabled: { shopify: false, calendar: true, web_call: true } });
+    expect(renderComponentsBlock([productCard('c1')], ctx, registry)).toBeNull();
+  });
+
+  it('renders nothing for a disabled calendar family (returns null)', () => {
+    const registry = createRegistry();
+    registry.register('calendar_slots', makeModule());
+    const ctx = makeCtx({ enabled: { shopify: true, calendar: false, web_call: true } });
+    expect(renderComponentsBlock(
+      [{ id: 's1', type: 'calendar_slots', version: 1, data: {} }], ctx, registry,
+    )).toBeNull();
+  });
+
+  it('renders nothing for a disabled web_call family (returns null)', () => {
+    const registry = createRegistry();
+    registry.register('web_call', makeModule());
+    const ctx = makeCtx({ enabled: { shopify: true, calendar: true, web_call: false } });
+    expect(renderComponentsBlock(
+      [{ id: 'w1', type: 'web_call', version: 1, data: {} }], ctx, registry,
+    )).toBeNull();
+  });
+
+  it('renders the component when its family is enabled', () => {
+    const registry = createRegistry();
+    registry.register('shopify_product_card', makeModule());
+    const ctx = makeCtx({ enabled: { shopify: true, calendar: false, web_call: false } });
+    const container = renderComponentsBlock([productCard('c1')], ctx, registry);
+    expect(container).not.toBeNull();
+    expect(container!.querySelector('[data-component-id="c1"]')).not.toBeNull();
+  });
+
+  it('unknown-family types are ungated -- render even with all families disabled', () => {
+    const registry = createRegistry();
+    registry.register('test_widget', makeModule());
+    const ctx = makeCtx({ enabled: { shopify: false, calendar: false, web_call: false } });
+    const container = renderComponentsBlock(
+      [{ id: 'u1', type: 'test_widget', version: 1, data: {} }], ctx, registry,
+    );
+    expect(container).not.toBeNull();
+    expect(container!.querySelector('[data-component-id="u1"]')).not.toBeNull();
+  });
+
+  it('mixed payload: disabled-family components skip silently, enabled ones render', () => {
+    const registry = createRegistry();
+    registry.register('shopify_product_card', makeModule());
+    registry.register('calendar_slots', makeModule());
+    const ctx = makeCtx({ enabled: { shopify: false, calendar: true, web_call: false } });
+    const container = renderComponentsBlock(
+      [
+        productCard('c1'),
+        { id: 's1', type: 'calendar_slots', version: 1, data: {} },
+        productCard('c2'),
+      ],
+      ctx,
+      registry,
+    );
+    expect(container).not.toBeNull();
+    const wrappers = container!.querySelectorAll('[data-component-id]');
+    expect(Array.from(wrappers).map((w) => w.getAttribute('data-component-id'))).toEqual(['s1']);
+  });
+});
+
+describe('applyActionResultComponents()', () => {
+  function renderIntoMessage(
+    components: WireComponent[],
+    ctx: RenderCtx,
+    registry: ReturnType<typeof createRegistry>,
+    messageId = 'msg_1',
+  ): HTMLElement {
+    const messagesEl = document.createElement('div');
+    const msgWrapper = document.createElement('div');
+    msgWrapper.setAttribute('data-message-id', messageId);
+    messagesEl.appendChild(msgWrapper);
+    const block = renderComponentsBlock(components, ctx, registry);
+    if (block) msgWrapper.appendChild(block);
+    return messagesEl;
+  }
+
+  it('applies each result component via the module update path', () => {
+    const registry = createRegistry();
+    const update = vi.fn();
+    registry.register('shopify_product_card', makeModule({ update }));
+    const ctx = makeCtx();
+    const messagesEl = renderIntoMessage([productCard('c1'), productCard('c2')], ctx, registry);
+
+    applyActionResultComponents(
+      messagesEl, 'msg_1',
+      [
+        { id: 'c1', type: 'shopify_product_card', version: 1, data: { title: 'u1' } },
+        { id: 'c2', type: 'shopify_product_card', version: 1, data: { title: 'u2' } },
+      ],
+      ctx,
+      undefined,
+      registry,
+    );
+
+    expect(update).toHaveBeenCalledTimes(2);
+  });
+
+  it('invokes onComponentApplied for every component in the result', () => {
+    const registry = createRegistry();
+    registry.register('shopify_product_card', makeModule({ update: vi.fn() }));
+    const ctx = makeCtx();
+    const messagesEl = renderIntoMessage([productCard('c1')], ctx, registry);
+    const seen: string[] = [];
+
+    applyActionResultComponents(
+      messagesEl, 'msg_1',
+      [{ id: 'c1', type: 'shopify_product_card', version: 1, data: {} }],
+      ctx,
+      (comp) => seen.push(comp.id),
+      registry,
+    );
+
+    expect(seen).toEqual(['c1']);
+  });
+
+  it('dispatch result carrying a shopify_cart update bumps the chip count', () => {
+    // End-to-end of the index.ts dispatch-wrapper wiring: a cart component
+    // is rendered in the DOM, a dispatch result envelope carries an updated
+    // shopify_cart, and the chip badge reflects the new total_quantity.
+    const registry = createRegistry();
+    registry.register('shopify_cart', makeModule({ update: vi.fn() }));
+    const ctx = makeCtx();
+    const messagesEl = renderIntoMessage(
+      [{ id: 'cart_1', type: 'shopify_cart', version: 1, data: { total_quantity: 1 } }],
+      ctx, registry,
+    );
+    const chip = createCartChip(1, vi.fn(), '#8349ff', '#f0ebff');
+
+    applyActionResultComponents(
+      messagesEl, 'msg_1',
+      [{ id: 'cart_1', type: 'shopify_cart', version: 1, data: { total_quantity: 7 } }],
+      ctx,
+      (comp) => syncCartChipOnComponentUpdate(
+        messagesEl, 'msg_1', comp.id, comp.data, (n) => updateCartChip(chip, n),
+      ),
+      registry,
+    );
+
+    expect(chip.querySelector('[data-part="chip-badge"]')?.textContent?.trim()).toBe('7');
   });
 });
 

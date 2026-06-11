@@ -1,6 +1,19 @@
-import type { WireComponent, RenderCtx, ThemeTokens } from './types';
+import type { WireComponent, RenderCtx, ThemeTokens, ComponentsEnabled } from './types';
 import { componentRegistry, type ComponentRegistry } from './registry';
 import { el, text } from './dom';
+
+/**
+ * Map a wire component type to its componentsEnabled family (plan addendum).
+ * shopify_* -> shopify, calendar_* -> calendar, web_call -> web_call.
+ * Returns null for unknown families: those are UNGATED (forward compatible;
+ * the registry lookup remains the only gate for them).
+ */
+export function familyOf(type: string): keyof ComponentsEnabled | null {
+  if (type.startsWith('shopify_')) return 'shopify';
+  if (type.startsWith('calendar_')) return 'calendar';
+  if (type === 'web_call') return 'web_call';
+  return null;
+}
 
 /**
  * Escape a value for use inside a double-quoted CSS attribute selector.
@@ -55,17 +68,25 @@ export function renderComponentsBlock(
   messageId?: string,
 ): HTMLDivElement | null {
   if (!components.length) return null;
+  // componentsEnabled gate (plan addendum): components of disabled families
+  // render nothing -- silent skip, exactly like unknown types. Unknown
+  // families (familyOf -> null) are ungated.
+  const gated = components.filter((comp) => {
+    const family = familyOf(comp.type);
+    return family === null || ctx.enabled[family];
+  });
+  if (!gated.length) return null;
   const container = el('div', { className: 'mcx-components-block' });
   let rendered = 0;
   let i = 0;
 
-  while (i < components.length) {
-    const comp = components[i];
+  while (i < gated.length) {
+    const comp = gated[i];
 
     if (comp.type === 'shopify_product_card') {
       const run: WireComponent[] = [];
-      while (i < components.length && components[i].type === 'shopify_product_card') {
-        run.push(components[i++]);
+      while (i < gated.length && gated[i].type === 'shopify_product_card') {
+        run.push(gated[i++]);
       }
       const host = run.length > 1
         ? el('div', { className: 'mcx-components-carousel', 'data-carousel': 'true' })
@@ -180,5 +201,27 @@ export function applyComponentUpdate(
     // Stamp _ctx on the fresh element so a future update() call can read it.
     (freshEl as HTMLElement & { _ctx?: RenderCtx })._ctx = freshCtx;
     wrapper.replaceChildren(freshEl);
+  }
+}
+
+/**
+ * Apply the updated components an action result envelope carries (the
+ * dispatch wrapper in index.ts calls this after every ok dispatch). Each
+ * component is patched in the live DOM exactly like a component_update WS
+ * frame; `onComponentApplied` runs after each apply so the integrator can
+ * hook cross-cutting sync (e.g. the header cart chip, which is type-gated
+ * and no-ops for non-cart components).
+ */
+export function applyActionResultComponents(
+  messagesEl: HTMLElement,
+  messageId: string,
+  components: WireComponent[],
+  ctx: RenderCtx,
+  onComponentApplied?: (comp: WireComponent) => void,
+  registry: ComponentRegistry = componentRegistry,
+): void {
+  for (const comp of components) {
+    applyComponentUpdate(messagesEl, messageId, comp.id, comp.data, ctx, registry);
+    onComponentApplied?.(comp);
   }
 }

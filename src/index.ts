@@ -34,7 +34,7 @@ import { getOrCreateDistinctId } from './utils/distinct-id';
 import { fetchInitConfig, normalizeServerConfig } from './connection/init';
 import { applyTheme } from './ui/theme-vars';
 import { startEmbedConfigListener } from './connection/embed-config-listener';
-import { applyComponentUpdate } from './components/core/message-integration';
+import { applyComponentUpdate, applyActionResultComponents } from './components/core/message-integration';
 import { createActionBus } from './components/core/action-bus';
 import type { RenderCtx, ComponentsEnabled, ThemeTokens } from './components/core/types';
 import {
@@ -158,11 +158,14 @@ async function init(): Promise<void> {
       // Apply any updated components the server returned in the envelope.
       // Covers slot-conflict re-render (calendar.book) and add_to_cart
       // cart refresh (shopify.add_to_cart). Each component in the array is
-      // patched in the live DOM exactly like a component_update WS event.
+      // patched in the live DOM exactly like a component_update WS event,
+      // and the cart chip is synced per component (type-gated inside
+      // syncCartChipOnComponentUpdate; no-ops for non-cart components).
       if (result.ok && result.components?.length && messagesElRef) {
-        for (const comp of result.components) {
-          applyComponentUpdate(messagesElRef, action.message_id, comp.id, comp.data, renderCtx);
-        }
+        const mEl = messagesElRef;
+        applyActionResultComponents(mEl, action.message_id, result.components, renderCtx, (comp) => {
+          syncCartChipOnComponentUpdate(mEl, action.message_id, comp.id, comp.data, setCartChipCount);
+        });
       }
       return result;
     },
