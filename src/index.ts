@@ -4,6 +4,7 @@ import { mergeConfig } from './config/merge';
 import { generateChatId } from './utils/uuid';
 import { formatTimeStamp } from './utils/timestamp';
 import { sanitizeInput } from './utils/dom';
+import { mixWithWhite } from './utils/format';
 import { sessionStore } from './session/session-store';
 import { validateSession, createVisitor } from './connection/api-client';
 import { WebSocketManager, type WsMessageData } from './connection/websocket-manager';
@@ -129,14 +130,27 @@ async function init(): Promise<void> {
     web_call: enabledRaw.web_call ?? false,
   };
 
+  // Resolve the primary color first so derived tokens can reference it.
+  const primaryColor = theme.primary ?? '#8349ff';
   const themeTokens: ThemeTokens = {
-    primary: theme.primary ?? '#8349ff',
-    primaryLight: '#f0ebff',
+    primary: primaryColor,
+    // Derived: 90% blend of primary toward white so it scales with any
+    // white-label primary override instead of hardcoding a Memox-purple hex.
+    // Falls back gracefully for non-6-digit values (mixWithWhite returns base
+    // unchanged, which is a valid CSS color even if not tinted).
+    primaryLight: mixWithWhite(primaryColor, 0.9),
     text: theme.text ?? '#072032',
     textMuted: theme.timestampColor ?? '#5b6b7a',
     border: theme.border ?? '#e5e7eb',
     surface: theme.background ?? '#ffffff',
+    // Brand-independent neutral: Tailwind gray-50 (#f9fafb). Not derived from
+    // primary because a very light/very dark primary would produce a
+    // distracting tinted surface; neutral gray is the safer universal default.
+    // allowlist:hex-literal -- brand-independent neutral gray (not a brand color)
     surfaceSubtle: '#f9fafb',
+    // Semantic status colors below are brand-independent (red/green/amber).
+    // They intentionally do not derive from theme.primary.
+    // allowlist:hex-literal -- brand-independent semantic status colors
     error: '#ef4444',
     errorSubtle: '#fee2e2',
     success: '#22c55e',
@@ -701,12 +715,19 @@ async function init(): Promise<void> {
           // block. If no components were attached, the streamed text is
           // already in the DOM and no re-render is needed.
           if (data.components?.length || data.suggestions?.length) {
-            // Replace only the last rendered bubble (avoid full re-render
-            // which would re-mount the typing indicator or flicker history).
-            const groups = messagesEl.querySelectorAll('.mcx-msg-group');
-            const lastGroup = groups[groups.length - 1];
-            if (lastGroup) {
-              lastGroup.remove();
+            // Replace the specific rendered bubble by its data-message-id so
+            // we don't accidentally remove an unrelated group at the end of
+            // the DOM (e.g. when a second message streams in before the first
+            // completion fires, or during testing where DOM order differs).
+            // Escape backslash and double-quote to produce a safe CSS attr
+            // selector — same approach as cssAttrEscape in message-integration.ts.
+            const msgId = lastMessage.messageId;
+            const escapedId = msgId ? msgId.replace(/\\/g, '\\\\').replace(/"/g, '\\"') : null;
+            const targetGroup = escapedId
+              ? messagesEl.querySelector(`[data-message-id="${escapedId}"]`)
+              : null;
+            if (targetGroup) {
+              targetGroup.remove();
               renderedCount = Math.max(0, renderedCount - 1);
             }
             loadMessages();

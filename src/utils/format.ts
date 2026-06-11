@@ -30,3 +30,30 @@ export function withAlpha(color: string, alphaHex: string): string {
   if (/^#[0-9a-f]{6}$/i.test(color)) return `${color}${alphaHex}`;
   return color;
 }
+
+/**
+ * Linearly interpolate each RGB channel of `base` toward white by `ratio`
+ * (0 = pure base, 1 = white). Returns a 6-digit lowercase hex string.
+ *
+ * Used to derive `primaryLight` from `theme.primary` so the tinted
+ * background responds to white-label primary color overrides instead of
+ * hardcoding a Memox-purple-specific hex.
+ *
+ * Non-hex inputs (rgb(), hsl(), etc.) are returned unchanged so callers
+ * never receive an invalid CSS value — the caller should fall back to a
+ * brand-neutral default in that case.
+ *
+ * @param base    A 6-digit hex color, e.g. "#8349ff".
+ * @param ratio   Blend ratio toward white: 0.0–1.0.
+ */
+export function mixWithWhite(base: string, ratio: number): string {
+  if (!/^#[0-9a-f]{6}$/i.test(base)) return base;
+  const r = parseInt(base.slice(1, 3), 16);
+  const g = parseInt(base.slice(3, 5), 16);
+  const b = parseInt(base.slice(5, 7), 16);
+  const blend = (channel: number): string => {
+    const mixed = Math.round(channel + (255 - channel) * ratio);
+    return mixed.toString(16).padStart(2, '0');
+  };
+  return `#${blend(r)}${blend(g)}${blend(b)}`;
+}
