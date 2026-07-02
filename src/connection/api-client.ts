@@ -104,8 +104,12 @@ export async function createVisitor(
 
     const headers = buildHeaders(config);
 
-    // Lookup existing visitor
-    const getResponse = await fetch(`${baseUrl}visitors/?email=${visitorEmail}`, {
+    // Lookup existing visitor.
+    // MMX-895: the email MUST be URL-encoded. Unencoded, a "+" in the address
+    // (e.g. "jane+leads@acme.com") is decoded server-side as a space, so the
+    // lookup never matches the stored row — the widget then POSTs a duplicate
+    // that violates unique(email, organization) → 500 → visitorless session.
+    const getResponse = await fetch(`${baseUrl}visitors/?email=${encodeURIComponent(visitorEmail)}`, {
       method: 'GET',
       headers,
     });

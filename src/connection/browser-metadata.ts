@@ -1,4 +1,5 @@
 import type { BrowserMetadata } from '../config/types';
+import { getOrCreateDistinctId } from '../utils/distinct-id';
 
 export function collectBrowserMetadata(): BrowserMetadata {
   return {
@@ -14,21 +15,16 @@ export function collectBrowserMetadata(): BrowserMetadata {
   };
 }
 
-export function createAnonymousEmail(metadata: BrowserMetadata): string {
-  const fingerprintData = [
-    metadata.userAgent,
-    metadata.platform,
-    metadata.language,
-    metadata.screenResolution,
-    metadata.timezone,
-    metadata.cookiesEnabled,
-    navigator.hardwareConcurrency || 'unknown',
-    navigator.maxTouchPoints || 0,
-    screen.colorDepth || 'unknown',
-    new Date().getTimezoneOffset(),
-  ].join('|');
-
-  const fingerprint = btoa(fingerprintData)
+export function createAnonymousEmail(_metadata?: BrowserMetadata): string {
+  // MMX-895: key the anonymous visitor's synthetic email to the stable
+  // per-BROWSER distinct_id (localStorage), NOT to a userAgent/device
+  // fingerprint. The old fingerprint was identical for every visitor on the
+  // same browser + OS + screen + timezone, so two different people collided on
+  // one ``anonymous_<fp>@memox.local`` — the second one's POST /visitors/ then
+  // violated unique(email, organization) → 500 → visitorless session → broken
+  // bot. A per-browser id keeps a returning anonymous visitor stable (same id
+  // reused, so their history stitches) while making distinct people distinct.
+  const fingerprint = getOrCreateDistinctId()
     .replace(/[^a-zA-Z0-9]/g, '')
     .substring(0, 40);
 
