@@ -368,7 +368,17 @@ export interface StoredMessage {
   sender: 'user' | 'bot' | 'ai' | 'sales_rep' | 'system';
   isWelcomeMessage?: boolean;
   isSystemNotification?: boolean;
-  notificationType?: 'joined' | 'session_closed' | string;
+  notificationType?: 'joined' | 'session_closed' | 'status' | string;
+  // MMX-894: handover narration phase carried through from the
+  // ``handover_status`` frame (e.g. ``pinging``, ``rep_unavailable``).
+  handoverPhase?: string;
+  // MMX-894: fallback choice buttons (leave a message / talk to
+  // someone else) from a ``handover_choices`` frame. When present the
+  // message renders as an accessible button group instead of a bubble;
+  // ``choicePicked`` records the id once the visitor picks one so a
+  // re-render keeps the buttons disabled.
+  choices?: { id: string; label: string }[];
+  choicePicked?: string;
   isStreaming?: boolean;
   messageId?: string;
   senderName?: string | { name?: string };
