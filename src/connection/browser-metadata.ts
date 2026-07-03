@@ -15,7 +15,7 @@ export function collectBrowserMetadata(): BrowserMetadata {
   };
 }
 
-export function createAnonymousEmail(_metadata?: BrowserMetadata): string {
+export function createAnonymousEmail(): string {
   // MMX-895: key the anonymous visitor's synthetic email to the stable
   // per-BROWSER distinct_id (localStorage), NOT to a userAgent/device
   // fingerprint. The old fingerprint was identical for every visitor on the

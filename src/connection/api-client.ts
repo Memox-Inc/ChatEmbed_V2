@@ -1,6 +1,6 @@
 import type { ChatEmbedConfig, VisitorInfo } from '../config/types';
 import { getOrCreateDistinctId } from '../utils/distinct-id';
-import { collectBrowserMetadata, createAnonymousEmail } from './browser-metadata';
+import { createAnonymousEmail } from './browser-metadata';
 
 function buildHeaders(config: ChatEmbedConfig): Record<string, string> {
   // Prefer the per-session embed token (EmbedTokenAuthentication on the
@@ -77,8 +77,6 @@ export async function createVisitor(
       throw new Error('Missing required configuration: baseUrl and (sessionToken or token)');
     }
 
-    const browserMetadata = collectBrowserMetadata();
-
     // MMX-804: "anonymous" means the visitor submitted NO lead data at all —
     // not merely "no email". Previously this keyed off `!email`, so a name-only
     // lead form (email/phone/zip disabled) was treated as anonymous and the
@@ -99,7 +97,7 @@ export async function createVisitor(
     // deterministic per-browser address so the visitor can still be looked up /
     // deduped — but keep whatever name (and other fields) the visitor actually
     // submitted. Only fall back to the placeholder name when none was given.
-    const visitorEmail = email || createAnonymousEmail(browserMetadata);
+    const visitorEmail = email || createAnonymousEmail();
     const visitorName = name || 'Anonymous Visitor';
 
     const headers = buildHeaders(config);
