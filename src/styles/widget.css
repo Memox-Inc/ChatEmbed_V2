@@ -590,6 +590,15 @@
 }
 
 /* Markdown content styles inside bubbles */
+/* Paragraphs are flush at the bubble edges but spaced from the previous
+   block, so multi-paragraph bot replies (pricing option lists, etc.) don't
+   collapse into a wall of text (MMX-918). */
+.mcx-bubble p { margin: 0; }
+.mcx-bubble p + p,
+.mcx-bubble ul + p,
+.mcx-bubble ol + p,
+.mcx-bubble blockquote + p,
+.mcx-bubble pre + p { margin-top: 8px; }
 .mcx-bubble ul { list-style-type: disc; margin: 8px 0; padding-left: 24px; }
 .mcx-bubble ol { list-style-type: decimal; margin: 8px 0; padding-left: 24px; }
 .mcx-bubble li { margin: 4px 0; }
