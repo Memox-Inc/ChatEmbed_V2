@@ -183,7 +183,7 @@ async function init(): Promise<void> {
   // ``/ws/embed/<embed_id>/`` and re-applies CSS theme + welcome on
   // every operator save. No-op when ``embedId`` is unset (e.g.
   // self-hosted/OSS deployments).
-  startEmbedConfigListener(config, root, (next) => {
+  const embedConfigListener = startEmbedConfigListener(config, root, (next) => {
     if (!next) return;
     // Run every server payload through the same normalizer the boot
     // path uses, then mutate the in-memory config so a future panel
@@ -314,8 +314,11 @@ async function init(): Promise<void> {
   }
 
   // Public destroy() — removes the mousedown listener, cleans up every
-  // mounted attractor handle, and detaches the shadow host from the DOM.
-  // Safe to call multiple times.
+  // mounted attractor handle, closes the app WebSocket + embed-config
+  // listener (MMX-928: both used to leak past destroy(), leaving a zombie
+  // instance whose stray WS frames raced a freshly booted instance on the
+  // shared localStorage message array), and detaches the shadow host from
+  // the DOM. Safe to call multiple times.
   const destroy = (): void => {
     document.removeEventListener('mousedown', onDocumentMouseDown);
     for (const handle of mountedAttractors) {
@@ -326,6 +329,16 @@ async function init(): Promise<void> {
       }
     }
     mountedAttractors.length = 0;
+    try {
+      ws.close();
+    } catch (e) {
+      console.warn('MemoxChatWidget: websocket close failed', e);
+    }
+    try {
+      embedConfigListener.stop();
+    } catch (e) {
+      console.warn('MemoxChatWidget: embed-config listener stop failed', e);
+    }
     host.remove();
   };
   window.MemoxChatWidget = { destroy };
