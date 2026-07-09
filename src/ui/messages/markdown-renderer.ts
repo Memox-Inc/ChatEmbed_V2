@@ -10,10 +10,13 @@ export function markdownToHtml(text: string, botTextColor?: string): string {
   try {
     let result = marked.parse(text) as string;
 
-    // Style paragraphs
+    // Style paragraphs. No inline margin here — inter-block spacing lives in
+    // the `.mcx-bubble p` rules in widget.css. An inline margin:0 would beat
+    // the stylesheet and collapse multi-paragraph replies (e.g. bullet-
+    // separated pricing options) into a wall of text (MMX-918).
     result = result.replace(
       /<p>/g,
-      '<p style="font-size:inherit;line-height:inherit;font-family:inherit;font-weight:inherit;margin:0;">',
+      '<p style="font-size:inherit;line-height:inherit;font-family:inherit;font-weight:inherit;">',
     );
 
     // Style links
