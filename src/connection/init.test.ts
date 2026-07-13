@@ -114,7 +114,7 @@ describe('fetchInitConfig', () => {
     ));
 
     const promise = fetchInitConfig('test-embed-id', 'https://api.example.com');
-    await vi.advanceTimersByTimeAsync(2000);
+    await vi.advanceTimersByTimeAsync(6000);
     const result = await promise;
     expect(result).toEqual({});
 
@@ -137,7 +137,7 @@ describe('fetchInitConfig', () => {
     // console.warn call (abort on an already-resolved fetch). The spy on
     // console.warn is set up in beforeEach — if it was called it means the
     // timer leaked and fired.
-    await vi.advanceTimersByTimeAsync(3000);
+    await vi.advanceTimersByTimeAsync(6000);
     // console.warn should NOT have been called (no abort on a successful fetch)
     expect(console.warn).not.toHaveBeenCalled();
 
