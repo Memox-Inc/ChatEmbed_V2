@@ -13,6 +13,7 @@ import { createHeader } from './ui/header';
 import { createMessageList } from './ui/messages/message-list';
 import { createMessageBubble } from './ui/messages/message-bubble';
 import { createSystemNotification } from './ui/messages/system-notification';
+import { createChoicesBubble } from './ui/messages/choices-bubble';
 import { createSessionEndedToast, type SessionEndedToastHandle } from './ui/messages/session-ended-toast';
 import { StreamingRenderer } from './ui/messages/streaming-renderer';
 import { createInputBar } from './ui/input/input-bar';
@@ -378,6 +379,19 @@ async function init(): Promise<void> {
       const msg = msgs[i];
       const isLast = i === msgs.length - 1;
 
+      // MMX-894: handover fallback choices render as a button group.
+      // ``choicePicked`` (set once the visitor picks) is threaded into
+      // the component so a full re-render keeps the buttons disabled.
+      if (msg.choices && msg.choices.length > 0) {
+        const idx = i;
+        const choicesEl = createChoicesBubble(msg, (choice) => {
+          handleChoice(idx, choice);
+        });
+        messagesEl.appendChild(choicesEl);
+        renderedCount++;
+        continue;
+      }
+
       if (msg.isSystemNotification) {
         const notif = createSystemNotification(
           msg,
@@ -510,6 +524,43 @@ async function init(): Promise<void> {
         isWelcomeMessage: false,
         isSystemNotification: true,
         notificationType: 'joined',
+        created_at: formatTimeStamp(data.created_at || new Date().toISOString()),
+      });
+      loadMessages();
+      return;
+    }
+
+    // MMX-894: deterministic handover narration — render as a system
+    // status line. The ``pinging`` phase reflects a "waiting for {rep}"
+    // cue; all phases render through the shared system-notification
+    // styling (notificationType 'status').
+    if (data.message_type === 'handover_status') {
+      const statusText = data.content || data.message || '';
+      if (!statusText.trim()) return;
+      sessionStore.pushMessage({
+        text: statusText,
+        sender: 'system',
+        isWelcomeMessage: false,
+        isSystemNotification: true,
+        notificationType: 'status',
+        handoverPhase: typeof data.phase === 'string' ? data.phase : undefined,
+        created_at: formatTimeStamp(data.created_at || new Date().toISOString()),
+      });
+      loadMessages();
+      return;
+    }
+
+    // MMX-894: fallback choices (leave a message / talk to someone
+    // else). Rendered as an accessible button group; a pick sends a
+    // ``choice`` frame and echoes the label as a user bubble.
+    if (data.message_type === 'handover_choices') {
+      const choices = Array.isArray(data.choices) ? data.choices : [];
+      if (choices.length === 0) return;
+      sessionStore.pushMessage({
+        text: data.content || data.message || '',
+        sender: 'system',
+        isWelcomeMessage: false,
+        choices,
         created_at: formatTimeStamp(data.created_at || new Date().toISOString()),
       });
       loadMessages();
@@ -671,6 +722,46 @@ async function init(): Promise<void> {
         setBotResponding(false);
         loadMessages();
       }
+    }
+  }
+
+  // MMX-894: visitor picked a handover fallback choice. Persist the
+  // pick so a re-render keeps the buttons disabled, send the ``choice``
+  // frame back to the orchestrator, and echo the chosen label as a user
+  // bubble so the transcript reads naturally.
+  function handleChoice(msgIndex: number, choice: { id: string; label: string }): void {
+    const msgs = sessionStore.getMessages();
+    const target = msgs[msgIndex];
+    // Guard against a double pick if the same index re-fires.
+    if (target && target.choices && target.choicePicked) return;
+    if (target && target.choices) {
+      target.choicePicked = choice.id;
+      msgs[msgIndex] = target;
+      sessionStore.setMessages(msgs);
+    }
+
+    // Echo the chosen label as a user bubble.
+    saveMessage(choice.label, 'user');
+    loadMessages();
+
+    const payload = {
+      message_type: 'choice',
+      choice_id: choice.id,
+      room_name: chatID,
+    };
+    if (ws.connected && ws.readyState === WebSocket.OPEN) {
+      ws.send(payload);
+    } else {
+      connectWebSocket();
+      const checkAndSend = (): void => {
+        if (!chatID) return;
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(payload);
+        } else if (ws.readyState === WebSocket.CONNECTING) {
+          setTimeout(checkAndSend, 100);
+        }
+      };
+      setTimeout(checkAndSend, 500);
     }
   }
 
