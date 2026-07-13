@@ -2,6 +2,10 @@ import type { ChatEmbedConfig, StoredMessage, WelcomeMessageStyle } from '../../
 import { markdownToHtml } from './markdown-renderer';
 import { escapeHtml } from '../../utils/dom';
 import { isSafeImageUrl } from '../../utils/url';
+import { renderSuggestionPills } from '../../components/suggestion-pills';
+import { getComponentsFacade } from '../../components/loader';
+import { robotSvg } from '../robot-svg';
+import type { WireComponent, RenderCtx } from '../../components/core/types';
 
 export interface BubbleRefs {
   container: HTMLDivElement;
@@ -81,7 +85,7 @@ function createAvatar(
       // via ``av.style.color`` above. Same SVG used by the lead-capture
       // form's welcome bubble and the thinking indicator so the bot
       // identity stays consistent across every surface.
-      av.innerHTML = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle class="antenna-ball" cx="12" cy="2.5" r="0.9" fill="currentColor" stroke="none"/><path d="M12 3.4v2.1"/><circle class="cable-bead" cx="12" cy="4.45" r="0.45" fill="currentColor" stroke="none"/><rect x="4" y="5.5" width="16" height="14" rx="4"/><circle class="eye-left" cx="9" cy="12" r="1.2" fill="currentColor" stroke="none"/><circle class="eye-right" cx="15" cy="12" r="1.2" fill="currentColor" stroke="none"/><path class="smile" d="M10.5 16q1.5 0.8 3 0" stroke-width="1.4" fill="none"/></svg>`;
+      av.innerHTML = robotSvg('20', 'currentColor');
     }
   }
   return av;
@@ -92,10 +96,17 @@ export function createMessageBubble(
   config: ChatEmbedConfig,
   isLast: boolean,
   welcomeMessageStyle?: WelcomeMessageStyle,
+  options?: {
+    components?: WireComponent[];
+    suggestions?: string[];
+    ctx?: RenderCtx;
+    onSuggestionSelect?: (s: string) => void;
+  },
 ): BubbleRefs {
   const theme = config.theme || {};
   const container = document.createElement('div');
   container.className = `mcx-msg-group${msg.sender === 'user' ? ' mcx-msg-group--user' : ''}`;
+  if (msg.messageId) container.setAttribute('data-message-id', msg.messageId);
 
   const avatar = createAvatar(
     msg.sender === 'ai' ? 'bot' : msg.sender,
@@ -162,6 +173,22 @@ export function createMessageBubble(
   }
 
   bubble.appendChild(msgDiv);
+
+  if (options?.components?.length && options.ctx) {
+    // Thread the owning message id so each component's dispatch carries the
+    // real ids (renderComponentsBlock builds a per-component ctx from it).
+    // renderComponentsBlock lives in the lazy components bundle; access via
+    // the loader facade (populated before WS connects, so always available
+    // when this code runs for incoming messages).
+    const block = getComponentsFacade().renderComponentsBlock(options.components, options.ctx, undefined, msg.messageId);
+    if (block) bubble.appendChild(block);
+  }
+  // Suggestion pills are CORE functionality (not family-gated): they render
+  // even when the components bundle is absent, so no ctx requirement here.
+  if (options?.suggestions?.length && options.onSuggestionSelect) {
+    const pills = renderSuggestionPills(options.suggestions, options.onSuggestionSelect);
+    if (pills) bubble.appendChild(pills);
+  }
 
   // Timestamp
   if (!msg.isWelcomeMessage && msg.created_at) {

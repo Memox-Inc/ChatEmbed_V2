@@ -690,22 +690,6 @@
   50% { opacity: 1; }
 }
 
-/* ═══════ Streaming Cursor ═══════ */
-.mcx-cursor {
-  display: inline-block;
-  width: 2px;
-  height: 14px;
-  background: var(--t1);
-  margin-left: 2px;
-  vertical-align: text-bottom;
-  animation: mcx-cursor-blink 0.8s step-end infinite;
-}
-.mcx-bubble--user .mcx-cursor { background: #fff; }
-@keyframes mcx-cursor-blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0; }
-}
-
 /* ═══════ System Notification ═══════ */
 .mcx-sys-notification-wrap {
   display: flex;
@@ -990,24 +974,6 @@
 }
 .mcx-shake { animation: mcx-shake 0.4s ease; }
 
-/* Legacy lead form classes kept for compatibility */
-.mcx-form-field {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.mcx-form-input-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-.mcx-form-label {
-  min-width: 80px;
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--t2);
-  flex-shrink: 0;
-}
 .mcx-form-input {
   width: 100%;
   padding: 10px 12px;
@@ -1024,13 +990,8 @@
   border-color: var(--p);
   box-shadow: 0 0 0 3px rgba(131, 73, 255, 0.1);
 }
-.mcx-form-input.mcx-field-error,
-.mcx-phone-wrapper.mcx-field-error {
+.mcx-form-input.mcx-field-error {
   border-color: var(--err);
-}
-.mcx-form-error {
-  font-size: 11.5px;
-  color: var(--err);
 }
 .mcx-lead-submit {
   width: 100%;
@@ -1047,52 +1008,6 @@
 .mcx-lead-submit:active { transform: scale(0.98); }
 
 /* ═══════ Phone Field ═══════ */
-.mcx-phone-wrapper {
-  display: flex;
-  align-items: center;
-  flex: 1;
-  position: relative;
-  min-width: 0;
-  border: 1.5px solid var(--bl);
-  border-radius: 11px;
-  background: #fff;
-  transition: border-color 0.2s, box-shadow 0.2s;
-  overflow: visible;
-}
-.mcx-phone-wrapper:focus-within {
-  border-color: var(--p);
-  box-shadow: 0 0 0 3px rgba(131, 73, 255, 0.1);
-}
-.mcx-code-wrap {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  padding: 0 8px 0 10px;
-  border-right: 1px solid #e5e7eb;
-  cursor: pointer;
-  flex-shrink: 0;
-  user-select: none;
-}
-.mcx-code-label {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--t1);
-  white-space: nowrap;
-}
-.mcx-code-arrow {
-  font-size: 10px;
-  color: var(--tm);
-}
-.mcx-country-select {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  opacity: 0;
-  cursor: pointer;
-  font-size: 14px;
-}
 .mcx-phone-input {
   flex: 1;
   padding: 10px 12px;
@@ -1104,65 +1019,6 @@
   font-family: inherit;
   min-width: 0;
   color: var(--t1);
-}
-.mcx-country-dropdown {
-  position: absolute;
-  bottom: 100%;
-  left: 0;
-  right: 0;
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.12);
-  z-index: 9999;
-  margin-bottom: 4px;
-  overflow: hidden;
-}
-.mcx-country-search {
-  width: 100%;
-  padding: 10px 12px;
-  border: none;
-  border-bottom: 1px solid #f3f4f6;
-  font-size: 16px;
-  outline: none;
-  font-family: inherit;
-  color: var(--t1);
-  background: #fafafa;
-  box-sizing: border-box;
-}
-.mcx-country-list {
-  max-height: 220px;
-  overflow-y: auto;
-}
-.mcx-country-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 9px 12px;
-  cursor: pointer;
-  font-size: 13px;
-  transition: background 0.1s;
-  border-bottom: 1px solid #f3f4f6;
-  border-left: 2px solid transparent;
-}
-.mcx-country-row:hover { background: #f9fafb; }
-.mcx-country-row--selected {
-  background: #eff6ff;
-  border-left-color: #3b82f6;
-}
-.mcx-country-row--highlighted { background: #e5e7eb; }
-.mcx-country-flag { font-size: 16px; line-height: 1; }
-.mcx-country-name {
-  flex: 1;
-  color: var(--t1);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.mcx-country-dial {
-  color: var(--tm);
-  font-size: 12px;
-  flex-shrink: 0;
 }
 
 /* ═══════ Responsive: Mobile fullscreen ═══════ */
@@ -1187,9 +1043,6 @@
   .mcx-lead-submit {
     font-size: 16px !important; /* Prevent iOS zoom */
   }
-  .mcx-country-list { max-height: 150px; }
-  .mcx-lead-fields,
-  .mcx-lead-helper,
   .mcx-lead-submit {
     max-width: none;
   }

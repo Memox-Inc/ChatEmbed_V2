@@ -1,0 +1,17 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["state", "agent_name", "max_duration_seconds", "started_at", "duration_seconds", "error"],
+  "additionalProperties": true,
+  "properties": {
+    "state": {
+      "type": "string",
+      "enum": ["idle", "connecting", "live", "ended", "error"]
+    },
+    "agent_name": { "type": "string" },
+    "max_duration_seconds": { "type": "integer" },
+    "started_at": { "oneOf": [{ "type": "string" }, { "type": "null" }] },
+    "duration_seconds": { "oneOf": [{ "type": "integer" }, { "type": "null" }] },
+    "error": { "oneOf": [{ "type": "string" }, { "type": "null" }] }
+  }
+}

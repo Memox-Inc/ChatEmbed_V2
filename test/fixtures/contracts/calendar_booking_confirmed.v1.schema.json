@@ -1,0 +1,15 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["start_iso", "end_iso", "timezone", "host_name", "title", "google_calendar_url", "ics_url"],
+  "additionalProperties": true,
+  "properties": {
+    "start_iso": { "type": "string" },
+    "end_iso": { "type": "string" },
+    "timezone": { "type": "string" },
+    "host_name": { "type": "string" },
+    "title": { "type": "string" },
+    "google_calendar_url": { "type": "string" },
+    "ics_url": { "type": "string" }
+  }
+}

@@ -361,6 +361,12 @@ export interface ChatEmbedConfig {
    * without translation. See ``LauncherConfig`` for fields.
    */
   launcher?: LauncherConfig;
+  /** Component families enabled for this embed. Injected from /embed/init. */
+  componentsEnabled?: {
+    shopify?: boolean;
+    calendar?: boolean;
+    web_call?: boolean;
+  };
 }
 
 export interface StoredMessage {
@@ -379,6 +385,9 @@ export interface StoredMessage {
   senderPhotoUrl?: string;
   created_at?: string;
   lastChunkTime?: number;
+  // Rich components (MMX-468)
+  components?: Array<{ id: string; type: string; version: number; data: unknown }>;
+  suggestions?: string[];
 }
 
 export interface VisitorInfo {

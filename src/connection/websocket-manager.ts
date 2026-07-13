@@ -20,6 +20,9 @@ export interface WsMessageData {
   sender_photo_url?: string;
   assigned_user_name?: string;
   assigned_user_email?: string;
+  // Rich components (MMX-468)
+  components?: Array<{ id: string; type: string; version: number; data: unknown }>;
+  suggestions?: string[];
 }
 
 export class WebSocketManager {

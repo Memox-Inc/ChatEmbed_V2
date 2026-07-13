@@ -38,9 +38,27 @@ jobs:
         run: |
           RAW=$(stat -c%s dist/chat-embed.js)
           GZIP=$(gzip -c dist/chat-embed.js | wc -c)
-          echo "📦 Raw: $(( RAW / 1024 ))KB | Gzip: $(( GZIP / 1024 ))KB"
+          echo "bundle core  Raw: $(( RAW / 1024 ))KB | Gzip: $(( GZIP / 1024 ))KB"
+          if [ "$RAW" -gt 153600 ]; then
+            echo "ERROR: core bundle exceeds 150KB raw limit (${RAW} bytes)" >&2
+            exit 1
+          fi
+          if [ "$GZIP" -gt 51200 ]; then
+            echo "ERROR: core bundle exceeds 50KB gzip limit (${GZIP} bytes)" >&2
+            exit 1
+          fi
+          CRAW=$(stat -c%s dist/chat-components.js)
+          CGZIP=$(gzip -c dist/chat-components.js | wc -c)
+          echo "bundle components  Raw: $(( CRAW / 1024 ))KB | Gzip: $(( CGZIP / 1024 ))KB"
+          VRAW=$(stat -c%s dist/chat-voice.js)
+          VGZIP=$(gzip -c dist/chat-voice.js | wc -c)
+          echo "bundle voice  Raw: $(( VRAW / 1024 ))KB | Gzip: $(( VGZIP / 1024 ))KB"
           echo "bundle_raw=${RAW}" >> $GITHUB_OUTPUT
           echo "bundle_gzip=${GZIP}" >> $GITHUB_OUTPUT
+          echo "components_raw=${CRAW}" >> $GITHUB_OUTPUT
+          echo "components_gzip=${CGZIP}" >> $GITHUB_OUTPUT
+          echo "voice_raw=${VRAW}" >> $GITHUB_OUTPUT
+          echo "voice_gzip=${VGZIP}" >> $GITHUB_OUTPUT
         id: size
 
       - name: Update active version
@@ -52,7 +70,12 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add -f dist/chat-embed.js package.json latest.json
+          # chat-components.js is the lazily-loaded rich-components bundle (MMX-468 split).
+          # chat-voice.js is the lazily-loaded web-call audio bundle (MMX-468).
+          # Both derive their URL from the embed script src by replacing
+          # chat-embed.js -> <sibling>.js, so they MUST ship in the same tag
+          # or CDN requests 404 and embeds degrade to chat-only.
+          git add -f dist/chat-embed.js dist/chat-components.js dist/chat-voice.js package.json latest.json
           git commit -m "release: v${{ inputs.version }}"
           git tag "v${{ inputs.version }}"
           git push
@@ -93,6 +116,17 @@ jobs:
           # 2d) The just-released specific URL. Usually cold, but on first hit
           #     it can 404 if step 1 was skipped — see commit message.
           curl -fsSL "https://purge.jsdelivr.net/gh/Memox-Inc/ChatEmbed_V2@v${{ inputs.version }}/dist/chat-embed.js" | head -c 300; echo
+          # 2e) Components bundle (MMX-468 split), same pins as the core bundle.
+          #     loader.ts derives URL from embed script src by replacing
+          #     chat-embed.js -> chat-components.js.
+          curl -fsSL "https://purge.jsdelivr.net/gh/Memox-Inc/ChatEmbed_V2@v3/dist/chat-components.js" | head -c 300; echo
+          curl -fsSL "https://purge.jsdelivr.net/gh/Memox-Inc/ChatEmbed_V2@latest/dist/chat-components.js" | head -c 300; echo
+          curl -fsSL "https://purge.jsdelivr.net/gh/Memox-Inc/ChatEmbed_V2@v${{ inputs.version }}/dist/chat-components.js" | head -c 300; echo
+          # 2f) Voice bundle (MMX-468), same pins as the core bundle, because
+          #     card.ts requests it from the same tag as the embed script.
+          curl -fsSL "https://purge.jsdelivr.net/gh/Memox-Inc/ChatEmbed_V2@v3/dist/chat-voice.js" | head -c 300; echo
+          curl -fsSL "https://purge.jsdelivr.net/gh/Memox-Inc/ChatEmbed_V2@latest/dist/chat-voice.js" | head -c 300; echo
+          curl -fsSL "https://purge.jsdelivr.net/gh/Memox-Inc/ChatEmbed_V2@v${{ inputs.version }}/dist/chat-voice.js" | head -c 300; echo
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -121,5 +155,10 @@ jobs:
             <script src="https://cdn.jsdelivr.net/gh/Memox-Inc/ChatEmbed_V2@v${{ inputs.version }}/dist/chat-embed.js" async></script>
             ```
 
-            **Bundle size:** ${{ steps.size.outputs.bundle_raw }} bytes raw / ${{ steps.size.outputs.bundle_gzip }} bytes gzip
-          files: dist/chat-embed.js
+            **Bundle size (core):** ${{ steps.size.outputs.bundle_raw }} bytes raw / ${{ steps.size.outputs.bundle_gzip }} bytes gzip
+            **Bundle size (components):** ${{ steps.size.outputs.components_raw }} bytes raw / ${{ steps.size.outputs.components_gzip }} bytes gzip
+            **Bundle size (voice):** ${{ steps.size.outputs.voice_raw }} bytes raw / ${{ steps.size.outputs.voice_gzip }} bytes gzip
+          files: |
+            dist/chat-embed.js
+            dist/chat-components.js
+            dist/chat-voice.js

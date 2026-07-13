@@ -34,6 +34,8 @@ import { getOrCreateDistinctId } from './utils/distinct-id';
 import { fetchInitConfig, normalizeServerConfig } from './connection/init';
 import { applyTheme } from './ui/theme-vars';
 import { startEmbedConfigListener } from './connection/embed-config-listener';
+import type { ComponentsEnabled } from './components/core/types';
+import { loadComponentsBundle, getComponentsFacade } from './components/loader';
 
 declare global {
   interface Window {
@@ -111,6 +113,52 @@ async function init(): Promise<void> {
     typeof leadCaptureRaw === 'boolean' ? leadCaptureRaw :
     leadCaptureRaw === undefined ? true :
     !!(leadCaptureRaw as { enabled?: boolean }).enabled;
+
+  // --- RenderCtx construction ---
+  // Build once at init time and share across the widget lifetime. The ctx
+  // is passed into every rich-component render so renderers dispatch actions,
+  // format dates/times, and read theme tokens without coupling to index.ts
+  // internals. The dispatch wrapper applies result.components updates back
+  // to the live DOM so callers (e.g. calendar.book slot-conflict, cart
+  // add_to_cart response) get updated components without a full re-render.
+
+  // Auth header: mirrors api-client.ts buildHeaders pattern.
+  const authHeader = config.sessionToken
+    ? `EmbedToken ${config.sessionToken}`
+    : `Token ${config.token ?? ''}`;
+
+  const enabledRaw = config.componentsEnabled ?? {};
+  const enabled: ComponentsEnabled = {
+    shopify: enabledRaw.shopify ?? false,
+    calendar: enabledRaw.calendar ?? false,
+    web_call: enabledRaw.web_call ?? false,
+  };
+
+  // Eagerly load the components bundle when any family is enabled.
+  // Awaited here so the facade is fully populated before the first WS
+  // message can arrive (maybeShowLeadCapture -> connectWebSocket runs
+  // after this point). Chat-only embeds (all families false) skip the
+  // fetch entirely (zero bytes). Load failure resolves to the no-op facade,
+  // so chat startup is never blocked.
+  await loadComponentsBundle(enabled);
+
+  // renderCtx is built INSIDE the lazy components bundle (theme tokens,
+  // action bus, dispatch wrapper, formatters all live there; none of it
+  // ships in core). messagesEl is wired in after DOM setup below via the
+  // getMessagesEl closure (messagesElRef is assigned before any WS message
+  // can arrive). Null when the bundle is absent (chat-only embeds or load
+  // failure): components then render nothing, suggestions still work.
+  let messagesElRef: HTMLElement | null = null;
+
+  const renderCtx = getComponentsFacade().createRenderCtx({
+    baseUrl: config.baseUrl ?? '',
+    authHeader,
+    theme,
+    enabled,
+    distinctId: getOrCreateDistinctId(),
+    getMessagesEl: () => messagesElRef,
+    onCartCount: (n) => { setCartChipCount(n); },
+  });
 
   // State
   let visitorInfo: VisitorInfo | null = null;
@@ -198,6 +246,10 @@ async function init(): Promise<void> {
   // --- Create UI ---
   const widget = createWidgetContainer(config);
   const { messagesEl, scrollToBottom, forceScrollToBottom, checkScrollPosition, scrollBtn } = createMessageList();
+  // Wire the messagesEl reference into renderCtx.dispatch so result.components
+  // updates can be applied to the live DOM. This must happen before any WS
+  // message can arrive (ws.connect() is called later in maybeShowLeadCapture).
+  messagesElRef = messagesEl;
   const streamingRenderer = new StreamingRenderer(messagesEl, theme.botText);
 
   const inputBar = createInputBar(handleSend);
@@ -217,6 +269,36 @@ async function init(): Promise<void> {
     handleClearSession,
     handleClose,
   );
+
+  // --- Cart-chip state layer (MMX-468 Task 7d) ---
+  // The header count badge is driven by shopify_cart component state seen
+  // on the wire: rich message payloads carrying a shopify_cart component,
+  // and component_update frames patching one. The chip is created lazily on
+  // the first cart sighting and updated in place afterwards.
+  let cartChipEl: HTMLDivElement | null = null;
+
+  function scrollToLatestCart(): void {
+    const carts = messagesEl.querySelectorAll('[data-component-type="shopify_cart"]');
+    const last = carts[carts.length - 1];
+    if (last) last.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  function setCartChipCount(totalQuantity: number): void {
+    const facade = getComponentsFacade();
+    if (!cartChipEl) {
+      // theme.primary is always set post-merge with defaults. The light
+      // counterpart must be a genuinely LIGHT surface token: the badge
+      // renders its count in this color over a solid-primary background
+      // (the same white-on-primary pairing the send button uses in
+      // widget.css). An alpha tint of primary would be near-invisible.
+      const primary = theme.primary || '';
+      const lightSurface = theme.background || theme.containerBg || '';
+      cartChipEl = facade.createCartChip(totalQuantity, scrollToLatestCart, primary, lightSurface);
+      headerRefs.setCartChip(cartChipEl);
+    } else {
+      facade.updateCartChip(cartChipEl, totalQuantity);
+    }
+  }
 
   // Powered by footer
   const poweredBy = document.createElement('div');
@@ -395,6 +477,16 @@ async function init(): Promise<void> {
         config,
         isLast,
         welcomeMessageStyle,
+        // Pass rich components, suggestion pills, and the render context so
+        // bot messages render their attached components and suggestion chips.
+        // Only bot/ai messages carry components; user/sales_rep messages won't
+        // have them so the options object is safe to pass for all senders.
+        {
+          components: msg.components as Array<{ id: string; type: string; version: number; data: unknown }> | undefined,
+          suggestions: msg.suggestions,
+          ctx: renderCtx ?? undefined,
+          onSuggestionSelect: (text: string) => { handleSend(text); },
+        },
       );
       messagesEl.appendChild(container);
       renderedCount++;
@@ -478,6 +570,36 @@ async function init(): Promise<void> {
     // Only process messages for our room (or broadcasts)
     if (data.room_name && data.room_name !== chatID) return;
 
+    // component_update: patch a rendered component in-place.
+    // Contract: discriminate on message_type (the AppConsumer client-side discriminator);
+    // the channels routing key `type` is NOT sent to clients.
+    if ((data as Record<string, unknown>).message_type === 'component_update') {
+      const upd = data as { message_type: string; message_id: string; component_id: string; data: unknown };
+      if (!upd.data || typeof upd.data !== 'object') return;
+      // Chip sync is type-gated on the rendered wrapper's
+      // data-component-type (same wrapper lookup applyComponentUpdate
+      // uses). No wrapper or non-cart wrapper means no sync. Without a
+      // renderCtx (bundle absent) nothing was rendered, so skip entirely.
+      if (renderCtx) {
+        const facade = getComponentsFacade();
+        facade.syncCartChipOnComponentUpdate(messagesEl, upd.message_id, upd.component_id, upd.data, setCartChipCount);
+        facade.applyComponentUpdate(messagesEl, upd.message_id, upd.component_id, upd.data, renderCtx);
+      }
+      return;
+    }
+
+    // Cart chip sync: any rich message payload carrying a shopify_cart
+    // component (per the wire envelope type) drives the header count
+    // badge (MMX-468 Task 7d).
+    if (Array.isArray(data.components)) {
+      const facade = getComponentsFacade();
+      for (const comp of data.components) {
+        if (comp.type !== 'shopify_cart') continue;
+        const qty = facade.readCartQuantity(comp.data);
+        if (qty !== null) setCartChipCount(qty);
+      }
+    }
+
     // Error message
     if (data.message_type === 'error_message') {
       showSessionClosedNotification(data.content || data.message || 'This chat session has been closed.');
@@ -542,14 +664,39 @@ async function init(): Promise<void> {
       // Deduplicate
       if (streamingRenderer.isDuplicateChunk(content)) return;
 
-      // Completion signal — just mark as done, no re-render needed
+      // Completion signal: mark as done and attach components/suggestions.
       if (data.is_complete === true && content === '') {
         if (lastMessage?.isStreaming) {
           lastMessage.isStreaming = false;
+          // Attach rich components and suggestion pills from the completion
+          // frame to the finished message so loadMessages() (and session
+          // restore) can render them alongside the text.
+          if (data.components?.length) lastMessage.components = data.components;
+          if (data.suggestions?.length) lastMessage.suggestions = data.suggestions;
           msgs[msgs.length - 1] = lastMessage;
           sessionStore.setMessages(msgs);
           streamingRenderer.reset();
-          // No loadMessages() — the streamed text is already in the DOM
+          // Re-render only the last message to mount the rich components
+          // block. If no components were attached, the streamed text is
+          // already in the DOM and no re-render is needed.
+          if (data.components?.length || data.suggestions?.length) {
+            // Replace the specific rendered bubble by its data-message-id so
+            // we don't accidentally remove an unrelated group at the end of
+            // the DOM (e.g. when a second message streams in before the first
+            // completion fires, or during testing where DOM order differs).
+            // Escape backslash and double-quote to produce a safe CSS attr
+            // selector, same approach as cssAttrEscape in message-integration.ts.
+            const msgId = lastMessage.messageId;
+            const escapedId = msgId ? msgId.replace(/\\/g, '\\\\').replace(/"/g, '\\"') : null;
+            const targetGroup = escapedId
+              ? messagesEl.querySelector(`[data-message-id="${escapedId}"]`)
+              : null;
+            if (targetGroup) {
+              targetGroup.remove();
+              renderedCount = Math.max(0, renderedCount - 1);
+            }
+            loadMessages();
+          }
         }
         setBotResponding(false);
         return;
