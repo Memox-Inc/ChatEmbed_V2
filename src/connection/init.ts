@@ -9,8 +9,9 @@
 // widget renders with the round/bubble defaults instead of the
 // per-embed attractor variant.
 //
-// A 1500ms abort timeout prevents a hanging server from blocking widget
-// bootstrap indefinitely. On timeout the AbortError is caught by the
+// A 5000ms abort timeout prevents a hanging server from blocking widget
+// bootstrap indefinitely while leaving enough headroom for the CORS
+// preflight round-trip. On timeout the TimeoutError is caught by the
 // existing catch block which logs a warning and returns {}.
 //
 // Note: keepalive is intentionally omitted — it conflicts with AbortSignal
@@ -28,8 +29,11 @@ export interface InitResponse {
 
 export type { ExperimentAssignment };
 
-/** Abort the init fetch after this many milliseconds to unblock widget bootstrap. */
-const INIT_TIMEOUT_MS = 1500;
+/** Abort the init fetch after this many milliseconds to unblock widget bootstrap.
+ *  5000ms gives cross-origin POST (with CORS preflight) enough headroom — the
+ *  OPTIONS round-trip + DNS + TLS + POST routinely takes 1-3s depending on
+ *  network conditions. 1500ms was too tight and caused spurious AbortErrors. */
+const INIT_TIMEOUT_MS = 5000;
 
 export async function fetchInitConfig(
   embedId: string | null,
@@ -39,7 +43,10 @@ export async function fetchInitConfig(
   if (!embedId) return {};
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), INIT_TIMEOUT_MS);
+  const timeoutId = setTimeout(
+    () => controller.abort(new DOMException('Init fetch timed out', 'TimeoutError')),
+    INIT_TIMEOUT_MS,
+  );
 
   try {
     const base = apiBase.replace(/\/$/, '');
