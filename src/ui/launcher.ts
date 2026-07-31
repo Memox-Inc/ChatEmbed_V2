@@ -121,9 +121,10 @@ export function createLauncher(
     const raw = sanitizeText((launcherCfg.pill_text ?? '').trim());
     textSpan.textContent = raw || 'Chat';
     // MMX-999: mobile-overridable pill typography
-    const pfSize = launcherNum(launcherCfg, 'pill_font_size', 14);
-    const pfWeight = launcherNum(launcherCfg, 'pill_font_weight', 600);
-    const pfColor = launcherStr(launcherCfg, 'pill_text_color', '');
+    const lc = launcherCfg as unknown as Record<string, unknown>;
+    const pfSize = launcherNum(lc, 'pill_font_size', 14);
+    const pfWeight = launcherNum(lc, 'pill_font_weight', 600);
+    const pfColor = launcherStr(lc, 'pill_text_color', '');
     if (pfColor) textSpan.style.color = pfColor;
     textSpan.style.fontSize = `${pfSize}px`;
     textSpan.style.fontWeight = String(pfWeight);
@@ -133,7 +134,7 @@ export function createLauncher(
   // MMX-999: mobile-overridable launcher styling.
   // Apply these as inline styles on the launcher button so they take
   // precedence over the CSS class defaults (60px round, 20px offsets, etc.).
-  const cfg = launcherCfg as Record<string, unknown>;
+  const cfg = launcherCfg as unknown as Record<string, unknown>;
   const size = launcherNum(cfg, 'size', isPill ? 52 : 60);
   if (isPill) {
     btn.style.height = `${size}px`;
