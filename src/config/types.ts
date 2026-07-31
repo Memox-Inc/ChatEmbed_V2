@@ -194,6 +194,59 @@ export interface LauncherConfig {
   custom_icon_url?: string | null;
   photo_url?: string | null;
   attractors?: Attractors;
+  /** Mobile-specific overrides — deep-merged over base launcher when viewport ≤ 767px (MMX-999). */
+  mobile?: MobileLauncherConfig;
+}
+
+// ───────────────── Mobile launcher overrides — MMX-999 ─────────────────
+
+export interface MobileTeaserAttractor {
+  enabled?: boolean;
+  text?: string;
+  font_size?: number;
+  bg_color?: string;
+  text_color?: string;
+  show_after_seconds?: number;
+  dismissible?: boolean;
+}
+
+export interface MobilePersonaAttractor {
+  enabled?: boolean;
+  name?: string;
+  message?: string;
+  show_chips?: boolean;
+  name_font_size?: number;
+  message_font_size?: number;
+}
+
+export interface MobileAttractors {
+  teaser?: MobileTeaserAttractor;
+  persona?: MobilePersonaAttractor;
+  pulse?: PulseAttractor;
+  badge?: BadgeAttractor;
+  smart_auto_open?: SmartAutoOpenAttractor;
+}
+
+export interface MobileLauncherConfig {
+  form_factor?: LauncherFormFactor;
+  pill_text?: string | null;
+  pill_font_size?: number;
+  pill_font_weight?: number;
+  icon_type?: LauncherIconType;
+  custom_icon_url?: string | null;
+  photo_url?: string | null;
+  bg_color?: string;
+  text_color?: string;
+  pill_bg_color?: string;
+  pill_text_color?: string;
+  size?: number;
+  icon_size?: number;
+  position?: 'left' | 'right';
+  bottom_offset?: number;
+  side_offset?: number;
+  shadow_size?: number;
+  shadow_color?: string;
+  attractors?: MobileAttractors;
 }
 
 // ───────────────── Lead capture v2 — MMX-575 ─────────────────

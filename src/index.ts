@@ -34,6 +34,61 @@ import { getOrCreateDistinctId } from './utils/distinct-id';
 import { fetchInitConfig, normalizeServerConfig } from './connection/init';
 import { applyTheme } from './ui/theme-vars';
 import { startEmbedConfigListener } from './connection/embed-config-listener';
+import type { MobileLauncherConfig } from './config/types';
+
+// ── Mobile launcher merge (MMX-999) ──────────────────────────────────────
+// When the viewport is ≤ 767px and the server has shipped a ``mobile``
+// override block inside ``launcher``, deep-merge it over the base launcher
+// so every downstream consumer (launcher.ts, attractor mounters, theme-vars)
+// sees the merged config without knowing about mobile at all.
+
+const MOBILE_BREAKPOINT = '(max-width: 767px)';
+
+/**
+ * Deep-assign own enumerable keys from ``src`` into ``target`` (no return,
+ * mutates target in-place).  Only writes when the source value is not
+ * undefined — so a mobile field left unset never clobbers the desktop value.
+ */
+function deepAssignMobile(target: Record<string, unknown>, src: Record<string, unknown>): void {
+  for (const key of Object.keys(src)) {
+    const val = src[key];
+    if (val === undefined || val === null) continue;
+    if (typeof val === 'object' && !Array.isArray(val) && typeof target[key] === 'object' && !Array.isArray(target[key])) {
+      deepAssignMobile(target[key] as Record<string, unknown>, val as Record<string, unknown>);
+    } else {
+      target[key] = val;
+    }
+  }
+}
+
+function applyMobileOverrides(config: ChatEmbedConfig): void {
+  const mobile: MobileLauncherConfig | undefined = config.launcher?.mobile;
+  if (!mobile) return;
+
+  const mql = window.matchMedia(MOBILE_BREAKPOINT);
+
+  const merge = (): void => {
+    const launcher = config.launcher ?? {};
+    if (mql.matches && launcher.mobile) {
+      // Deep-merge mobile over the base launcher *in-place*.  We keep
+      // the ``mobile`` key on the merged object so a live config update
+      // can re-merge; downstream code ignores unknown keys.
+      deepAssignMobile(launcher as Record<string, unknown>, launcher.mobile as Record<string, unknown>);
+      (launcher as Record<string, unknown>)._mobileActive = true;
+      // Propagate mobile position to top-level config.position so the
+      // launcher CSS class (mcx-launcher--left/right) and widget-container
+      // anchor switch together.
+      if (launcher.mobile.position) {
+        config.position = launcher.mobile.position;
+      }
+    } else {
+      (launcher as Record<string, unknown>)._mobileActive = false;
+    }
+  };
+
+  merge();
+  mql.addEventListener('change', merge);
+}
 
 declare global {
   interface Window {
@@ -68,6 +123,8 @@ async function init(): Promise<void> {
     localConfig.disableExperiments,
   );
   const config = mergeConfig(localConfig, serverConfig as Partial<ChatEmbedConfig>);
+  // MMX-999: merge mobile launcher overrides when viewport ≤ 767px.
+  applyMobileOverrides(config);
   // Scope localStorage to this embed instance — must run before any
   // sessionStore reads/writes so multiple widgets on the same origin
   // (marketing site widget + per-persona demo embed) don't share state.
@@ -193,6 +250,8 @@ async function init(): Promise<void> {
     // panel mid-conversation; live updates apply on next open.
     const normalized = normalizeServerConfig(next as unknown as Record<string, any>);
     Object.assign(config, normalized);
+    // Re-evaluate mobile merge — the live update may carry a new ``mobile`` block.
+    applyMobileOverrides(config);
   });
 
   // --- Create UI ---
