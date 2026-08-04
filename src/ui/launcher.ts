@@ -53,6 +53,23 @@ function renderIcon(parent: HTMLElement, launcher: LauncherConfig): { isPhoto: b
   return { isPhoto: false };
 }
 
+/**
+ * Read a mobile-overridable numeric value from the merged launcher config.
+ * Falls back to *defaultVal* when the field is absent/invalid.
+ */
+function launcherNum(cfg: Record<string, unknown>, key: string, defaultVal: number): number {
+  const v = (cfg as any)[key];
+  return typeof v === 'number' ? v : defaultVal;
+}
+
+/**
+ * Read a mobile-overridable string value.  Falls back to *defaultVal*.
+ */
+function launcherStr(cfg: Record<string, unknown>, key: string, defaultVal: string): string {
+  const v = (cfg as any)[key];
+  return typeof v === 'string' && v ? v : defaultVal;
+}
+
 export function createLauncher(
   config: ChatEmbedConfig,
   onClick: () => void,
@@ -103,7 +120,63 @@ export function createLauncher(
     textSpan.className = 'mcx-launcher-pill-text';
     const raw = sanitizeText((launcherCfg.pill_text ?? '').trim());
     textSpan.textContent = raw || 'Chat';
+    // MMX-999: mobile-overridable pill typography
+    const lc = launcherCfg as unknown as Record<string, unknown>;
+    const pfSize = launcherNum(lc, 'pill_font_size', 14);
+    const pfWeight = launcherNum(lc, 'pill_font_weight', 600);
+    const pfColor = launcherStr(lc, 'pill_text_color', '');
+    if (pfColor) textSpan.style.color = pfColor;
+    textSpan.style.fontSize = `${pfSize}px`;
+    textSpan.style.fontWeight = String(pfWeight);
     btn.appendChild(textSpan);
+  }
+
+  // MMX-999: mobile-overridable launcher styling.
+  // Apply these as inline styles on the launcher button so they take
+  // precedence over the CSS class defaults (60px round, 20px offsets, etc.).
+  const cfg = launcherCfg as unknown as Record<string, unknown>;
+  const size = launcherNum(cfg, 'size', isPill ? 52 : 60);
+  if (isPill) {
+    btn.style.height = `${size}px`;
+  } else {
+    btn.style.width = `${size}px`;
+    btn.style.height = `${size}px`;
+  }
+
+  const iconSize = launcherNum(cfg, 'icon_size', isPill ? 22 : 26);
+  // Update all icon SVGs + imgs inside the button
+  btn.querySelectorAll('.mcx-launcher-icon').forEach((el) => {
+    el.setAttribute('width', String(iconSize));
+    el.setAttribute('height', String(iconSize));
+  });
+
+  // Bottom / side offsets (pixels from the viewport edge)
+  const bottomOff = launcherNum(cfg, 'bottom_offset', 20);
+  btn.style.bottom = `${bottomOff}px`;
+  const sideOff = launcherNum(cfg, 'side_offset', 20);
+  const isLeft = config.position === 'left';
+  btn.style[isLeft ? 'left' : 'right'] = `${sideOff}px`;
+  btn.style[isLeft ? 'right' : 'left'] = 'auto';
+
+  // Background color — for round, keep the existing gradient with
+  // the overridden color.  For pill, apply a solid background.
+  const bgColor = launcherStr(cfg, 'bg_color', '');
+  const pillBg = launcherStr(cfg, 'pill_bg_color', '');
+  if (isPill && pillBg) {
+    btn.style.background = pillBg;
+  } else if (bgColor) {
+    btn.style.background = isPill ? bgColor : `linear-gradient(135deg, ${bgColor} 0%, ${bgColor}dd 100%)`;
+  }
+
+  // Text / icon color
+  const textColor = launcherStr(cfg, 'text_color', '');
+  if (textColor) btn.style.color = textColor;
+
+  // Shadow
+  const shadowSize = launcherNum(cfg, 'shadow_size', 16);
+  const shadowColor = launcherStr(cfg, 'shadow_color', '');
+  if (shadowColor) {
+    btn.style.boxShadow = `0 ${shadowSize / 3}px ${shadowSize}px ${shadowColor}66`;
   }
 
   // Close icon (hidden by default — toggled via mcx-launcher--open class).
