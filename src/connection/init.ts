@@ -3,16 +3,23 @@
 // attractor flags) plus an ``attractor_variant`` string that PostHog
 // stamps on every event.
 //
-// Failures here MUST NOT block the widget — if the embedId is missing or
-// the network is down, we fall through with an empty object and the
-// caller merges it on top of the local defaultConfig. Worst case: the
-// widget renders with the round/bubble defaults instead of the
-// per-embed attractor variant.
+// Failure policy (MMX-1027). In ``embedId`` mode this response is not
+// cosmetic: ``token``/``session_token``/``base_url``/``socket_url``/``org_id``/
+// ``agent_id`` ALL arrive here, so a widget that boots without it cannot
+// connect or chat. This function used to swallow every failure and return
+// ``{}``, which made the caller merge nothing onto ``defaultConfig`` and mount
+// a generic blue "Chat" widget — visibly not the operator's configuration and
+// silently inert. It now throws a typed ``EmbedInitError`` so the caller can
+// refuse to mount and surface an actionable message instead.
+//
+// Legacy local-config mode (no ``embedId``, everything supplied inline on
+// ``window.SimpleChatEmbedConfig``) never calls the endpoint and is unaffected:
+// it still short-circuits to ``{}``.
 //
 // A 5000ms abort timeout prevents a hanging server from blocking widget
 // bootstrap indefinitely while leaving enough headroom for the CORS
-// preflight round-trip. On timeout the TimeoutError is caught by the
-// existing catch block which logs a warning and returns {}.
+// preflight round-trip. On timeout the TimeoutError surfaces as an
+// ``EmbedInitError`` with reason ``'timeout'``.
 //
 // Note: keepalive is intentionally omitted — it conflicts with AbortSignal
 // in Chrome and Safari (browsers reject the combination), and keepalive is
@@ -28,6 +35,41 @@ export interface InitResponse {
 }
 
 export type { ExperimentAssignment };
+
+/**
+ * Why an ``/embed/init`` call failed. Drives the operator-facing copy in
+ * ``describeInitFailure`` — each reason maps to a different corrective action,
+ * which is the whole point of distinguishing them.
+ */
+export type EmbedInitFailureReason =
+  | 'origin' // 403 — host is not in the embed config's allowed_origins
+  | 'not_found' // 404 — embed_id unknown or inactive
+  | 'http' // other non-2xx
+  | 'bad_response' // 2xx whose body was not valid JSON (CDN/proxy error page)
+  | 'network' // fetch rejected — DNS, TLS, offline, CORS
+  | 'timeout'; // aborted after INIT_TIMEOUT_MS
+
+/** Typed failure from ``fetchInitConfig`` in embedId mode. */
+export class EmbedInitError extends Error {
+  readonly reason: EmbedInitFailureReason;
+  readonly status?: number;
+
+  constructor(message: string, reason: EmbedInitFailureReason, status?: number) {
+    super(message);
+    this.name = 'EmbedInitError';
+    this.reason = reason;
+    this.status = status;
+    // Required for ``instanceof`` to work when the bundle is transpiled to ES5.
+    Object.setPrototypeOf(this, EmbedInitError.prototype);
+  }
+}
+
+/** Map an HTTP status from ``/embed/init`` onto a failure reason. */
+function reasonForStatus(status: number): EmbedInitFailureReason {
+  if (status === 403) return 'origin';
+  if (status === 404) return 'not_found';
+  return 'http';
+}
 
 /** Abort the init fetch after this many milliseconds to unblock widget bootstrap.
  *  5000ms gives cross-origin POST (with CORS preflight) enough headroom — the
@@ -70,12 +112,22 @@ export async function fetchInitConfig(
       signal: controller.signal,
     });
 
-    if (!resp.ok) throw new Error(`init failed: ${resp.status}`);
+    if (!resp.ok) {
+      throw new EmbedInitError(
+        `init failed: ${resp.status}`,
+        reasonForStatus(resp.status),
+        resp.status,
+      );
+    }
     let data: any;
     try {
       data = await resp.json();
     } catch (parseError) {
-      throw new Error(`init response was not valid JSON: ${parseError}`);
+      throw new EmbedInitError(
+        `init response was not valid JSON: ${parseError}`,
+        'bad_response',
+        resp.status,
+      );
     }
     // Promote the top-level runtime fields onto the merged config so
     // the customer's HTML snippet only needs ``embedId`` — backend
@@ -103,12 +155,38 @@ export async function fetchInitConfig(
     }
     return { ...runtime, ...normalizeServerConfig(data.config || {}) };
   } catch (e) {
+    // Normalize everything into EmbedInitError so callers have one shape to
+    // branch on. An AbortError/TimeoutError here is our own abort controller
+    // firing; anything else that is not already typed is a transport failure.
+    const err =
+      e instanceof EmbedInitError
+        ? e
+        : isAbortLike(e)
+          ? new EmbedInitError('init fetch timed out', 'timeout')
+          : new EmbedInitError(
+              e instanceof Error ? e.message : String(e),
+              'network',
+            );
     // eslint-disable-next-line no-console
-    console.warn('[Memox] init fetch failed, falling back to local config', e);
-    return {};
+    console.error(
+      `[Memox] /embed/init failed (${err.reason}) — the chat widget will not be mounted.`,
+      err,
+    );
+    throw err;
   } finally {
     clearTimeout(timeoutId);
   }
+}
+
+/** True for the DOMException our AbortController raises on timeout. */
+function isAbortLike(e: unknown): boolean {
+  return (
+    typeof e === 'object' &&
+    e !== null &&
+    'name' in e &&
+    ((e as { name?: string }).name === 'AbortError' ||
+      (e as { name?: string }).name === 'TimeoutError')
+  );
 }
 
 
