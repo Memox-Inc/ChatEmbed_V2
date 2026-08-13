@@ -31,7 +31,8 @@ import { normalizePhoneE164 } from './ui/forms/validation';
 import * as analytics from './analytics/posthog';
 import { postEmbedEvent } from './analytics/embed-events';
 import { getOrCreateDistinctId } from './utils/distinct-id';
-import { fetchInitConfig, normalizeServerConfig } from './connection/init';
+import { EmbedInitError, fetchInitConfig, normalizeServerConfig } from './connection/init';
+import { describeInitFailure, renderInitErrorPanel } from './ui/init-error-panel';
 import { applyTheme } from './ui/theme-vars';
 import { startEmbedConfigListener } from './connection/embed-config-listener';
 import type { MobileLauncherConfig } from './config/types';
@@ -105,6 +106,30 @@ declare global {
   }
 }
 
+/**
+ * Resolve the host element for inline mode: explicit selector, then the
+ * ``memox-chat-container`` ID convention, then the parent of the script tag
+ * that loaded us. Extracted so the init-failure path (MMX-1027) can render its
+ * error panel into exactly the container the widget would have mounted into.
+ */
+function resolveInlineParent(config: { parentSelector?: string }): HTMLElement | null {
+  let parent: HTMLElement | null = null;
+  if (config.parentSelector) {
+    parent = document.querySelector<HTMLElement>(config.parentSelector);
+  }
+  if (!parent) {
+    parent = document.getElementById('memox-chat-container');
+  }
+  if (!parent) {
+    const scripts = document.querySelectorAll('script[src*="chat-embed"]');
+    const lastScript = scripts[scripts.length - 1];
+    if (lastScript?.parentElement) {
+      parent = lastScript.parentElement;
+    }
+  }
+  return parent;
+}
+
 async function init(): Promise<void> {
   const userConfig = window.MemoxChatConfig || window.SimpleChatEmbedConfig || {};
   // Fetch server-side launcher + attractor config before merging. The
@@ -117,11 +142,41 @@ async function init(): Promise<void> {
   // Dev: hub-dev.memox.io). Without this default a customer pasting only
   // ``embedId`` would silently fail DNS on every init request.
   const apiBase = localConfig.apiBase || localConfig.apiUrl || 'https://hub.memox.io';
-  const serverConfig = await fetchInitConfig(
-    localConfig.embedId ?? null,
-    apiBase,
-    localConfig.disableExperiments,
-  );
+  // MMX-1027: in embedId mode a failed init is fatal, not cosmetic — the auth
+  // token, socket URL, org and agent all arrive on that response. Mounting the
+  // widget anyway (the old behaviour) produced a generic default-config widget
+  // that looked like a different bot and could never connect. Refuse to mount,
+  // and tell whoever can fix it what to fix. ``fetchInitConfig`` has already
+  // console.error'd the underlying failure by the time we get here.
+  let serverConfig: Record<string, unknown>;
+  try {
+    serverConfig = await fetchInitConfig(
+      localConfig.embedId ?? null,
+      apiBase,
+      localConfig.disableExperiments,
+    );
+  } catch (e) {
+    const err =
+      e instanceof EmbedInitError
+        ? e
+        : new EmbedInitError(e instanceof Error ? e.message : String(e), 'network');
+    // Always log the actionable message. In floating mode nothing renders at
+    // all, so the console is the ONLY signal a developer gets — it has to carry
+    // the fix, not just the failure.
+    const { title, detail } = describeInitFailure(err);
+    // eslint-disable-next-line no-console
+    console.error(`[Memox] ${title}. ${detail}`);
+    if (localConfig.mode === 'inline') {
+      // Inline mode is the dashboard preview / playground: the viewer is the
+      // operator, so show them the actionable message on-screen too.
+      // ``|| document.body`` mirrors the mount path below, so an unresolvable
+      // container degrades to a visible error rather than to no error at all.
+      renderInitErrorPanel(resolveInlineParent(localConfig) || document.body, err);
+    }
+    // Floating mode is a customer's live site — render nothing rather than
+    // exposing Memox configuration guidance to end visitors.
+    return;
+  }
   const config = mergeConfig(localConfig, serverConfig as Partial<ChatEmbedConfig>);
   // MMX-999: merge mobile launcher overrides when viewport ≤ 767px.
   applyMobileOverrides(config);
@@ -202,21 +257,7 @@ async function init(): Promise<void> {
 
   if (config.mode === 'inline') {
     // For inline mode, find parent container by selector, ID convention, or script tag's parent
-    let parent: HTMLElement | null = null;
-    if (config.parentSelector) {
-      parent = document.querySelector<HTMLElement>(config.parentSelector);
-    }
-    if (!parent) {
-      parent = document.getElementById('memox-chat-container');
-    }
-    if (!parent) {
-      // Find the script tag that loaded us and use its parent
-      const scripts = document.querySelectorAll('script[src*="chat-embed"]');
-      const lastScript = scripts[scripts.length - 1];
-      if (lastScript?.parentElement) {
-        parent = lastScript.parentElement;
-      }
-    }
+    const parent = resolveInlineParent(config);
     const result = createInlineShadowHost(parent || document.body);
     host = result.host;
     root = result.root;

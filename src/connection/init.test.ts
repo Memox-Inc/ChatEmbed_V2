@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fetchInitConfig, normalizeServerConfig } from './init';
+import { EmbedInitError, fetchInitConfig, normalizeServerConfig } from './init';
 
 describe('fetchInitConfig', () => {
   let fetchMock: ReturnType<typeof vi.fn>;
@@ -8,9 +8,10 @@ describe('fetchInitConfig', () => {
     localStorage.clear();
     fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
-    // Failure paths intentionally console.warn — silence in tests so the
-    // suite output stays clean without losing the warning in production.
+    // Failure paths intentionally console.warn / console.error — silence in
+    // tests so the suite output stays clean without losing them in production.
     vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(console, 'error').mockImplementation(() => {});
   });
 
   afterEach(() => {
@@ -41,16 +42,47 @@ describe('fetchInitConfig', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('falls back to empty config on fetch error', async () => {
+  // MMX-1027: in embedId mode a failed init MUST NOT resolve to {}. Returning
+  // {} made index.ts mount the widget on defaultConfig — a generic blue "Chat"
+  // widget with no token/agent_id, i.e. visibly wrong AND unable to chat. The
+  // failure is now surfaced as a typed EmbedInitError so the caller can refuse
+  // to mount and show an actionable message.
+
+  it('throws EmbedInitError with reason "network" on fetch error', async () => {
     fetchMock.mockRejectedValue(new Error('Network error'));
-    const result = await fetchInitConfig('emb_test123', 'https://api.memox.io');
-    expect(result).toEqual({});
+    await expect(fetchInitConfig('emb_test123', 'https://api.memox.io')).rejects.toMatchObject({
+      name: 'EmbedInitError',
+      reason: 'network',
+    });
   });
 
-  it('falls back to empty config on non-2xx response', async () => {
+  it('throws EmbedInitError with reason "origin" on 403 (origin not allowed)', async () => {
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ detail: 'Origin not allowed.' }), { status: 403 }),
+    );
+    const err = await fetchInitConfig('emb_test123', 'https://api.memox.io').catch((e) => e);
+    expect(err).toBeInstanceOf(EmbedInitError);
+    expect(err.reason).toBe('origin');
+    expect(err.status).toBe(403);
+  });
+
+  it('throws EmbedInitError with reason "not_found" on 404 (bad/inactive embedId)', async () => {
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ detail: 'Invalid or inactive embed configuration.' }), {
+        status: 404,
+      }),
+    );
+    const err = await fetchInitConfig('emb_test123', 'https://api.memox.io').catch((e) => e);
+    expect(err).toBeInstanceOf(EmbedInitError);
+    expect(err.reason).toBe('not_found');
+  });
+
+  it('throws EmbedInitError with reason "http" on other non-2xx responses', async () => {
     fetchMock.mockResolvedValue(new Response('nope', { status: 500 }));
-    const result = await fetchInitConfig('emb_test123', 'https://api.memox.io');
-    expect(result).toEqual({});
+    const err = await fetchInitConfig('emb_test123', 'https://api.memox.io').catch((e) => e);
+    expect(err).toBeInstanceOf(EmbedInitError);
+    expect(err.reason).toBe('http');
+    expect(err.status).toBe(500);
   });
 
   it('persists distinct_id in localStorage and reuses it on subsequent calls', async () => {
@@ -114,9 +146,13 @@ describe('fetchInitConfig', () => {
     ));
 
     const promise = fetchInitConfig('test-embed-id', 'https://api.example.com');
+    // Attach the rejection handler before advancing so the abort never lands
+    // as an unhandled rejection.
+    const settled = promise.catch((e) => e);
     await vi.advanceTimersByTimeAsync(6000);
-    const result = await promise;
-    expect(result).toEqual({});
+    const err = await settled;
+    expect(err).toBeInstanceOf(EmbedInitError);
+    expect(err.reason).toBe('timeout');
 
     vi.useRealTimers();
   });
@@ -144,12 +180,13 @@ describe('fetchInitConfig', () => {
     vi.useRealTimers();
   });
 
-  it('handles malformed JSON in 200 response (CDN error page)', async () => {
-    // Simulate CDN/proxy returning HTTP 200 with HTML error page instead of JSON
+  it('throws EmbedInitError on malformed JSON in a 200 response (CDN error page)', async () => {
+    // Simulate CDN/proxy returning HTTP 200 with an HTML error page instead of JSON
     fetchMock.mockResolvedValue(new Response('<html>503</html>', { status: 200 }));
-    const result = await fetchInitConfig('emb_test123', 'https://api.memox.io');
-    expect(result).toEqual({});
-    expect(console.warn).toHaveBeenCalled();
+    const err = await fetchInitConfig('emb_test123', 'https://api.memox.io').catch((e) => e);
+    expect(err).toBeInstanceOf(EmbedInitError);
+    expect(err.reason).toBe('bad_response');
+    expect(console.error).toHaveBeenCalled();
   });
 });
 
