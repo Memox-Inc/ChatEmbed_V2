@@ -132,10 +132,12 @@ function resolveInlineParent(config: { parentSelector?: string }): HTMLElement |
 
 async function init(): Promise<void> {
   const userConfig = window.MemoxChatConfig || window.SimpleChatEmbedConfig || {};
-  // Fetch server-side launcher + attractor config before merging. The
-  // server is the source of truth for ``launcher`` and ``attractor_variant``;
-  // local config provides everything else. Falls through to {} on failure
-  // so the widget always boots with at least the local defaults.
+  // Fetch server-side config before merging. The server is the source of truth
+  // for ``launcher`` and ``attractor_variant``; local config provides the rest.
+  // In embedId mode a failed fetch is FATAL and the widget does not mount — see
+  // the try/catch below. Do not reintroduce a silent fall-through to {}: that
+  // mounted a generic default-config widget that could never connect (MMX-1027).
+  // Only the legacy no-embedId path still resolves to {} without a request.
   const localConfig = mergeConfig(defaultConfig, userConfig);
   // Production hub hostname. ``api.memox.io`` does not resolve — confirmed
   // against ``repos/memox-hub/deploy/k8s/README.md`` (Prod: hub.memox.io,

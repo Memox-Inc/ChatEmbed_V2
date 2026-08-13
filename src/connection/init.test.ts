@@ -130,7 +130,7 @@ describe('fetchInitConfig', () => {
     expect(fetchMock.mock.calls[0][0]).toBe('https://api.memox.io/api/v1/embed/init/');
   });
 
-  it('aborts and returns {} when fetch hangs past INIT_TIMEOUT_MS', async () => {
+  it('aborts and throws EmbedInitError(timeout) when fetch hangs past INIT_TIMEOUT_MS', async () => {
     vi.useFakeTimers();
     vi.stubGlobal('fetch', vi.fn((_url: string, opts: RequestInit) =>
       new Promise<Response>((_resolve, reject) => {
@@ -157,6 +157,14 @@ describe('fetchInitConfig', () => {
     vi.useRealTimers();
   });
 
+  // Asserts the clearTimeout call directly. The previous version asserted that
+  // ``console.warn`` was never called, which could not fail: aborting an
+  // already-settled fetch is a no-op, so a leaked timer produced no log at all
+  // — the test passed with the clearTimeout removed entirely.
+  //
+  // Note we can't assert ``vi.getTimerCount() === 0`` either: getOrCreateDistinctId
+  // schedules its own timer that is still pending here, so the count is 1 even on
+  // the correct path.
   it('clears the timeout timer on successful fetch (no leaked timer)', async () => {
     vi.useFakeTimers();
     vi.stubGlobal('fetch', vi.fn((_url: string, _opts: RequestInit) =>
@@ -165,17 +173,20 @@ describe('fetchInitConfig', () => {
       ),
     ));
 
+    // Installed after useFakeTimers so we spy on the faked clearTimeout.
+    const clearSpy = vi.spyOn(globalThis, 'clearTimeout');
+
     const result = await fetchInitConfig('emb', 'https://api.example.com');
     expect(result).toEqual({ foo: 'bar' });
 
-    // Advance well past INIT_TIMEOUT_MS. If clearTimeout was not called in
-    // the finally block, the abort callback would fire here and we'd see a
-    // console.warn call (abort on an already-resolved fetch). The spy on
-    // console.warn is set up in beforeEach — if it was called it means the
-    // timer leaked and fired.
+    // The finally block must clear the abort timer on the success path. Fails
+    // if the clearTimeout is removed — nothing else in this flow clears a timer.
+    expect(clearSpy).toHaveBeenCalled();
+
+    // Belt-and-braces: advancing past INIT_TIMEOUT_MS must not resurrect an
+    // abort or produce any failure logging.
     await vi.advanceTimersByTimeAsync(6000);
-    // console.warn should NOT have been called (no abort on a successful fetch)
-    expect(console.warn).not.toHaveBeenCalled();
+    expect(console.error).not.toHaveBeenCalled();
 
     vi.useRealTimers();
   });
