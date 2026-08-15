@@ -20,6 +20,14 @@ export interface WsMessageData {
   sender_photo_url?: string;
   assigned_user_name?: string;
   assigned_user_email?: string;
+  // MMX-894: deterministic handover narration phase, carried on
+  // ``handover_status`` frames so the widget can reflect distinct
+  // states (e.g. a "waiting for {rep}" cue on ``pinging``).
+  phase?: string;
+  // MMX-894: fallback choice buttons shipped on ``handover_choices``
+  // frames (e.g. leave a message / talk to someone else). Rendered as
+  // accessible buttons; a pick sends a ``choice`` frame back.
+  choices?: { id: string; label: string }[];
 }
 
 export class WebSocketManager {
