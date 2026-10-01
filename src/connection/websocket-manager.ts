@@ -56,7 +56,7 @@ export class WebSocketManager {
     const browserMetadata = collectBrowserMetadata();
     const socketUrl = this.config.socketUrl + '/ws/app/';
     const agentParam = this.config.agent_id ? `&agent_id=${this.config.agent_id}` : '';
-    const wsUrl = `${socketUrl}${this.config.org_id}/?visitor_info=${JSON.stringify(visitorInfo)}&browser_metadata=${encodeURIComponent(JSON.stringify(browserMetadata))}${agentParam}`;
+    const wsUrl = `${socketUrl}${this.config.org_id}/?visitor_info=${encodeURIComponent(JSON.stringify(visitorInfo))}&browser_metadata=${encodeURIComponent(JSON.stringify(browserMetadata))}${agentParam}`;
 
     try {
       this.socket = new WebSocket(wsUrl);
