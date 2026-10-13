@@ -13,6 +13,7 @@ import { createHeader } from './ui/header';
 import { createMessageList } from './ui/messages/message-list';
 import { createMessageBubble } from './ui/messages/message-bubble';
 import { createSystemNotification } from './ui/messages/system-notification';
+import { createHandoffStatusStrip } from './ui/messages/handoff-status-strip';
 import { createSessionEndedToast, type SessionEndedToastHandle } from './ui/messages/session-ended-toast';
 import { StreamingRenderer } from './ui/messages/streaming-renderer';
 import { createInputBar } from './ui/input/input-bar';
@@ -334,6 +335,22 @@ async function init(): Promise<void> {
   widget.appendChild(poweredBy);
   root.appendChild(widget);
 
+  // MMX-1373: session state, not a conversation event. Detached until needed,
+  // then mounted directly above the input — so it cannot scroll away, and a
+  // reload of the message list cannot re-render it away.
+  let handoffStatusEl: HTMLDivElement | null = null;
+
+  function showHandoffStatus(): void {
+    if (!handoffStatusEl) handoffStatusEl = createHandoffStatusStrip();
+    if (handoffStatusEl.parentElement !== widget) {
+      widget.insertBefore(handoffStatusEl, inputBar.container);
+    }
+  }
+
+  function hideHandoffStatus(): void {
+    if (handoffStatusEl?.parentElement) handoffStatusEl.remove();
+  }
+
   // WebSocket
   const ws = new WebSocketManager(config, handleWsMessage);
 
@@ -589,10 +606,21 @@ async function init(): Promise<void> {
     // Skip unread / handover_requested
     if (data.message_type === 'unread_message' || data.message_type === 'handover_requested') return;
 
+    // MMX-1373: the chat is parked on a rep — say so, and keep saying it.
+    // Also how a *reloading* visitor learns they are still waiting: the server
+    // re-sends this on connect, using the room_name on the socket URL.
+    if (data.message_type === 'handoff_status') {
+      showHandoffStatus();
+      return;
+    }
+
     // Handover message
     if (data.message_type === 'handover_message') {
       isHandoverActive = true;
       sessionStore.updateSession({ handoverOccurred: true });
+      // A rep is actually here, so the "waiting" strip has done its job. This
+      // is still the only moment a human's presence is asserted.
+      hideHandoffStatus();
 
       // MMX-551: stash the rep's signed photo URL so every subsequent
       // 'sales_rep' message bubble renders the actual avatar. Empty
