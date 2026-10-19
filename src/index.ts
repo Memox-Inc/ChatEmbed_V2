@@ -13,7 +13,7 @@ import { createHeader } from './ui/header';
 import { createMessageList } from './ui/messages/message-list';
 import { createMessageBubble } from './ui/messages/message-bubble';
 import { createSystemNotification } from './ui/messages/system-notification';
-import { createHandoffStatusStrip } from './ui/messages/handoff-status-strip';
+import { createHandoffStatusStrip, shouldShowHandoffStatus } from './ui/messages/handoff-status-strip';
 import { createSessionEndedToast, type SessionEndedToastHandle } from './ui/messages/session-ended-toast';
 import { StreamingRenderer } from './ui/messages/streaming-renderer';
 import { createInputBar } from './ui/input/input-bar';
@@ -610,7 +610,10 @@ async function init(): Promise<void> {
     // Also how a *reloading* visitor learns they are still waiting: the server
     // re-sends this on connect, using the room_name on the socket URL.
     if (data.message_type === 'handoff_status') {
-      showHandoffStatus();
+      // Exact room match, not the permissive filter above: a frame without a
+      // room must never assert state on another visitor's screen. The hub sets
+      // room_name on every handoff_status; this refuses to rely on that.
+      if (shouldShowHandoffStatus(data, chatID)) showHandoffStatus();
       return;
     }
 
@@ -811,6 +814,11 @@ async function init(): Promise<void> {
     // and forms. MMX-573.
     if (sessionClosePending) return;
     sessionClosePending = true;
+
+    // MMX-1373: a closed session is no longer waiting on anyone. Both close
+    // paths (WS error_message and validateSession 'closed') land here, so this
+    // is the one place that stops the strip hanging over a dead chat.
+    hideHandoffStatus();
 
     // Disable input so the visitor can't keep typing into a dead session.
     inputBar.setDisabled(true);

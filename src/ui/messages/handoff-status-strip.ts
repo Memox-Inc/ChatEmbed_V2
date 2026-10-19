@@ -17,6 +17,23 @@
 export const HANDOFF_STATUS_TEXT =
   "I've let the team know you'd like a human — I'll keep helping in the meantime.";
 
+/**
+ * Whether a `handoff_status` frame belongs to this widget's chat.
+ *
+ * Deliberately strict, and the reason is a leak. The hub fans org-group frames
+ * out to every visitor socket, and `handleWsMessage`'s general filter only drops
+ * frames whose `room_name` is *present and different* — so a frame carrying no
+ * `room_name` reaches every visitor in the org. This branch asserts state about
+ * the visitor's own chat, so it requires an exact match and rejects anything
+ * else, including a missing room and a missing chat id.
+ */
+export function shouldShowHandoffStatus(
+  data: { message_type?: string; room_name?: string },
+  chatID: string | null,
+): boolean {
+  return data.message_type === 'handoff_status' && !!chatID && data.room_name === chatID;
+}
+
 export function createHandoffStatusStrip(text: string = HANDOFF_STATUS_TEXT): HTMLDivElement {
   const strip = document.createElement('div');
   strip.className = 'mcx-handoff-status';

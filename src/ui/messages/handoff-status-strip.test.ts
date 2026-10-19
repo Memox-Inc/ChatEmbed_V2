@@ -9,7 +9,7 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { HANDOFF_STATUS_TEXT, createHandoffStatusStrip } from './handoff-status-strip';
+import { HANDOFF_STATUS_TEXT, createHandoffStatusStrip, shouldShowHandoffStatus } from './handoff-status-strip';
 
 describe('handoff status strip (MMX-1373)', () => {
   it('renders the intent copy, which claims no connection', () => {
@@ -40,6 +40,33 @@ describe('handoff status strip (MMX-1373)', () => {
 
     expect(strip.querySelector('img')).toBeNull();
     expect(strip.textContent).toContain('<img src=x onerror=alert(1)>');
+  });
+
+  describe('routing (the leak case)', () => {
+    const CHAT = 'room-abc';
+
+    it('shows for its own room', () => {
+      expect(shouldShowHandoffStatus({ message_type: 'handoff_status', room_name: CHAT }, CHAT)).toBe(true);
+    });
+
+    it("ignores another visitor's room", () => {
+      expect(shouldShowHandoffStatus({ message_type: 'handoff_status', room_name: 'room-other' }, CHAT)).toBe(false);
+    });
+
+    it('ignores a frame with NO room_name', () => {
+      // The org group fans out to every visitor socket and the general filter
+      // lets room-less frames through, so this is the case that would show a
+      // false "team notified" status on other visitors' pages.
+      expect(shouldShowHandoffStatus({ message_type: 'handoff_status' }, CHAT)).toBe(false);
+    });
+
+    it('ignores a non-handoff frame', () => {
+      expect(shouldShowHandoffStatus({ message_type: 'text_message', room_name: CHAT }, CHAT)).toBe(false);
+    });
+
+    it('ignores everything when the widget has no chat id yet', () => {
+      expect(shouldShowHandoffStatus({ message_type: 'handoff_status', room_name: CHAT }, null)).toBe(false);
+    });
   });
 
   it('carries no countdown or timer language', () => {
