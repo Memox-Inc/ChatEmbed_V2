@@ -145,6 +145,7 @@ Inbound WebSocket messages use a `message_type` discriminator:
 | `text` / streaming tokens | Rendered via `StreamingRenderer` |
 | `error_message` | Displays error bubble |
 | `handover_message` | Shows handover notification |
+| `handoff_status` | Shows the "team notified, still waiting" strip — **exact `room_name` match required** (MMX-1373) |
 | `unread_message` / `handover_requested` | Silently ignored |
 | `heartbeat` | Sent by client to keep connection alive |
 

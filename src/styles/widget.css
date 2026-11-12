@@ -733,6 +733,35 @@
   border-left-color: #DC2626;
 }
 
+/* ═══════ Handoff status strip (MMX-1373) ═══════ */
+/*
+ * Shown while a rep is being asked, mounted above the input rather than in the
+ * message list. Same informational palette as .mcx-sys-notification, but
+ * deliberately flat and unanimated: unlike a notification this can appear on
+ * page load (a reloading visitor who is still waiting), and chrome that
+ * animates on load reads as an alert.
+ */
+.mcx-handoff-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  background: #EFF6FF;
+  border-top: 1px solid #BFDBFE;
+  border-bottom: 1px solid #BFDBFE;
+  padding: 8px 14px;
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: #1D4ED8;
+}
+.mcx-handoff-status-icon {
+  flex: 0 0 auto;
+  font-size: 14px;
+}
+.mcx-handoff-status-text {
+  min-width: 0;
+}
+
 /* ═══════ Session ended toast (MMX-573) ═══════ */
 .mcx-session-ended {
   flex-direction: column;

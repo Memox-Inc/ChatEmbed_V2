@@ -13,6 +13,7 @@ import { createHeader } from './ui/header';
 import { createMessageList } from './ui/messages/message-list';
 import { createMessageBubble } from './ui/messages/message-bubble';
 import { createSystemNotification } from './ui/messages/system-notification';
+import { createHandoffStatusStrip, shouldShowHandoffStatus } from './ui/messages/handoff-status-strip';
 import { createSessionEndedToast, type SessionEndedToastHandle } from './ui/messages/session-ended-toast';
 import { StreamingRenderer } from './ui/messages/streaming-renderer';
 import { createInputBar } from './ui/input/input-bar';
@@ -31,9 +32,65 @@ import { normalizePhoneE164 } from './ui/forms/validation';
 import * as analytics from './analytics/posthog';
 import { postEmbedEvent } from './analytics/embed-events';
 import { getOrCreateDistinctId } from './utils/distinct-id';
-import { fetchInitConfig, normalizeServerConfig } from './connection/init';
+import { EmbedInitError, fetchInitConfig, normalizeServerConfig } from './connection/init';
+import { describeInitFailure, renderInitErrorPanel } from './ui/init-error-panel';
 import { applyTheme } from './ui/theme-vars';
 import { startEmbedConfigListener } from './connection/embed-config-listener';
+import type { MobileLauncherConfig } from './config/types';
+
+// ── Mobile launcher merge (MMX-999) ──────────────────────────────────────
+// When the viewport is ≤ 767px and the server has shipped a ``mobile``
+// override block inside ``launcher``, deep-merge it over the base launcher
+// so every downstream consumer (launcher.ts, attractor mounters, theme-vars)
+// sees the merged config without knowing about mobile at all.
+
+const MOBILE_BREAKPOINT = '(max-width: 767px)';
+
+/**
+ * Deep-assign own enumerable keys from ``src`` into ``target`` (no return,
+ * mutates target in-place).  Only writes when the source value is not
+ * undefined — so a mobile field left unset never clobbers the desktop value.
+ */
+function deepAssignMobile(target: Record<string, unknown>, src: Record<string, unknown>): void {
+  for (const key of Object.keys(src)) {
+    const val = src[key];
+    if (val === undefined || val === null) continue;
+    if (typeof val === 'object' && !Array.isArray(val) && typeof target[key] === 'object' && !Array.isArray(target[key])) {
+      deepAssignMobile(target[key] as Record<string, unknown>, val as Record<string, unknown>);
+    } else {
+      target[key] = val;
+    }
+  }
+}
+
+function applyMobileOverrides(config: ChatEmbedConfig): void {
+  const mobile: MobileLauncherConfig | undefined = config.launcher?.mobile;
+  if (!mobile) return;
+
+  const mql = window.matchMedia(MOBILE_BREAKPOINT);
+
+  const merge = (): void => {
+    const launcher = config.launcher ?? {};
+    if (mql.matches && launcher.mobile) {
+      // Deep-merge mobile over the base launcher *in-place*.  We keep
+      // the ``mobile`` key on the merged object so a live config update
+      // can re-merge; downstream code ignores unknown keys.
+      deepAssignMobile(launcher as Record<string, unknown>, launcher.mobile as Record<string, unknown>);
+      (launcher as Record<string, unknown>)._mobileActive = true;
+      // Propagate mobile position to top-level config.position so the
+      // launcher CSS class (mcx-launcher--left/right) and widget-container
+      // anchor switch together.
+      if (launcher.mobile.position) {
+        config.position = launcher.mobile.position;
+      }
+    } else {
+      (launcher as Record<string, unknown>)._mobileActive = false;
+    }
+  };
+
+  merge();
+  mql.addEventListener('change', merge);
+}
 
 declare global {
   interface Window {
@@ -50,24 +107,82 @@ declare global {
   }
 }
 
+/**
+ * Resolve the host element for inline mode: explicit selector, then the
+ * ``memox-chat-container`` ID convention, then the parent of the script tag
+ * that loaded us. Extracted so the init-failure path (MMX-1027) can render its
+ * error panel into exactly the container the widget would have mounted into.
+ */
+function resolveInlineParent(config: { parentSelector?: string }): HTMLElement | null {
+  let parent: HTMLElement | null = null;
+  if (config.parentSelector) {
+    parent = document.querySelector<HTMLElement>(config.parentSelector);
+  }
+  if (!parent) {
+    parent = document.getElementById('memox-chat-container');
+  }
+  if (!parent) {
+    const scripts = document.querySelectorAll('script[src*="chat-embed"]');
+    const lastScript = scripts[scripts.length - 1];
+    if (lastScript?.parentElement) {
+      parent = lastScript.parentElement;
+    }
+  }
+  return parent;
+}
+
 async function init(): Promise<void> {
   const userConfig = window.MemoxChatConfig || window.SimpleChatEmbedConfig || {};
-  // Fetch server-side launcher + attractor config before merging. The
-  // server is the source of truth for ``launcher`` and ``attractor_variant``;
-  // local config provides everything else. Falls through to {} on failure
-  // so the widget always boots with at least the local defaults.
+  // Fetch server-side config before merging. The server is the source of truth
+  // for ``launcher`` and ``attractor_variant``; local config provides the rest.
+  // In embedId mode a failed fetch is FATAL and the widget does not mount — see
+  // the try/catch below. Do not reintroduce a silent fall-through to {}: that
+  // mounted a generic default-config widget that could never connect (MMX-1027).
+  // Only the legacy no-embedId path still resolves to {} without a request.
   const localConfig = mergeConfig(defaultConfig, userConfig);
   // Production hub hostname. ``api.memox.io`` does not resolve — confirmed
   // against ``repos/memox-hub/deploy/k8s/README.md`` (Prod: hub.memox.io,
   // Dev: hub-dev.memox.io). Without this default a customer pasting only
   // ``embedId`` would silently fail DNS on every init request.
   const apiBase = localConfig.apiBase || localConfig.apiUrl || 'https://hub.memox.io';
-  const serverConfig = await fetchInitConfig(
-    localConfig.embedId ?? null,
-    apiBase,
-    localConfig.disableExperiments,
-  );
+  // MMX-1027: in embedId mode a failed init is fatal, not cosmetic — the auth
+  // token, socket URL, org and agent all arrive on that response. Mounting the
+  // widget anyway (the old behaviour) produced a generic default-config widget
+  // that looked like a different bot and could never connect. Refuse to mount,
+  // and tell whoever can fix it what to fix. ``fetchInitConfig`` has already
+  // console.error'd the underlying failure by the time we get here.
+  let serverConfig: Record<string, unknown>;
+  try {
+    serverConfig = await fetchInitConfig(
+      localConfig.embedId ?? null,
+      apiBase,
+      localConfig.disableExperiments,
+    );
+  } catch (e) {
+    const err =
+      e instanceof EmbedInitError
+        ? e
+        : new EmbedInitError(e instanceof Error ? e.message : String(e), 'network');
+    // Always log the actionable message. In floating mode nothing renders at
+    // all, so the console is the ONLY signal a developer gets — it has to carry
+    // the fix, not just the failure.
+    const { title, detail } = describeInitFailure(err);
+    // eslint-disable-next-line no-console
+    console.error(`[Memox] ${title}. ${detail}`);
+    if (localConfig.mode === 'inline') {
+      // Inline mode is the dashboard preview / playground: the viewer is the
+      // operator, so show them the actionable message on-screen too.
+      // ``|| document.body`` mirrors the mount path below, so an unresolvable
+      // container degrades to a visible error rather than to no error at all.
+      renderInitErrorPanel(resolveInlineParent(localConfig) || document.body, err);
+    }
+    // Floating mode is a customer's live site — render nothing rather than
+    // exposing Memox configuration guidance to end visitors.
+    return;
+  }
   const config = mergeConfig(localConfig, serverConfig as Partial<ChatEmbedConfig>);
+  // MMX-999: merge mobile launcher overrides when viewport ≤ 767px.
+  applyMobileOverrides(config);
   // Scope localStorage to this embed instance — must run before any
   // sessionStore reads/writes so multiple widgets on the same origin
   // (marketing site widget + per-persona demo embed) don't share state.
@@ -145,21 +260,7 @@ async function init(): Promise<void> {
 
   if (config.mode === 'inline') {
     // For inline mode, find parent container by selector, ID convention, or script tag's parent
-    let parent: HTMLElement | null = null;
-    if (config.parentSelector) {
-      parent = document.querySelector<HTMLElement>(config.parentSelector);
-    }
-    if (!parent) {
-      parent = document.getElementById('memox-chat-container');
-    }
-    if (!parent) {
-      // Find the script tag that loaded us and use its parent
-      const scripts = document.querySelectorAll('script[src*="chat-embed"]');
-      const lastScript = scripts[scripts.length - 1];
-      if (lastScript?.parentElement) {
-        parent = lastScript.parentElement;
-      }
-    }
+    const parent = resolveInlineParent(config);
     const result = createInlineShadowHost(parent || document.body);
     host = result.host;
     root = result.root;
@@ -193,6 +294,8 @@ async function init(): Promise<void> {
     // panel mid-conversation; live updates apply on next open.
     const normalized = normalizeServerConfig(next as unknown as Record<string, any>);
     Object.assign(config, normalized);
+    // Re-evaluate mobile merge — the live update may carry a new ``mobile`` block.
+    applyMobileOverrides(config);
   });
 
   // --- Create UI ---
@@ -231,6 +334,22 @@ async function init(): Promise<void> {
   widget.appendChild(inputBar.container);
   widget.appendChild(poweredBy);
   root.appendChild(widget);
+
+  // MMX-1373: session state, not a conversation event. Detached until needed,
+  // then mounted directly above the input — so it cannot scroll away, and a
+  // reload of the message list cannot re-render it away.
+  let handoffStatusEl: HTMLDivElement | null = null;
+
+  function showHandoffStatus(): void {
+    if (!handoffStatusEl) handoffStatusEl = createHandoffStatusStrip();
+    if (handoffStatusEl.parentElement !== widget) {
+      widget.insertBefore(handoffStatusEl, inputBar.container);
+    }
+  }
+
+  function hideHandoffStatus(): void {
+    if (handoffStatusEl?.parentElement) handoffStatusEl.remove();
+  }
 
   // WebSocket
   const ws = new WebSocketManager(config, handleWsMessage);
@@ -500,10 +619,24 @@ async function init(): Promise<void> {
     // Skip unread / handover_requested
     if (data.message_type === 'unread_message' || data.message_type === 'handover_requested') return;
 
+    // MMX-1373: the chat is parked on a rep — say so, and keep saying it.
+    // Also how a *reloading* visitor learns they are still waiting: the server
+    // re-sends this on connect, using the room_name on the socket URL.
+    if (data.message_type === 'handoff_status') {
+      // Exact room match, not the permissive filter above: a frame without a
+      // room must never assert state on another visitor's screen. The hub sets
+      // room_name on every handoff_status; this refuses to rely on that.
+      if (shouldShowHandoffStatus(data, chatID)) showHandoffStatus();
+      return;
+    }
+
     // Handover message
     if (data.message_type === 'handover_message') {
       isHandoverActive = true;
       sessionStore.updateSession({ handoverOccurred: true });
+      // A rep is actually here, so the "waiting" strip has done its job. This
+      // is still the only moment a human's presence is asserted.
+      hideHandoffStatus();
 
       // MMX-551: stash the rep's signed photo URL so every subsequent
       // 'sales_rep' message bubble renders the actual avatar. Empty
@@ -694,6 +827,11 @@ async function init(): Promise<void> {
     // and forms. MMX-573.
     if (sessionClosePending) return;
     sessionClosePending = true;
+
+    // MMX-1373: a closed session is no longer waiting on anyone. Both close
+    // paths (WS error_message and validateSession 'closed') land here, so this
+    // is the one place that stops the strip hanging over a dead chat.
+    hideHandoffStatus();
 
     // Disable input so the visitor can't keep typing into a dead session.
     inputBar.setDisabled(true);
