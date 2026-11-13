@@ -13,6 +13,7 @@ import { createHeader } from './ui/header';
 import { createMessageList } from './ui/messages/message-list';
 import { createMessageBubble } from './ui/messages/message-bubble';
 import { createSystemNotification } from './ui/messages/system-notification';
+import { createHandoffStatusStrip, shouldShowHandoffStatus } from './ui/messages/handoff-status-strip';
 import { createSessionEndedToast, type SessionEndedToastHandle } from './ui/messages/session-ended-toast';
 import { StreamingRenderer } from './ui/messages/streaming-renderer';
 import { createInputBar } from './ui/input/input-bar';
@@ -283,7 +284,7 @@ async function init(): Promise<void> {
   // ``/ws/embed/<embed_id>/`` and re-applies CSS theme + welcome on
   // every operator save. No-op when ``embedId`` is unset (e.g.
   // self-hosted/OSS deployments).
-  startEmbedConfigListener(config, root, (next) => {
+  const embedConfigListener = startEmbedConfigListener(config, root, (next) => {
     if (!next) return;
     // Run every server payload through the same normalizer the boot
     // path uses, then mutate the in-memory config so a future panel
@@ -333,6 +334,22 @@ async function init(): Promise<void> {
   widget.appendChild(inputBar.container);
   widget.appendChild(poweredBy);
   root.appendChild(widget);
+
+  // MMX-1373: session state, not a conversation event. Detached until needed,
+  // then mounted directly above the input — so it cannot scroll away, and a
+  // reload of the message list cannot re-render it away.
+  let handoffStatusEl: HTMLDivElement | null = null;
+
+  function showHandoffStatus(): void {
+    if (!handoffStatusEl) handoffStatusEl = createHandoffStatusStrip();
+    if (handoffStatusEl.parentElement !== widget) {
+      widget.insertBefore(handoffStatusEl, inputBar.container);
+    }
+  }
+
+  function hideHandoffStatus(): void {
+    if (handoffStatusEl?.parentElement) handoffStatusEl.remove();
+  }
 
   // WebSocket
   const ws = new WebSocketManager(config, handleWsMessage);
@@ -416,8 +433,11 @@ async function init(): Promise<void> {
   }
 
   // Public destroy() — removes the mousedown listener, cleans up every
-  // mounted attractor handle, and detaches the shadow host from the DOM.
-  // Safe to call multiple times.
+  // mounted attractor handle, closes the app WebSocket + embed-config
+  // listener (MMX-928: both used to leak past destroy(), leaving a zombie
+  // instance whose stray WS frames raced a freshly booted instance on the
+  // shared localStorage message array), and detaches the shadow host from
+  // the DOM. Safe to call multiple times.
   const destroy = (): void => {
     document.removeEventListener('mousedown', onDocumentMouseDown);
     for (const handle of mountedAttractors) {
@@ -428,6 +448,16 @@ async function init(): Promise<void> {
       }
     }
     mountedAttractors.length = 0;
+    try {
+      ws.close();
+    } catch (e) {
+      console.warn('MemoxChatWidget: websocket close failed', e);
+    }
+    try {
+      embedConfigListener.stop();
+    } catch (e) {
+      console.warn('MemoxChatWidget: embed-config listener stop failed', e);
+    }
     host.remove();
   };
   window.MemoxChatWidget = { destroy };
@@ -589,10 +619,24 @@ async function init(): Promise<void> {
     // Skip unread / handover_requested
     if (data.message_type === 'unread_message' || data.message_type === 'handover_requested') return;
 
+    // MMX-1373: the chat is parked on a rep — say so, and keep saying it.
+    // Also how a *reloading* visitor learns they are still waiting: the server
+    // re-sends this on connect, using the room_name on the socket URL.
+    if (data.message_type === 'handoff_status') {
+      // Exact room match, not the permissive filter above: a frame without a
+      // room must never assert state on another visitor's screen. The hub sets
+      // room_name on every handoff_status; this refuses to rely on that.
+      if (shouldShowHandoffStatus(data, chatID)) showHandoffStatus();
+      return;
+    }
+
     // Handover message
     if (data.message_type === 'handover_message') {
       isHandoverActive = true;
       sessionStore.updateSession({ handoverOccurred: true });
+      // A rep is actually here, so the "waiting" strip has done its job. This
+      // is still the only moment a human's presence is asserted.
+      hideHandoffStatus();
 
       // MMX-551: stash the rep's signed photo URL so every subsequent
       // 'sales_rep' message bubble renders the actual avatar. Empty
@@ -783,6 +827,11 @@ async function init(): Promise<void> {
     // and forms. MMX-573.
     if (sessionClosePending) return;
     sessionClosePending = true;
+
+    // MMX-1373: a closed session is no longer waiting on anyone. Both close
+    // paths (WS error_message and validateSession 'closed') land here, so this
+    // is the one place that stops the strip hanging over a dead chat.
+    hideHandoffStatus();
 
     // Disable input so the visitor can't keep typing into a dead session.
     inputBar.setDisabled(true);
