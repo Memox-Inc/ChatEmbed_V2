@@ -61,7 +61,7 @@ export class WebSocketManager {
     // this socket belongs to at connect time — the session row is only created
     // on the first message — so the status strip would vanish on every reload.
     const roomParam = chatID ? `&room_name=${encodeURIComponent(chatID)}` : '';
-    const wsUrl = `${socketUrl}${this.config.org_id}/?visitor_info=${JSON.stringify(visitorInfo)}&browser_metadata=${encodeURIComponent(JSON.stringify(browserMetadata))}${agentParam}${roomParam}`;
+    const wsUrl = `${socketUrl}${this.config.org_id}/?visitor_info=${encodeURIComponent(JSON.stringify(visitorInfo))}&browser_metadata=${encodeURIComponent(JSON.stringify(browserMetadata))}${agentParam}${roomParam}`;
 
     try {
       this.socket = new WebSocket(wsUrl);
