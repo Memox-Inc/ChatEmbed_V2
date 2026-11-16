@@ -13,6 +13,7 @@ permissions:
 
 jobs:
   set-active:
+    timeout-minutes: 30  # MMX-1576: under 5 runs in 30 days (n=0), default
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

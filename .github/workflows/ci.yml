@@ -8,6 +8,7 @@ on:
 
 jobs:
   build:
+    timeout-minutes: 10  # MMX-1576: 30-day p90 0.6 min, max 0.6 min, n=8
     runs-on: ubuntu-latest
 
     steps:
