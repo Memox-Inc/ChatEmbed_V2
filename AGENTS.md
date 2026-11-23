@@ -167,3 +167,5 @@ Type checking is wired via the workspace TypeScript LSP plugin. Run `npm run bui
 - Workspace rules (git/JIRA branching, kebab-case, model routing, Research-Plan-Execute loop) — `../../AGENTS.md`
 - IR Bot backend (FMP tools, rich content protocol) — `../memox-hub/AGENTS.md` (or workspace AGENTS.md IR Bot section)
 - Voice/chat dashboard frontend — `../mmx-unified-chat/AGENTS.md`
+
+If a sibling checkout predates its instruction migration, read its `CLAUDE.md`.
